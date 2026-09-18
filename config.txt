@@ -1,0 +1,30 @@
+# this is comment
+#this too
+
+### THIS IS EXAMPLE OF CONFIG.TXT ###
+
+# mandatory:
+WIDTH=20
+HEIGHT=15
+ENTRY=0,0
+EXIT=19,14
+OUTPUT_FILE=maze.txt
+PERFECT=True
+
+SEED=42
+
+# Algorithms: KRUSKAL, PRIM, BACKTRACKER
+ALGORITHM=KRUSKAL
+
+
+#### for bonus
+ANIMATION=TRUE
+COLOR=green
+
+
+
+
+################## wish to have #########
+
+# Renderer modes: MLX, Terminal
+DISPLAY_MODE=MLX
