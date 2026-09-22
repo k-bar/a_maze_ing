@@ -1,5 +1,5 @@
+from __future__ import annotations
 import sys
-from json.decoder import HEXDIGITS
 from typing import Literal
 import typing
 from enum import IntFlag
@@ -11,6 +11,7 @@ except ImportError:
     print("------>      pip install pydantic")
     sys.exit(1)
 
+
 class Wall(IntFlag):
     N = 1  # 0001
     E = 2  # 0010
@@ -18,6 +19,7 @@ class Wall(IntFlag):
     W = 8  # 1000
 
     ALL = 1 | 2 | 4 | 8
+
 
 class Maze:
     def __init__(self, config: Config) -> None:
@@ -34,29 +36,28 @@ class Maze:
         self.locked_cells = set()
         self._forty_two()
 
-
     def display(self) -> None:
         for row in self.grid:
             print(f"{[int(cell) for cell in row]}")
 
-
     # drukowanie wartosci komorek, '_' dla zablokowanych
+
     def display_42(self) -> None:
         for y, row in enumerate(self.grid):
             for x, cell in enumerate(row):
                 if (x, y) == self.entry:
-                    print(f"[ ] ", end="")
+                    print("[ ] ", end="")
                 elif (x, y) == self.exit:
-                    print(f"[.] ", end="")
+                    print("[.] ", end="")
                 elif (x, y) not in self.locked_cells:
-                    print(f"[{cell:X}] ", end="")
+                    print(f"[{int(cell):X}] ", end="")
                 else:
-                    print(f"[_] ", end="")
+                    print("[_] ", end="")
             print()
-
 
     # funkcja blokujaca odpowiednie komorki self.grid dla napisu '42'
     # algorytmy trzeba bedzie blokowac
+
     def _forty_two(self) -> None:
 
         # Komórki do zablokowania dla napisu '42'
@@ -87,21 +88,22 @@ class Config(BaseModel):
     # mandatory:
     WIDTH: int = Field(..., ge=2, le=1000)
     HEIGHT: int = Field(..., ge=2, le=1000)
-    ENTRY: tuple[int, int]  = Field(default=(0, 0))
-    EXIT: tuple[int, int]  = Field(default=(0, 0))
+    ENTRY: tuple[int, int] = Field(default=(0, 0))
+    EXIT: tuple[int, int] = Field(default=(0, 0))
     OUTPUT_FILE: str | None = Field(default=None, min_length=1, max_length=80)
     PERFECT: bool = Field(default=True)
 
     SEED: str = Field(default="42", min_length=1, max_length=80)
 
     # Algorithms: KRUSKAL, PRIM, BACKTRACKER
-    ALGORITHM: Literal["KRUSKAL", "PRIM", "BACKTRACKER"] = Field(default="KRUSKAL")
+    ALGORITHM: Literal["KRUSKAL", "PRIM", "BACKTRACKER"] = (
+        Field(default="KRUSKAL"))
 
-    #### for bonus
+    # for bonus
     ANIMATION: bool = Field(default=True)
     COLOR: str = Field(default="green", min_length=1, max_length=80)
 
-    ################## wish to have #########
+    # wish to have
 
     # Renderer modes: MLX, Terminal
     DISPLAY_MODE: str = Field(default="MLX", min_length=1, max_length=80)
@@ -109,10 +111,12 @@ class Config(BaseModel):
     @model_validator(mode='after')
     def validate_config(self) -> 'Config':
         # Logika walidująca, czy ENTRY i EXIT nie wychodzą poza planszę
-        def entry_exit(point: tuple[int, int], height: int, width: int) -> bool:
+        def entry_exit(point: tuple[int, int], height: int,
+                       width: int) -> bool:
             x, y = point
             if not (0 <= x < width) or not (0 <= y < height):
-                raise ValueError(f"znajduje się poza planszą {self.WIDTH}x{self.HEIGHT}!")
+                raise ValueError(f"znajduje się poza planszą "
+                                 f"{self.WIDTH}x{self.HEIGHT}!")
             else:
                 return True
 
@@ -126,14 +130,13 @@ class Config(BaseModel):
         except ValueError as e:
             raise ValueError(f"Punkt EXIT {e}")
 
-
         return self
 
 
-def read_config(name: str) -> None:
+def read_config(name: str) -> Config | None:
     try:
         with open(name, "r", encoding='utf-8') as f:
-            read_and_parse(f)
+            return read_and_parse(f)
     except OSError as e:
         print(f"Błąd otwierania pliku '{name}': {e}")
         sys.exit(1)
@@ -153,8 +156,10 @@ def read_and_parse(file: typing.IO[str]) -> None:
             key, val = clean_line.split("=", 1)
             key, val = key.strip(), val.strip()
 
-            # Jeśli klucz to ENTRY lub EXIT, a wartość ma przecinek (np. "0,0"),
-            # parsujemy string "0,0" na tuplę (0, 0), żeby Pydantic przyjął to bez błędu.
+            # Jeśli klucz to ENTRY lub EXIT, a wartość ma
+            # przecinek (np. "0,0"),
+            # parsujemy string "0,0" na tuplę (0, 0), żeby Pydantic
+            # przyjął to bez błędu.
             if key in ["ENTRY", "EXIT"] and "," in val:
                 try:
                     val = tuple(map(int, val.split(",")))
@@ -169,27 +174,31 @@ def read_and_parse(file: typing.IO[str]) -> None:
             # inicjacja obiektu config z rozpakowanego słownika config_data
             config = Config(**config_data)
             print("Konfiguracja załadowana pomyślnie:\n")
-            print(config)
-            print(config.model_dump_json(indent=2))
-            maze = Maze(config)
-            maze.display_42()
-            #maze.display()
+            return config
+
         except ValidationError as e:
             print("Błąd walidacji pliku konfiguracyjnego:\n")
             print(e)
             sys.exit(1)
     else:
-        print(
-            "Plik konfiguracyjny jest pusty lub nie ma danych w formacie KLUCZ=WARTOŚĆ.")
+        print("Plik konfiguracyjny jest pusty lub nie ma "
+              "danych w formacie KLUCZ=WARTOŚĆ.")
+        sys.exit(1)
+
 
 def main() -> None:
     print("Hello from a-maze-ing!")
 
-    arguments = len(sys.argv)
-    if not arguments == 2:
+    if len(sys.argv) != 2:
         print("Usage: a_maze_ing.py config.txt")
-    else:
-        read_config(sys.argv[1])
+        sys.exit(1)
+    config = read_config(sys.argv[1])
+    if config:
+        print(config)
+        print(config.model_dump_json(indent=2))
+        maze = Maze(config)
+        maze.display_42()
+        # maze.display()
     sys.exit(0)
 
 
