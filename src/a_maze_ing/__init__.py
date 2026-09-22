@@ -24,6 +24,8 @@ class Maze:
         self.width = config.WIDTH
         self.height = config.HEIGHT
         self.perfect = config.PERFECT
+        self.entry = config.ENTRY
+        self.exit = config.EXIT
 
         self.grid: list[list[Wall]] = [
             [Wall.ALL for _ in range(self.width)] for _ in range(self.height)
@@ -42,10 +44,14 @@ class Maze:
     def display_42(self) -> None:
         for y, row in enumerate(self.grid):
             for x, cell in enumerate(row):
-                if (x, y) not in self.locked_cells:
-                    print(f"{cell:X} ", end="")
+                if (x, y) == self.entry:
+                    print(f"[ ] ", end="")
+                elif (x, y) == self.exit:
+                    print(f"[.] ", end="")
+                elif (x, y) not in self.locked_cells:
+                    print(f"[{cell:X}] ", end="")
                 else:
-                    print(f"_ ", end="")
+                    print(f"[_] ", end="")
             print()
 
 
