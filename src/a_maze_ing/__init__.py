@@ -36,6 +36,7 @@ class Maze:
         self.locked_cells = set()
         self._forty_two()
 
+    # sprawdza czy tupla jest w zbiorze zablokowanych
 
     def is_locked(self, xy: tuple) -> bool:
         if xy in self.locked_cells:
@@ -62,7 +63,7 @@ class Maze:
             print()
 
     # funkcja blokujaca odpowiednie komorki self.grid dla napisu '42'
-    # algorytmy trzeba bedzie blokowac
+    # algorytmy musza sprawdzac warunek is_blocked(x, y)
 
     def _forty_two(self) -> None:
 
