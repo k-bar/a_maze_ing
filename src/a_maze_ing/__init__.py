@@ -36,6 +36,12 @@ class Maze:
         self.locked_cells = set()
         self._forty_two()
 
+
+    def is_locked(self, xy: tuple) -> bool:
+        if xy in self.locked_cells:
+            return True
+        return False
+
     def display(self) -> None:
         for row in self.grid:
             print(f"{[int(cell) for cell in row]}")
@@ -49,10 +55,10 @@ class Maze:
                     print("[ ] ", end="")
                 elif (x, y) == self.exit:
                     print("[.] ", end="")
-                elif (x, y) not in self.locked_cells:
-                    print(f"[{int(cell):X}] ", end="")
-                else:
+                elif self.is_locked((x, y)):
                     print("[_] ", end="")
+                else:
+                    print(f"[{int(cell):X}] ", end="")
             print()
 
     # funkcja blokujaca odpowiednie komorki self.grid dla napisu '42'
