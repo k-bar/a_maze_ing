@@ -1,5 +1,6 @@
-from .maze_pars_42 import Maze, Config, read_config
+from .maze_pars_42 import Maze, read_config
 import sys
+
 
 def main() -> None:
     print("Hello from a-maze-ing!")
@@ -13,6 +14,7 @@ def main() -> None:
         print(config.model_dump_json(indent=2))
         maze = Maze(config)
         maze.display_42()
+        maze.display_unicode()
         # maze.display()
     sys.exit(0)
 

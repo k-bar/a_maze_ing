@@ -1,9 +1,11 @@
 from __future__ import annotations
+
+import random
 import sys
 from typing import Literal
 import typing
 from enum import IntFlag
-
+from .kruskal import UnionFind
 
 try:
     from pydantic import BaseModel, Field, ValidationError, model_validator
@@ -36,9 +38,122 @@ class Maze:
         self.locked_cells = set()
         self._forty_two()
 
-    # sprawdza czy tupla jest w zbiorze zablokowanych
+        if config.ALGORITHM == "KRUSKAL":
+            self._prepare_kruskal()
+            self._generate_kruskal(config.SEED)
+
+    def display_unicode(self) -> None:
+        """Rysuje labirynt graficznie używając znaków Unicode."""
+        # Wymiary płótna (2 znaki na komórkę + 1 znak na końcową ścianę)
+        canvas_h = self.height * 2 + 1
+        canvas_w = self.width * 2 + 1
+
+        # Inicjalizujemy całe płótno jako litą ścianę '█'
+        canvas = [['|' for _ in range(canvas_w)] for _ in range(canvas_h)]
+
+        for y in range(self.height):
+            for x in range(self.width):
+                # Jeśli to zablokowana komórka wzoru '42',
+                # zostawiamy ją jako litą ścianę
+                if (x, y) in self.locked_cells:
+                    continue
+
+                # Obliczamy środek naszej komórki na nowym,
+                # powiększonym płótnie
+                cy = y * 2 + 1
+                cx = x * 2 + 1
+
+                # Wykuwamy środek komórki (robimy puste miejsce)
+                canvas[cy][cx] = ' '
+
+                # Pobieramy komórkę i wykuwamy zburzone ściany
+                cell = self.grid[y][x]
+
+                # Zauważ: bitowy AND (&) da 0, jeśli ściany NIE MA.
+                # Wtedy dajemy tam spację.
+                if (cell & Wall.N) == 0:
+                    canvas[cy - 1][cx] = ' '
+                if (cell & Wall.S) == 0:
+                    canvas[cy + 1][cx] = ' '
+                if (cell & Wall.W) == 0:
+                    canvas[cy][cx - 1] = ' '
+                if (cell & Wall.E) == 0:
+                    canvas[cy][cx + 1] = ' '
+
+                # Zaznaczamy wejście i wyjście (nadpisujemy środek komórki)
+                if (x, y) == self.entry:
+                    canvas[cy][cx] = 'S'
+                elif (x, y) == self.exit:
+                    canvas[cy][cx] = 'E'
+
+        # Rysowanie na ekranie
+        for row in canvas:
+            line = ""
+            for char in row:
+                if char == '|':
+                    line += ("||")
+                elif char == ' ':
+                    line += "  "
+                elif char == 'S':
+                    line += "ST"  # Start
+                elif char == 'E':
+                    line += "EX"  # Exit
+            print(line)
+
+    def _prepare_kruskal(self) -> None:
+        # dodajemy UnionFind() do Maze
+        self.uf = UnionFind()
+
+        # omijamy self.locked_cells (znak 42)
+        for y in range(self.height):
+            for x in range(self.width):
+                if (x, y) not in self.locked_cells:
+                    self.uf.add((x, y))
+
+    def _generate_kruskal(self, seed_val: str) -> None:
+
+        DIRECTION_MAP = {
+            # (wektor przesuniecia): (sciana komorki na ktorej stoimy,
+            # sciana kolejnej)
+            (1, 0): (Wall.E, Wall.W),
+            (-1, 0): (Wall.W, Wall.E),
+            (0, 1): (Wall.S, Wall.N),
+            (0, -1): (Wall.N, Wall.S),
+        }
+        # ustawiamy SEED, dzieki czemu mozemy odtwarzac taki sam labirynt
+        random.seed(seed_val)
+
+        edges: list[tuple[int, int], tuple[int, int]] = []
+        for y in range(self.height):
+            for x in range(self.width):
+                if (x, y) in self.locked_cells:
+                    continue
+                # sciany WE
+                if x + 1 < self.width and (x + 1, y) not in self.locked_cells:
+                    edges.append(((x, y), (x + 1, y)))
+                # sciany NS
+                if y + 1 < self.height and (x, y + 1) not in self.locked_cells:
+                    edges.append(((x, y), (x, y + 1)))
+
+        random.shuffle(edges)
+
+        for cell1, cell2 in edges:
+            if self.uf.union(cell1, cell2):
+                x1, y1 = cell1
+                x2, y2 = cell2
+
+                dx = x2 - x1
+                dy = y2 - y1
+
+                wall1, wall2 = DIRECTION_MAP[(dx, dy)]
+
+                # wyburzanie scian w self.grid
+
+                self.grid[y1][x1] &= ~wall1
+                self.grid[y2][x2] &= ~wall2
 
     def is_locked(self, xy: tuple[int, int]) -> bool:
+        # sprawdza czy tupla jest w zbiorze zablokowanych
         if xy in self.locked_cells:
             return True
         return False
