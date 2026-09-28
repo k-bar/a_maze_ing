@@ -29,11 +29,11 @@ class Config(BaseModel):
     WIDTH: int = Field(..., ge=2, le=1000)
     HEIGHT: int = Field(..., ge=2, le=1000)
     ENTRY: tuple[int, int] = Field(default=(0, 0))
-    EXIT: tuple[int, int] = Field(default=(0, 0))
-    OUTPUT_FILE: str | None = Field(default=None, min_length=1, max_length=80)
+    EXIT: tuple[int, int] = Field(default=(1, 1))
+    OUTPUT_FILE: str  = Field(default="maze.txt", min_length=1, max_length=80)
     PERFECT: bool = Field(default=True)
 
-    SEED: str = Field(default="42", min_length=1, max_length=80)
+    SEED: str | None = Field(default=None, min_length=0, max_length=80)
 
     ALGORITHM: Literal["KRUSKAL", "PRIM", "BACKTRACKER"] = (
         Field(default="KRUSKAL"))
