@@ -15,6 +15,9 @@ except ImportError:
 
 
 class Wall(IntFlag):
+    """
+    Bitwise flags representing the walls of a single maze cell.
+    """
     N = 1  # 0001
     E = 2  # 0010
     S = 4  # 0100
@@ -24,7 +27,26 @@ class Wall(IntFlag):
 
 
 class Maze:
+    """
+    Represents the maze grid and handles its generation and display.
+
+    Attributes:
+        width: The width of the maze.
+        height: The height of the maze.
+        perfect: Boolean indicating if the maze should be perfect (no loops).
+        entry: A tuple representing the (x, y) coordinates of the start.
+        exit: A tuple representing the (x, y) coordinates of the exit.
+        grid: A 2D list storing the Wall flags for each cell.
+        locked_cells: A set of (x, y) coordinates blocked for the '42' pattern.
+    """
+
     def __init__(self, config: Config) -> None:
+        """
+        Initializes the Maze using the provided configuration.
+
+        Args:
+            config: A validated Config object containing maze parameters.
+        """
         self.width = config.WIDTH
         self.height = config.HEIGHT
         self.perfect = config.PERFECT
@@ -43,34 +65,32 @@ class Maze:
             self._generate_kruskal(config.SEED)
 
     def display_unicode(self) -> None:
-        """Rysuje labirynt graficznie używając znaków Unicode."""
-        # Wymiary płótna (2 znaki na komórkę + 1 znak na końcową ścianę)
+        """
+        Draws the maze graphically in the terminal using Unicode characters.
+
+        The canvas dimensions are expanded (2 characters per cell + 1 for the
+        final wall). The entire canvas is initially filled with solid walls ('|').
+        It then carves out empty spaces for the cells and the demolished walls
+        using bitwise operations, skipping the locked '42' pattern cells.
+        Finally, it marks the entry ('ST') and exit ('EX') points.
+        """
         canvas_h = self.height * 2 + 1
         canvas_w = self.width * 2 + 1
 
-        # Inicjalizujemy całe płótno jako litą ścianę '█'
         canvas = [['|' for _ in range(canvas_w)] for _ in range(canvas_h)]
 
         for y in range(self.height):
             for x in range(self.width):
-                # Jeśli to zablokowana komórka wzoru '42',
-                # zostawiamy ją jako litą ścianę
                 if (x, y) in self.locked_cells:
                     continue
 
-                # Obliczamy środek naszej komórki na nowym,
-                # powiększonym płótnie
                 cy = y * 2 + 1
                 cx = x * 2 + 1
 
-                # Wykuwamy środek komórki (robimy puste miejsce)
                 canvas[cy][cx] = ' '
 
-                # Pobieramy komórkę i wykuwamy zburzone ściany
                 cell = self.grid[y][x]
 
-                # Zauważ: bitowy AND (&) da 0, jeśli ściany NIE MA.
-                # Wtedy dajemy tam spację.
                 if (cell & Wall.N) == 0:
                     canvas[cy - 1][cx] = ' '
                 if (cell & Wall.S) == 0:
@@ -80,47 +100,58 @@ class Maze:
                 if (cell & Wall.E) == 0:
                     canvas[cy][cx + 1] = ' '
 
-                # Zaznaczamy wejście i wyjście (nadpisujemy środek komórki)
                 if (x, y) == self.entry:
                     canvas[cy][cx] = 'S'
                 elif (x, y) == self.exit:
                     canvas[cy][cx] = 'E'
 
-        # Rysowanie na ekranie
         for row in canvas:
             line = ""
             for char in row:
                 if char == '|':
-                    line += ("||")
+                    line += "||"
                 elif char == ' ':
                     line += "  "
                 elif char == 'S':
-                    line += "ST"  # Start
+                    line += "ST"
                 elif char == 'E':
-                    line += "EX"  # Exit
+                    line += "EX"
             print(line)
 
     def _prepare_kruskal(self) -> None:
-        # dodajemy UnionFind() do Maze
+        """
+        Prepares the Union-Find data structure for Kruskal's algorithm.
+
+        Adds every cell coordinates to the Union-Find structure as a separate
+        set, skipping any coordinates belonging to the locked '42' pattern.
+        """
         self.uf = UnionFind()
 
-        # omijamy self.locked_cells (znak 42)
         for y in range(self.height):
             for x in range(self.width):
                 if (x, y) not in self.locked_cells:
                     self.uf.add((x, y))
 
     def _generate_kruskal(self, seed_val: str) -> None:
+        """
+        Generates the maze using a randomized Kruskal's algorithm.
 
+        Collects all possible internal edges (West-East and North-South)
+        excluding locked cells, shuffles them using the provided seed,
+        and iterates through them. If an edge connects two disjoint sets,
+        they are merged in the Union-Find structure and the dividing walls
+        are demolished in the grid.
+
+        Args:
+            seed_val: A string seed used to initialize the random number
+                      generator for reproducible maze layouts.
+        """
         DIRECTION_MAP = {
-            # (wektor przesuniecia): (sciana komorki na ktorej stoimy,
-            # sciana kolejnej)
             (1, 0): (Wall.E, Wall.W),
             (-1, 0): (Wall.W, Wall.E),
             (0, 1): (Wall.S, Wall.N),
             (0, -1): (Wall.N, Wall.S),
         }
-        # ustawiamy SEED, dzieki czemu mozemy odtwarzac taki sam labirynt
         random.seed(seed_val)
 
         edges: list[tuple[int, int], tuple[int, int]] = []
@@ -128,10 +159,10 @@ class Maze:
             for x in range(self.width):
                 if (x, y) in self.locked_cells:
                     continue
-                # sciany WE
+
                 if x + 1 < self.width and (x + 1, y) not in self.locked_cells:
                     edges.append(((x, y), (x + 1, y)))
-                # sciany NS
+
                 if y + 1 < self.height and (x, y + 1) not in self.locked_cells:
                     edges.append(((x, y), (x, y + 1)))
 
@@ -147,24 +178,37 @@ class Maze:
 
                 wall1, wall2 = DIRECTION_MAP[(dx, dy)]
 
-                # wyburzanie scian w self.grid
-
                 self.grid[y1][x1] &= ~wall1
                 self.grid[y2][x2] &= ~wall2
 
     def is_locked(self, xy: tuple[int, int]) -> bool:
-        # sprawdza czy tupla jest w zbiorze zablokowanych
+        """
+        Checks if a given cell is part of the locked cells set.
+
+        Args:
+            xy: A tuple of (x, y) coordinates to check.
+
+        Returns:
+            bool: True if the cell is locked, False otherwise.
+        """
         if xy in self.locked_cells:
             return True
         return False
 
     def display(self) -> None:
+        """
+        Prints the raw numerical values of the cells in the maze grid.
+        """
         for row in self.grid:
             print(f"{[int(cell) for cell in row]}")
 
-    # drukowanie wartosci komorek, '_' dla zablokowanych
-
     def display_42(self) -> None:
+        """
+        Prints a stylized text representation of the maze cell values.
+
+        Entry is marked with '[ ]', exit with '[.]', locked '42' pattern
+        cells with '[_]', and regular cells with their hexadecimal wall value.
+        """
         for y, row in enumerate(self.grid):
             for x, cell in enumerate(row):
                 if (x, y) == self.entry:
@@ -177,12 +221,15 @@ class Maze:
                     print(f"[{int(cell):X}] ", end="")
             print()
 
-    # funkcja blokujaca odpowiednie komorki self.grid dla napisu '42'
-    # algorytmy musza sprawdzac warunek is_blocked(x, y)
-
     def _forty_two(self) -> None:
+        """
+        Blocks specific cells in the center of the grid to form a '42' shape.
 
-        # Komórki do zablokowania dla napisu '42'
+        Algorithms building the maze must check `is_locked(x, y)` to avoid
+        routing paths through these coordinates. If the maze dimensions are
+        too small (width < 9 or height < 7) to enclose the pattern, it is
+        aborted and a warning is printed.
+        """
         pattern = [
             (-3, -2), (1, -2), (2, -2), (3, -2),
             (-3, -1), (3, -1),
@@ -191,8 +238,6 @@ class Maze:
             (-1, 2), (1, 2), (2, 2), (3, 2)
         ]
 
-        # Warunek, gdy wymiary nie pozwolą obejsc napisu '42' z kazdej strony,
-        # to nie zostanie on utworzony, i wyswietlimy komunikat. (strona 8)
         if self.width < 9 or self.height < 7:
             print("Size of the MAZE is too small to include '42' pattern!")
             return
@@ -200,14 +245,28 @@ class Maze:
         cx = self.width // 2
         cy = self.height // 2
 
-        # dodawanie do locked_cells set()
         for dx, dy in pattern:
             loc_x, loc_y = cx + dx, cy + dy
             self.locked_cells.add((loc_x, loc_y))
 
 
 class Config(BaseModel):
-    # mandatory:
+    """
+    Pydantic model representing the configuration for the maze generator.
+
+    Attributes:
+        WIDTH (int): The width of the maze. Mandatory.
+        HEIGHT (int): The height of the maze. Mandatory.
+        ENTRY (tuple): Starting coordinates (x, y). Default is (0, 0).
+        EXIT (tuple): Target coordinates (x, y). Default is (0, 0).
+        OUTPUT_FILE (str | None): File path to save the output.
+        PERFECT (bool): If True, generates a perfect maze without loops.
+        SEED (str): Random seed used for generation reproducible results.
+        ALGORITHM (str): The maze generation algorithm to use.
+        ANIMATION (bool): If True, enables solving/generation animation.
+        COLOR (str): Primary color for rendering.
+        DISPLAY_MODE (str): Output mode (e.g., MLX or Terminal).
+    """
     WIDTH: int = Field(..., ge=2, le=1000)
     HEIGHT: int = Field(..., ge=2, le=1000)
     ENTRY: tuple[int, int] = Field(default=(0, 0))
@@ -217,22 +276,28 @@ class Config(BaseModel):
 
     SEED: str = Field(default="42", min_length=1, max_length=80)
 
-    # Algorithms: KRUSKAL, PRIM, BACKTRACKER
     ALGORITHM: Literal["KRUSKAL", "PRIM", "BACKTRACKER"] = (
         Field(default="KRUSKAL"))
 
-    # for bonus
     ANIMATION: bool = Field(default=True)
     COLOR: str = Field(default="green", min_length=1, max_length=80)
-
-    # wish to have
-
-    # Renderer modes: MLX, Terminal
     DISPLAY_MODE: str = Field(default="MLX", min_length=1, max_length=80)
 
     @model_validator(mode='after')
     def validate_config(self) -> 'Config':
-        # Logika walidująca, czy ENTRY i EXIT nie wychodzą poza planszę
+        """
+        Validates the configuration parameters post-initialization.
+
+        Ensures that the ENTRY and EXIT coordinates are within the
+        boundaries defined by WIDTH and HEIGHT.
+
+        Returns:
+            Config: The validated Config instance.
+
+        Raises:
+            ValueError: If the entry or exit points are out of bounds.
+        """
+
         def entry_exit(point: tuple[int, int], height: int,
                        width: int) -> bool:
             x, y = point
@@ -256,6 +321,16 @@ class Config(BaseModel):
 
 
 def read_config(name: str) -> Config | None:
+    """
+    Opens and reads a configuration file.
+
+    Args:
+        name: The path to the configuration file.
+
+    Returns:
+        Config | None: A validated Config instance, or exits the program
+                       if a file reading error occurs.
+    """
     try:
         with open(name, "r", encoding='utf-8') as f:
             return read_and_parse(f)
@@ -264,13 +339,26 @@ def read_config(name: str) -> Config | None:
         sys.exit(1)
 
 
-def read_and_parse(file: typing.IO[str]) -> None:
+def read_and_parse(file: typing.IO[str]) -> Config | None:
+    """
+    Parses the configuration content and converts it into a Config object.
+
+    Expects lines in the format 'KEY = VALUE'. It ignores empty lines and
+    comments starting with '#'. It specifically intercepts 'ENTRY' and 'EXIT'
+    keys to cast their string values (e.g., "0,0") into tuples before passing
+    them to the Pydantic model for validation.
+
+    Args:
+        file: An iterable text I/O stream containing the raw config data.
+
+    Returns:
+        Config | None: A fully instantiated Configuration object, or exits
+                       the program upon validation failure or empty data.
+    """
     config_data = {}
 
-    # Wczytywanie pliku zakładając format: KEY: VALUE
     for line in file:
         clean_line = line.strip()
-        # Ignorujemy puste linie oraz komentarze
         if not clean_line or clean_line.startswith("#"):
             continue
 
@@ -278,10 +366,6 @@ def read_and_parse(file: typing.IO[str]) -> None:
             key, val = clean_line.split("=", 1)
             key, val = key.strip(), val.strip()
 
-            # Jeśli klucz to ENTRY lub EXIT, a wartość ma
-            # przecinek (np. "0,0"),
-            # parsujemy string "0,0" na tuplę (0, 0), żeby Pydantic
-            # przyjął to bez błędu.
             if key in ["ENTRY", "EXIT"] and "," in val:
                 try:
                     val = tuple(map(int, val.split(",")))
@@ -293,7 +377,6 @@ def read_and_parse(file: typing.IO[str]) -> None:
 
     if config_data:
         try:
-            # inicjacja obiektu config z rozpakowanego słownika config_data
             config = Config(**config_data)
             print("Konfiguracja załadowana pomyślnie:\n")
             return config
