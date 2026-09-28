@@ -1,5 +1,5 @@
 from mazegen.maze_class import Maze
-from src.config_parser import read_config
+from app.config_parser import read_config
 import sys
 
 
