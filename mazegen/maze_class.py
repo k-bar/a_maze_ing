@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import random
-from src.config_parser import Config
+from app.config_parser import Config
 from enum import IntFlag
 from .kruskal import UnionFind
 

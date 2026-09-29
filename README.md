@@ -14,7 +14,7 @@ documentation
 articles
 tutorials
 HOW AI was used? which task, and which parts of project
-
+- generating docstrings
 
 
 #### The complete structure and format of config file.

@@ -1,17 +1,37 @@
+[build-system]
+requires = ["uv_build>=0.12.17,<0.13.0"]
+build-backend = "uv_build"
+
 [project]
-name = "a-maze-ing"
+name = "mazegen"
 version = "0.1.0"
-description = "Add your description here"
+description = "This is the way"
 readme = "README.md"
-authors = [
-    { name = "kdzwigal", email = "kamil.z.bajki@gmail.com" }
-]
 requires-python = ">=3.14"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "kdzwigal", email = "kdzwigal@student.42warsaw.pl" },
+    { name = "kbartosz", email = "kbartosz@student.42warsaw.pl" }
+]
 dependencies = []
 
-#[project.scripts]
-#a-maze-ing = "a_maze_ing:main"
-#
-#[build-system]
-#requires = ["uv_build>=0.12.17,<0.13.0"]
-#build-backend = "uv_build"
+# flat layout configuration
+[tool.uv.build-backend]
+module-root = ""
+module-name = "mazegen"
+
+[dependency-groups]
+app = [
+    "pydantic>=2.13.5",
+]
+test = [
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+]
+dev = [
+    "flake8>=7.4.1",
+    "mypy>=2.3.1",
+    { include-group = "test"},
+    { include-group = "app"},
+]
