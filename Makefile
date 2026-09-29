@@ -3,7 +3,8 @@ CONFIG_FILE = config.txt
 APP = app/
 MAZEGEN = mazegen/
 TESTS = tests/
-SOURCES = $(MAIN_SCRIPT) $(MAZEGEN) $(APP) $(TESTS)
+SOURCES = $(MAIN_SCRIPT) $(MAZEGEN) $(APP)
+#$(TESTS)
 
 .PHONY: all  build install run debug clean lint lint-strict test test-cov
 

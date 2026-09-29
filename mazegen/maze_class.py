@@ -59,7 +59,7 @@ class Maze:
 
         self.locked_cells: set[tuple[int, int]] = set()
         self._forty_two()
-        self.path: list[tuple] = []
+        self.path: list[tuple[int, int]] = []
         self.output_file = config.OUTPUT_FILE
 
         if config.ALGORITHM == "KRUSKAL":

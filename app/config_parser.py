@@ -45,7 +45,7 @@ class Config(BaseModel):
 
     @field_validator("SEED", mode="before")
     @classmethod
-    def empty_str_to_none(cls, value):
+    def empty_str_to_none(cls, value: str) -> str | None:
         if value == "":
             return None
         return value
