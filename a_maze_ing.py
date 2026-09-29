@@ -29,9 +29,22 @@ def main() -> None:
         print(config.model_dump_json(indent=2))
 
         maze = Maze(config)
-        maze.display_42()
-        maze.display_unicode()
+        # maze.display_42()
+        # maze.display_unicode()
         # maze.display()
+
+        path = maze.solver_dfs()
+        maze.display_solved(path)
+        maze.export_to_file()
+        maze.del_death_ends()
+        print()
+        path2 = maze.solver_dfs()
+        path3 = maze.solver_bfs()
+        maze.display_solved(path2)
+        print()
+        maze.display_solved(path3)
+        maze.export_to_file()
+        maze.display_unicode()
 
     sys.exit(0)
 

@@ -3,7 +3,8 @@ from typing import Literal
 import typing
 
 try:
-    from pydantic import BaseModel, Field, ValidationError, model_validator
+    from pydantic import (BaseModel, Field, ValidationError,
+                          model_validator, field_validator)
 except ImportError:
     print("------>      pip install pydantic")
     sys.exit(1)
@@ -30,10 +31,10 @@ class Config(BaseModel):
     HEIGHT: int = Field(..., ge=2, le=1000)
     ENTRY: tuple[int, int] = Field(default=(0, 0))
     EXIT: tuple[int, int] = Field(default=(1, 1))
-    OUTPUT_FILE: str  = Field(default="maze.txt", min_length=1, max_length=80)
+    OUTPUT_FILE: str = Field(default="maze.txt", min_length=1, max_length=80)
     PERFECT: bool = Field(default=True)
 
-    SEED: str | None = Field(default=None, min_length=0, max_length=80)
+    SEED: str | None = Field(default=None, max_length=80)
 
     ALGORITHM: Literal["KRUSKAL", "PRIM", "BACKTRACKER"] = (
         Field(default="KRUSKAL"))
@@ -41,6 +42,13 @@ class Config(BaseModel):
     ANIMATION: bool = Field(default=True)
     COLOR: str = Field(default="green", min_length=1, max_length=80)
     DISPLAY_MODE: str = Field(default="MLX", min_length=1, max_length=80)
+
+    @field_validator("SEED", mode="before")
+    @classmethod
+    def empty_str_to_none(cls, value):
+        if value == "":
+            return None
+        return value
 
     @model_validator(mode='after')
     def validate_config(self) -> 'Config':

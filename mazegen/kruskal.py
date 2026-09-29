@@ -1,7 +1,7 @@
 class UnionFind:
     """
     Disjoint-set (Union-Find) data structure.
-    Used in graph theory to find the Minimum Spanning Tree (MST) 
+    Used in graph theory to find the Minimum Spanning Tree (MST)
     and prevent the formation of cycles (loops).
     """
 
@@ -10,10 +10,10 @@ class UnionFind:
         Initializes the structure storing the trees and their depths.
 
         Attributes:
-            parent: A dictionary where each cell points to its parent cell. 
-                    It resembles a linked list. If a cell points to itself, 
+            parent: A dictionary where each cell points to its parent cell.
+                    It resembles a linked list. If a cell points to itself,
                     it is the root node of the tree (corridor).
-            deep: A dictionary storing the "depth" (rank) of the tree, 
+            deep: A dictionary storing the "depth" (rank) of the tree,
                   representing how many levels the tree contains.
         """
         self.parent: dict[tuple[int, int], tuple[int, int]] = {}
@@ -32,7 +32,7 @@ class UnionFind:
     def find(self, node: tuple[int, int]) -> tuple[int, int]:
         """
         Recursively finds the root node ("boss") for a given cell.
-        It flattens the tree along the way (path compression) by 
+        It flattens the tree along the way (path compression) by
         assigning the found parent directly to the cell.
 
         Args:
@@ -47,7 +47,7 @@ class UnionFind:
 
     def union(self, node1: tuple[int, int], node2: tuple[int, int]) -> bool:
         """
-        Merges two sets to which the given cells belong, optimizing 
+        Merges two sets to which the given cells belong, optimizing
         the connection based on the depth (rank) of the trees.
 
         Args:
@@ -55,8 +55,8 @@ class UnionFind:
             node2: The second cell.
 
         Returns:
-            bool: True if the cells belonged to different sets and the merge 
-                  was performed. False if the cells share the same parent 
+            bool: True if the cells belonged to different sets and the merge
+                  was performed. False if the cells share the same parent
                   (are already connected), which would create a cycle (loop).
         """
         root1 = self.find(node1)
