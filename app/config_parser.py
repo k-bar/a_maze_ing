@@ -1,5 +1,5 @@
 import sys
-from typing import Literal
+from typing import Literal, Any
 import typing
 
 try:
@@ -122,7 +122,7 @@ def read_and_parse(file: typing.IO[str]) -> Config | None:
         Config | None: A fully instantiated Configuration object, or exits
                        the program upon validation failure or empty data.
     """
-    config_data = {}
+    config_data: dict[str, Any] = {}
 
     for line in file:
         clean_line = line.strip()
@@ -135,7 +135,9 @@ def read_and_parse(file: typing.IO[str]) -> Config | None:
 
             if key in ["ENTRY", "EXIT"] and "," in val:
                 try:
-                    val = tuple(map(int, val.split(",")))
+                    parsed_val = tuple(map(int, val.split(",")))
+                    config_data[key] = parsed_val
+                    continue
                 except ValueError as e:
                     print(f"Punkt ENTRY/EXIT jest niepoprawny! \n {e}")
                     sys.exit(1)
@@ -144,7 +146,7 @@ def read_and_parse(file: typing.IO[str]) -> Config | None:
 
     if config_data:
         try:
-            config = Config(**config_data)
+            config = Config.model_validate(config_data)
             print("Konfiguracja załadowana pomyślnie:\n")
             return config
 

@@ -57,9 +57,9 @@ class Maze:
             [Wall.ALL for _ in range(self.width)] for _ in range(self.height)
         ]
 
-        self.locked_cells = set()
+        self.locked_cells: set[tuple[int, int]] = set()
         self._forty_two()
-        self.path = []
+        self.path: list[tuple] = []
         self.output_file = config.OUTPUT_FILE
 
         if config.ALGORITHM == "KRUSKAL":
@@ -135,7 +135,7 @@ class Maze:
                 if (x, y) not in self.locked_cells:
                     self.uf.add((x, y))
 
-    def _generate_kruskal(self, seed_val: str) -> None:
+    def _generate_kruskal(self, seed_val: str | None) -> None:
         """
         Generates the maze using a randomized Kruskal's algorithm.
 
@@ -157,7 +157,7 @@ class Maze:
         }
         random.seed(seed_val)
 
-        edges: list[tuple[int, int], tuple[int, int]] = []
+        edges: list[tuple[tuple[int, int], tuple[int, int]]] = []
         for y in range(self.height):
             for x in range(self.width):
                 if (x, y) in self.locked_cells:
@@ -263,7 +263,8 @@ class Maze:
 
         # slownik a'la linked lista, key to gdzie jestem, value to skad
         # przyszedlem
-        came_from = {self.entry: None}
+        came_from: dict[tuple[int, int], tuple[int, int] | None]\
+            = {self.entry: None}
 
         # mapa ruchow jak w DIRECTIONS, ale tutaj tupla jako wektor w key,
         # jedna sciana jako value
@@ -303,7 +304,7 @@ class Maze:
 
         # sciezka
         path = []
-        curr = self.exit
+        curr: tuple[int, int] | None = self.exit
 
         if curr not in came_from:
             print("?")
@@ -329,7 +330,9 @@ class Maze:
 
         # slownik a'la linked lista, key to gdzie jestem, value to skad
         # przyszedlem
-        came_from = {self.entry: None}
+
+        came_from: dict[tuple[int, int], tuple[int, int] | None]\
+            = {self.entry: None}
 
         # mapa ruchow jak w DIRECTIONS, ale tutaj tupla jako wektor w key,
         # jedna sciana jako value
@@ -343,12 +346,13 @@ class Maze:
         # glowna petla, FIFO, popleft wyciaga x, y z pierwszego elementu
         # i go usuwa z kolejki, krecimy sie w petli dopoki nie staniemy na EXIT
         while queue:
-            current = queue.popleft()
+            current: tuple[int, int] | None = queue.popleft()
 
             if current == self.exit:
                 break
 
-            x, y = current
+            if current is not None:
+                x, y = current
 
             # sprawdzamy sciany
             for (dx, dy), wall_flag in moves.items():
@@ -369,7 +373,7 @@ class Maze:
 
         # sciezka
         path = []
-        curr = self.exit
+        curr: tuple[int, int] | None = self.exit
 
         if curr not in came_from:
             print("?")
@@ -434,7 +438,7 @@ class Maze:
         """MASAKRA, ale wkoncu dziala, nie podobaja mi sie te dlugie warunki
         i tak mocno
         zaglebione cialo, ale dziala, mozna pomyslec jak to rozbic"""
-        visited = set()
+        visited: set[tuple[int, int]] = set()
         for y in range(self.height):
             for x in range(self.width):
                 if (x, y) not in self.locked_cells:
