@@ -4,14 +4,15 @@
 ### THIS IS EXAMPLE OF CONFIG.TXT ###
 
 # mandatory:
-WIDTH=22
-HEIGHT=22
+WIDTH=20
+HEIGHT=20
 ENTRY=0,0
 EXIT=9,9
 OUTPUT_FILE=maze.txt
 PERFECT=True
+#for pacman perfect false
 
-#SEED=
+SEED=
 
 # Algorithms: KRUSKAL, PRIM, BACKTRACKER
 ALGORITHM=KRUSKAL
