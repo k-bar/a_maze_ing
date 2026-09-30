@@ -36,7 +36,7 @@ def main() -> None:
         path = maze.solver_dfs()
         maze.display_solved(path)
         maze.export_to_file()
-        maze.del_death_ends()
+        #maze.del_death_ends()
         print()
         path2 = maze.solver_dfs()
         path3 = maze.solver_bfs()
