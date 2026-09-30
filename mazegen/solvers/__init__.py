@@ -1,8 +1,5 @@
-"""
-Main entry point for the a-maze-ing application.
-Handles command-line arguments, configuration loading,
-and maze initialization and display.
-"""
-from .maze_class import Maze
+from .bfs import solver_bfs
+from .dfs import solver_dfs
 
-__all__ = ['Maze']
+
+__all__ = ['solver_bfs', 'solver_dfs']

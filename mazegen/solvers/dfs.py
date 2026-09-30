@@ -1,56 +1,46 @@
-def solver_dfs(self) -> list[tuple[int, int]]:
+from ..maze_class import Maze, Wall
+
+
+def solver_dfs(maze: 'Maze') -> list[tuple[int, int]]:
     """Find corridor from ENTRY to EXIT as DFS.
     """
-    # kolejka do sprawdzania komorek
-    stack: list[tuple[int, int]] = [self.entry]
+    stack: list[tuple[int, int]] = [maze.m_entry]
 
-    # odwiedzone, zeby nie sprawdzac dwa razy
-    visited: set[tuple[int, int]] = {self.entry}
+    visited: set[tuple[int, int]] = {maze.m_entry}
 
-    # slownik a'la linked lista, key to gdzie jestem, value to skad
-    # przyszedlem
     came_from: dict[tuple[int, int], tuple[int, int] | None] \
-        = {self.entry: None}
+        = {maze.m_entry: None}
 
-    # mapa ruchow jak w DIRECTIONS, ale tutaj tupla jako wektor w key,
-    # jedna sciana jako value
     moves = {
-        (0, -1): Wall.N,  # Ruch w górę
-        (1, 0): Wall.E,  # Ruch w prawo
-        (0, 1): Wall.S,  # Ruch w dół
-        (-1, 0): Wall.W  # Ruch w lewo
+        (0, -1): Wall.N,
+        (1, 0): Wall.E,
+        (0, 1): Wall.S,
+        (-1, 0): Wall.W
     }
 
-    # glowna petla, FIFO, popleft wyciaga x, y z pierwszego elementu i go
-    # usuwa z kolejki, krecimy sie w petli dopoki nie staniemy na EXIT
     while stack:
         current = stack.pop()
 
-        if current == self.exit:
+        if current == maze.m_exit:
             break
 
         x, y = current
 
-        # sprawdzamy sciany
         for (dx, dy), wall_flag in moves.items():
             nx, ny = x + dx, y + dy
 
-            # zabezpieczenie na zewnetrzne sciany i na znak 42, chociaz
-            # one tam sa wiec nie powinnismy wyjsc poza plansze
-            if (0 <= nx < self.width and 0 <= ny < self.height
-                    and (nx, ny) not in self.locked_cells):
+            if (0 <= nx < maze.width and 0 <= ny < maze.height
+                    and (nx, ny) not in maze.locked_cells):
 
-                # bitowe porownanie sciany z moves, ze sciana w self.grid
-                if (self.grid[y][x] & wall_flag) == 0:
+                if (maze.grid[y][x] & wall_flag) == 0:
 
                     if (nx, ny) not in visited:
                         visited.add((nx, ny))
                         came_from[(nx, ny)] = current
                         stack.append((nx, ny))
 
-    # sciezka
     path = []
-    curr: tuple[int, int] | None = self.exit
+    curr: tuple[int, int] | None = maze.m_exit
 
     if curr not in came_from:
         print("?")
@@ -60,7 +50,6 @@ def solver_dfs(self) -> list[tuple[int, int]]:
         path.append(curr)
         curr = came_from[curr]
 
-    # odwraca liste path, teraz entry jest jako pierwsze
     path.reverse()
-    self.path = path
+    maze.path = path
     return path

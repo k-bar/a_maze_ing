@@ -2,17 +2,26 @@ import random
 from ..maze_class import Maze
 from ..maze_class import Wall
 
+
 def del_death_ends(maze: 'Maze') -> None:
-    """MASAKRA, ale wkoncu dziala, nie podobaja mi sie te dlugie warunki
-    i tak mocno
-    zaglebione cialo, ale dziala, mozna pomyslec jak to rozbic"""
+    """Remove walls from eligible dead-end cells.
+
+    Scans the maze in row-major order. For each unlocked cell with exactly
+    three walls, removes a randomly selected wall to an eligible neighboring
+    cell, if one exists. The maze grid is modified in place. Random choices
+    are initialized using the maze seed.
+
+    Args:
+        maze: Maze whose dead ends should be opened.
+    """
     random.seed(maze.seed)
     visited: set[tuple[int, int]] = set()
     for y in range(maze.height):
         for x in range(maze.width):
             if (x, y) not in maze.locked_cells:
+
                 cell = maze.grid[y][x]
-                # zliczamy boolowskie jedynki
+
                 wall_count: int = (bool(cell & Wall.W)
                                    + bool(cell & Wall.E)
                                    + bool(cell & Wall.S)

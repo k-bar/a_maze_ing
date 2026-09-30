@@ -1,6 +1,6 @@
 import random
-from ..maze_class import Maze
-from ..maze_class import Wall
+from mazegen.maze_class import Maze, Wall
+from mazegen.generators.death_ends_destroyer import del_death_ends
 
 
 class UnionFind:
@@ -81,23 +81,22 @@ class UnionFind:
         return True
 
 
-
-def _prepare_kruskal(maze: 'Maze') -> None:
+def prepare_kruskal(maze: 'Maze') -> None:
     """
     Prepares the Union-Find data structure for Kruskal's algorithm.
 
     Adds every cell coordinates to the Union-Find structure as a separate
     set, skipping any coordinates belonging to the locked '42' pattern.
     """
-    self.uf = UnionFind()
+    maze.uf = UnionFind()
 
-    for y in range(self.height):
-        for x in range(self.width):
-            if (x, y) not in self.locked_cells:
-                self.uf.add((x, y))
+    for y in range(maze.height):
+        for x in range(maze.width):
+            if (x, y) not in maze.locked_cells:
+                maze.uf.add((x, y))
 
 
-def _generate_kruskal(self, seed_val: str | None) -> None:
+def generate_kruskal(maze: 'Maze') -> None:
     """
     Generates the maze using a randomized Kruskal's algorithm.
 
@@ -111,30 +110,31 @@ def _generate_kruskal(self, seed_val: str | None) -> None:
         seed_val: A string seed used to initialize the random number
                   generator for reproducible maze layouts.
     """
+    prepare_kruskal(maze)
     DIRECTION_MAP = {
         (1, 0): (Wall.E, Wall.W),
         (-1, 0): (Wall.W, Wall.E),
         (0, 1): (Wall.S, Wall.N),
         (0, -1): (Wall.N, Wall.S),
     }
-    random.seed(seed_val)
+    random.seed(maze.seed)
 
     edges: list[tuple[tuple[int, int], tuple[int, int]]] = []
-    for y in range(self.height):
-        for x in range(self.width):
-            if (x, y) in self.locked_cells:
+    for y in range(maze.height):
+        for x in range(maze.width):
+            if (x, y) in maze.locked_cells:
                 continue
 
-            if x + 1 < self.width and (x + 1, y) not in self.locked_cells:
+            if x + 1 < maze.width and (x + 1, y) not in maze.locked_cells:
                 edges.append(((x, y), (x + 1, y)))
 
-            if y + 1 < self.height and (x, y + 1) not in self.locked_cells:
+            if y + 1 < maze.height and (x, y + 1) not in maze.locked_cells:
                 edges.append(((x, y), (x, y + 1)))
 
     random.shuffle(edges)
 
     for cell1, cell2 in edges:
-        if self.uf.union(cell1, cell2):
+        if maze.uf.union(cell1, cell2):
             x1, y1 = cell1
             x2, y2 = cell2
 
@@ -143,5 +143,7 @@ def _generate_kruskal(self, seed_val: str | None) -> None:
 
             wall1, wall2 = DIRECTION_MAP[(dx, dy)]
 
-            self.grid[y1][x1] &= ~wall1
-            self.grid[y2][x2] &= ~wall2
+            maze.grid[y1][x1] &= ~wall1
+            maze.grid[y2][x2] &= ~wall2
+    if not maze.perfect:
+        del_death_ends(maze)

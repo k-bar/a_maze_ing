@@ -1,6 +1,9 @@
-from mazegen.maze_class import Maze
+from app import display_solved_labyrinth, display_solved
+from app.export_func import export_to_file
+from mazegen import Maze
 from app.config_parser import read_config
 import sys
+from mazegen.solvers import solver_bfs, solver_dfs
 
 
 def main() -> None:
@@ -28,24 +31,23 @@ def main() -> None:
         print(config)
         print(config.model_dump_json(indent=2))
 
-        maze = Maze(config)
-        # maze.display_42()
-        # maze.display_unicode()
-        # maze.display()
+        maze = Maze(config.WIDTH,
+                    config.HEIGHT,
+                    config.PERFECT,
+                    config.ENTRY,
+                    config.EXIT,
+                    config.SEED,
+                    config.OUTPUT_FILE,
+                    config.ALGORITHM)
 
-        path = maze.solver_dfs()
-        maze.display_solved(path)
-        maze.export_to_file()
-        #maze.del_death_ends()
+        path = solver_dfs(maze)
+        display_solved_labyrinth(maze, path)
         print()
-        path2 = maze.solver_dfs()
-        path3 = maze.solver_bfs()
-        maze.display_solved(path2)
+        display_solved(maze, path)
         print()
-        #maze.display_solved(path3)
-        maze.display_solved_labyrynth(path3)
-        maze.export_to_file()
-
+        path3 = solver_bfs(maze)
+        display_solved_labyrinth(maze, path3)
+        export_to_file(maze)
 
     sys.exit(0)
 

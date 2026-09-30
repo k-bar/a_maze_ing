@@ -1,11 +1,5 @@
 from __future__ import annotations
-from collections import deque
-import random
-from app.config_parser import Config
 from enum import IntFlag
-from .kruskal import UnionFind
-
-
 
 
 class Wall(IntFlag):
@@ -28,25 +22,34 @@ class Maze:
         width: The width of the maze.
         height: The height of the maze.
         perfect: Boolean indicating if the maze should be perfect (no loops).
-        entry: A tuple representing the (x, y) coordinates of the start.
+        m_entry: A tuple representing the (x, y) coordinates of the start.
         exit: A tuple representing the (x, y) coordinates of the exit.
         grid: A 2D list storing the Wall flags for each cell.
         locked_cells: A set of (x, y) coordinates blocked for the '42' pattern.
     """
 
-    def __init__(self, WIDTH: str, HEIGHT: str, ) -> None:
+    def __init__(self, width: int,
+                 height: int,
+                 perfect: bool,
+                 m_entry: tuple[int, int],
+                 m_exit: tuple[int, int],
+                 seed: str | None,
+                 output_file: str | None,
+                 algorithm: str | None,
+                 ) -> None:
         """
         Initializes the Maze using the provided configuration.
 
         Args:
             config: A validated Config object containing maze parameters.
         """
-        self.width = WIDTH
-        self.height = HEIGHT
-        self.perfect = PERFECT
-        self.entry = ENTRY
-        self.exit = EXIT
-        self.seed = SEED
+        self.width = width
+        self.height = height
+        self.perfect = perfect
+        self.m_entry = m_entry
+        self.m_exit = m_exit
+        self.seed = seed
+        self.algorithm = algorithm
 
         self.grid: list[list[Wall]] = [
             [Wall.ALL for _ in range(self.width)] for _ in range(self.height)
@@ -55,12 +58,16 @@ class Maze:
         self.locked_cells: set[tuple[int, int]] = set()
         self._forty_two()
         self.path: list[tuple[int, int]] = []
-        self.output_file = config.OUTPUT_FILE
+        self.output_file = output_file
 
-        if config.ALGORITHM == "KRUSKAL":
-            self._prepare_kruskal()
-            self._generate_kruskal(self.seed)
-
+        if self.algorithm == "KRUSKAL":
+            try:
+                from mazegen.generators import generate_kruskal, UnionFind
+            except ImportError as e:
+                print(f"Error importing Kruskal's algorithm: {e}")
+                return
+            self.uf = UnionFind()
+            generate_kruskal(self)
 
     def _forty_two(self) -> None:
         """

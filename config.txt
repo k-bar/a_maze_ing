@@ -4,12 +4,12 @@
 ### THIS IS EXAMPLE OF CONFIG.TXT ###
 
 # mandatory:
-WIDTH=2
-HEIGHT=2
+WIDTH=50
+HEIGHT=50
 ENTRY=0,0
-EXIT=1,1
+EXIT=49,49
 OUTPUT_FILE=maze.txt
-PERFECT=True
+PERFECT=False
 #for pacman perfect false
 
 SEED=42

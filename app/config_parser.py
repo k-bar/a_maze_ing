@@ -69,20 +69,20 @@ class Config(BaseModel):
                        width: int) -> bool:
             x, y = point
             if not (0 <= x < width) or not (0 <= y < height):
-                raise ValueError(f"znajduje się poza planszą "
-                                 f"{self.WIDTH}x{self.HEIGHT}!")
+                raise ValueError(f"is out of bounds for a "
+                                 f"{self.WIDTH}x{self.HEIGHT} maze!")
             else:
                 return True
 
         try:
             entry_exit(self.ENTRY, self.HEIGHT, self.WIDTH)
         except ValueError as e:
-            raise ValueError(f"Punkt ENTRY {e}")
+            raise ValueError(f"Point ENTRY {e}")
 
         try:
             entry_exit(self.EXIT, self.HEIGHT, self.WIDTH)
         except ValueError as e:
-            raise ValueError(f"Punkt EXIT {e}")
+            raise ValueError(f"Point EXIT {e}")
 
         return self
 
@@ -102,7 +102,7 @@ def read_config(name: str) -> Config | None:
         with open(name, "r", encoding='utf-8') as f:
             return read_and_parse(f)
     except OSError as e:
-        print(f"Błąd otwierania pliku '{name}': {e}")
+        print(f"Error opening file '{name}': {e}")
         sys.exit(1)
 
 
@@ -139,7 +139,7 @@ def read_and_parse(file: typing.IO[str]) -> Config | None:
                     config_data[key] = parsed_val
                     continue
                 except ValueError as e:
-                    print(f"Punkt ENTRY/EXIT jest niepoprawny! \n {e}")
+                    print(f"ENTRY/EXIT are invalid! \n {e}")
                     sys.exit(1)
 
             config_data[key] = val
@@ -147,14 +147,14 @@ def read_and_parse(file: typing.IO[str]) -> Config | None:
     if config_data:
         try:
             config = Config.model_validate(config_data)
-            print("Konfiguracja załadowana pomyślnie:\n")
+            print("Configuration loaded successfully:\n")
             return config
 
         except ValidationError as e:
-            print("Błąd walidacji pliku konfiguracyjnego:\n")
+            print("Error validating configuration file:\n")
             print(e)
             sys.exit(1)
     else:
-        print("Plik konfiguracyjny jest pusty lub nie ma "
-              "danych w formacie KLUCZ=WARTOŚĆ.")
+        print("Configuration file is empty or has no data "
+              "in the format KEY=VALUE.")
         sys.exit(1)

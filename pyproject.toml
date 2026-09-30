@@ -3,7 +3,7 @@ requires = ["uv_build>=0.12.17,<0.13.0"]
 build-backend = "uv_build"
 
 [project]
-name = "mazegen"
+name = "mazegenerator"
 version = "0.1.0"
 description = "This is the way"
 readme = "README.md"

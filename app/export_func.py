@@ -1,6 +1,9 @@
-def path_to_directions(self) -> str:
+from mazegen.maze_class import Maze
+
+
+def path_to_directions(maze: 'Maze') -> str:
     """Convert List od Tuples to NEWS ;)"""
-    if not self.path or len(self.path) < 2:
+    if not maze.path or len(maze.path) < 2:
         return ""
 
     # znowu dict:
@@ -12,7 +15,7 @@ def path_to_directions(self) -> str:
     }
 
     moves = []
-    temp_path = self.path
+    temp_path = maze.path
     for i in range(len(temp_path) - 1):
         x1, y1 = temp_path.pop(0)
         x2, y2 = temp_path[0]
@@ -25,21 +28,21 @@ def path_to_directions(self) -> str:
     return "".join(moves)
 
 
-def export_to_file(self) -> None:
+def export_to_file(maze: 'Maze') -> None:
     """Export maze, ENTRY, EXIT, and path to file."""
-    if not self.path or not self.output_file:
+    if not maze.path or not maze.output_file:
         return
 
     try:
-        with open(self.output_file, "w", encoding="utf-8") as file:
-            for row in self.grid:
+        with open(maze.output_file, "w", encoding="utf-8") as file:
+            for row in maze.grid:
                 line = "".join(str(f"{int(cell):X}") for cell in row)
                 file.write(f"{line}\n")
 
             file.write("\n")
-            file.write(f"{self.entry[0]},{self.entry[1]}\n")
-            file.write(f"{self.exit[0]},{self.exit[1]}\n")
-            directions = self.path_to_directions()
+            file.write(f"{maze.m_entry[0]},{maze.m_entry[1]}\n")
+            file.write(f"{maze.m_exit[0]},{maze.m_exit[1]}\n")
+            directions = path_to_directions(maze)
             file.write(f"{directions}")
 
     except OSError as e:
