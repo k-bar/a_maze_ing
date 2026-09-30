@@ -256,10 +256,10 @@ class Maze:
         """Find corridor from ENTRY to EXIT as DFS.
         """
         # kolejka do sprawdzania komorek
-        stack = [self.entry]
+        stack: list[tuple[int, int]] = [self.entry]
 
         # odwiedzone, zeby nie sprawdzac dwa razy
-        visited = {self.entry}
+        visited: set[tuple[int, int]] = {self.entry}
 
         # slownik a'la linked lista, key to gdzie jestem, value to skad
         # przyszedlem
@@ -323,10 +323,10 @@ class Maze:
         """Find corridor from ENTRY to EXIT as BFS.
         """
         # kolejka do sprawdzania komorek (linked lista dwustronna)
-        queue = deque([self.entry])
+        queue: deque[tuple[int, int]] = deque([self.entry])
 
         # odwiedzone, zeby nie sprawdzac dwa razy
-        visited = {self.entry}
+        visited: set[tuple[int, int]] = {self.entry}
 
         # slownik a'la linked lista, key to gdzie jestem, value to skad
         # przyszedlem
@@ -474,22 +474,68 @@ class Maze:
         print(visited)
 
     def display_solved(self, path: list[tuple[int, int]]) -> None:
-        """Drukuje labirynt ze ścieżką. """
-        path_set = set(path)  # Set przyspiesza sprawdzanie 'in'
+        """Prints maze with solved path. """
+        path_set = set(path)
 
         for y, row in enumerate(self.grid):
             for x, cell in enumerate(row):
                 if (x, y) in path_set:
                     if (x, y) == self.exit:
                         print(f"{CZERWONY}[.] {RESET}", end="")
-                        # sprawdza czy exit/entry zapisuja sie w path
                     elif (x, y) == self.entry:
                         print(f"{CZERWONY}['] {RESET}", end="")
                     else:
                         print(f"{ZIELONY}[{int(cell):X}]{RESET} ", end="")
-                        # Ścieżka
                 elif (x, y) not in self.locked_cells:
-                    print(f"[{int(cell):X}] ", end="")  # pozostale
+                    print(f"[{int(cell):X}] ", end="")
                 else:
-                    print(f"{NIEBIESKI}[_] {RESET}", end="")  # "42"
+                    print(f"{NIEBIESKI}[_] {RESET}", end="")
             print()
+
+    def display_solved_labyrynth(self, path: list[tuple[int, int]]) -> None:
+        """Prints solved maze with path, nicer look"""
+        path_set: set[tuple[int, int]] = set(path)
+
+        if not self.grid:
+            return
+
+        width = len(self.grid[0])
+
+        EAST_MASK = 2
+        SOUTH_MASK = 4
+
+        print("+" + "---+" * width)
+
+        for y, row in enumerate(self.grid):
+            print("|", end="")
+
+            for x, cell in enumerate(row):
+                if (x, y) in self.locked_cells:
+                    content = f"{NIEBIESKI}[=]{RESET}"
+                elif (x, y) in path_set:
+                    if (x, y) == self.exit:
+                        content = f"{CZERWONY}EXT{RESET}"
+                    elif (x, y) == self.entry:
+                        content = f"{CZERWONY}ENT{RESET}"
+                    else:
+                        content = f"{CZERWONY} 0 {RESET}"
+                else:
+                    content = "   "
+
+                print(content, end="")
+
+                if int(cell) & EAST_MASK:
+                    print("|", end="")
+                else:
+                    print(" ", end="")
+
+            print()
+
+            print("+", end="")
+            for x, cell in enumerate(row):
+                if int(cell) & SOUTH_MASK:
+                    print("---+", end="")
+                else:
+                    print("   +", end="")
+
+            print()  # Zakończenie rzędu

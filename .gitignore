@@ -218,3 +218,6 @@ __marimo__/
 /en.subject.pdf
 
 *.whl
+
+# Output files
+maze.txt

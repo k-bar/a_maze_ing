@@ -42,9 +42,10 @@ def main() -> None:
         path3 = maze.solver_bfs()
         maze.display_solved(path2)
         print()
-        maze.display_solved(path3)
+        #maze.display_solved(path3)
+        maze.display_solved_labyrynth(path3)
         maze.export_to_file()
-        maze.display_unicode()
+
 
     sys.exit(0)
 
