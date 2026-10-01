@@ -218,3 +218,8 @@ __marimo__/
 /en.subject.pdf
 
 *.whl
+
+# Output files
+maze.txt
+/PROJECT-SPEC.pdf
+/FREE-AGENT-SETUP.pdf
