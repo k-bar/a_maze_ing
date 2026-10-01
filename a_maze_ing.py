@@ -22,7 +22,7 @@ def main() -> None:
     print("Hello from a-maze-ing!")
 
     if len(sys.argv) != 2:
-        print("Usage: a_maze_ing.py config.txt")
+        print("Usage: a_maze_ing.py config.txt", file=sys.stderr)
         sys.exit(1)
 
     config = read_config(sys.argv[1])

@@ -87,7 +87,7 @@ class Config(BaseModel):
         return self
 
 
-def read_config(name: str) -> Config | None:
+def read_config(name: str) -> Config:
     """
     Opens and reads a configuration file.
 
@@ -95,18 +95,18 @@ def read_config(name: str) -> Config | None:
         name: The path to the configuration file.
 
     Returns:
-        Config | None: A validated Config instance, or exits the program
+        Config: A validated Config instance, or exits the program
                        if a file reading error occurs.
     """
     try:
         with open(name, "r", encoding='utf-8') as f:
             return read_and_parse(f)
     except OSError as e:
-        print(f"Error opening file '{name}': {e}")
+        print(f"Error opening file '{name}': {e}", file=sys.stderr)
         sys.exit(1)
 
 
-def read_and_parse(file: typing.IO[str]) -> Config | None:
+def read_and_parse(file: typing.IO[str]) -> Config:
     """
     Parses the configuration content and converts it into a Config object.
 
@@ -119,7 +119,7 @@ def read_and_parse(file: typing.IO[str]) -> Config | None:
         file: An iterable text I/O stream containing the raw config data.
 
     Returns:
-        Config | None: A fully instantiated Configuration object, or exits
+        Config: A fully instantiated Configuration object, or exits
                        the program upon validation failure or empty data.
     """
     config_data: dict[str, Any] = {}
@@ -139,7 +139,7 @@ def read_and_parse(file: typing.IO[str]) -> Config | None:
                     config_data[key] = parsed_val
                     continue
                 except ValueError as e:
-                    print(f"ENTRY/EXIT are invalid! \n {e}")
+                    print(f"ENTRY/EXIT are invalid! \n {e}", file=sys.stderr)
                     sys.exit(1)
 
             config_data[key] = val
@@ -151,10 +151,10 @@ def read_and_parse(file: typing.IO[str]) -> Config | None:
             return config
 
         except ValidationError as e:
-            print("Error validating configuration file:\n")
+            print("Error validating configuration file:\n", file=sys.stderr)
             print(e)
             sys.exit(1)
     else:
         print("Configuration file is empty or has no data "
-              "in the format KEY=VALUE.")
+              "in the format KEY=VALUE.", file=sys.stderr)
         sys.exit(1)
