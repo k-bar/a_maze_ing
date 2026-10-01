@@ -251,7 +251,7 @@ wheels = [
 ]
 
 [[package]]
-name = "mazegenerator"
+name = "mazegen"
 version = "0.1.0"
 source = { editable = "." }
 
