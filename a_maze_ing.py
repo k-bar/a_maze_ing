@@ -3,6 +3,10 @@ from app.export_func import export_to_file
 from mazegen import Maze
 from app.config_parser import read_config
 import sys
+import time
+from app.engine import AppController
+from mazegen.generator import MazeGenerator
+from app.backends.terminal import TerminalBackend
 from mazegen.solvers import solver_bfs, solver_dfs
 
 
@@ -39,6 +43,16 @@ def main() -> None:
                     config.SEED,
                     config.OUTPUT_FILE,
                     config.ALGORITHM)
+
+        generator = MazeGenerator(width=config.WIDTH, height=config.HEIGHT, )
+        backend = TerminalBackend()
+        controller = AppController(generator=generator, backend=backend)
+
+        print("\033[2J")
+        print("START KURLA")
+        time.sleep(1)
+        controller.start()
+        print("END KURLA")
 
         path = solver_dfs(maze)
         display_solved_labyrinth(maze, path)
