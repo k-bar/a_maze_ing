@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
+from app.grid import RenderGrid
+
 if TYPE_CHECKING:
     from app.engine import AppController
 
@@ -11,11 +13,7 @@ class GraphicBackend(ABC):
         pass
 
     @abstractmethod
-    def update_cell_in_buffer(self, x: int, y: int, wall_mask: int) -> None:
-        pass
-
-    @abstractmethod
-    def render_frame(self) -> None:
+    def render_frame(self, grid: RenderGrid) -> None:
         pass
 
     @abstractmethod

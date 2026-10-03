@@ -1,4 +1,5 @@
 from app import display_solved_labyrinth, display_solved
+from app.backends.mlx import MlxBackend
 from app.export_func import export_to_file
 from mazegen import Maze
 from app.config_parser import read_config
@@ -45,7 +46,7 @@ def main() -> None:
                     config.ALGORITHM)
 
         generator = MazeGenerator(width=config.WIDTH, height=config.HEIGHT, )
-        backend = TerminalBackend()
+        backend = MlxBackend()
         controller = AppController(generator=generator, backend=backend)
 
         print("\033[2J")
