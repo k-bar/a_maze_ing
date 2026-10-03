@@ -1,0 +1,27 @@
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from mlx import Mlx  # type: ignore[import-untyped]
+
+
+class MLXImage:
+    """Wrapper for raw image buffer for MiniLibX"""
+
+    def __init__(self, mlx: Mlx, mlx_ptr: object, width: int,
+                 height: int) -> None:
+        self.img_ptr = mlx.mlx_new_image(mlx_ptr, width, height)
+
+        addr_info = mlx.mlx_get_data_addr(self.img_ptr)
+        self.img_buffer: bytearray = addr_info[0]
+        self.bits_per_pixel: int = addr_info[1]
+        self.size_line: int = addr_info[2]
+        self.endian: int = addr_info[3]
+
+    def put_pixel(self, x: int, y: int, r: int, g: int, b: int) -> None:
+        """puts pixels in BGRA format directly to RAM"""
+        offset = (y * self.size_line) + (x * 4)
+        if 0 <= offset < len(self.img_buffer):
+            self.img_buffer[offset] = b
+            self.img_buffer[offset + 1] = g
+            self.img_buffer[offset + 2] = r
+            self.img_buffer[offset + 3] = 0  # Alpha / Padding

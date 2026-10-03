@@ -6,7 +6,7 @@ import termios
 from typing import TYPE_CHECKING
 
 from app.backends.base import GraphicBackend
-from app.utils import Direction
+from app.grid import RenderGrid, CellState
 
 if TYPE_CHECKING:
     from app.engine import AppController
@@ -17,41 +17,56 @@ class TerminalBackend(GraphicBackend):
     #     pass
 
     def __init__(self) -> None:
-        self.buffer: list[list[str]] = []
-        self.char_width: int = 0
-        self.char_height: int = 0
+        # self.buffer: list[list[str]] = []
+        # self.char_width: int = 0
+        # self.char_height: int = 0
+        pass
 
     def init_window(self, width: int, height: int, title: str) -> None:
-        self.char_width = (width * 2) + 1
-        self.char_height = (height * 2) + 1
-        self.buffer = [["#" for _ in range(self.char_width)] for _ in
-                       range(self.char_height)]
+        # self.char_width = (width * 2) + 1
+        # self.char_height = (height * 2) + 1
+        # self.buffer = [["#" for _ in range(self.char_width)] for _ in
+        #                range(self.char_height)]
+        pass
 
-    def update_cell_in_buffer(self, x: int, y: int, wall_mask: int) -> None:
-        # center of the cell...
-        cx = (x * 2) + 1
-        cy = (y * 2) + 1
-        # ...is always corridor (empty)
-        self.buffer[cy][cx] = " "
+    # def update_cell_in_buffer(self, x: int, y: int, wall_mask: int,
+    #                           grid: RenderGrid) -> None:
+    #     # center of the cell...
+    #     cx = (x * 2) + 1
+    #     cy = (y * 2) + 1
+    #     # ...is always corridor (empty)
+    #     self.buffer[cy][cx] = CellState.FLOOR
+    #
+    #     for bit_index, direction in enumerate(Direction):
+    #         _, dy, dx = direction.value
+    #         if (wall_mask & (1 << bit_index)) == 0:
+    #             grid.cells[cy + dy][cx + dx] = CellState.FLOOR
 
-        for bit_index, direction in enumerate(Direction):
-            _, dy, dx = direction.value
-            if (wall_mask & (1 << bit_index)) == 0:
-                self.buffer[cy + dy][cx + dx] = " "
+    def render_frame(self, grid: RenderGrid) -> None:
 
-    def render_frame(self) -> None:
+        state_to_char = {
+            CellState.WALL: "#",
+            CellState.FLOOR: " ",
+            CellState.ENTRY: "S",
+            CellState.EXIT: "E",
+            CellState.PATH: "."
+        }
+
         menu = (
             "\n=== A-Maze-ing Menu ==="
             "1: Regenerate maze | 2: Show/hide shortest path "
             "| 3: Rotate colors | 4: Quit"
             "Choice? (press key 1-4): "
         )
-
-        frame_lines = ["".join(row) for row in self.buffer]
-        full_frame = "\033[H" + "\n".join(frame_lines) + menu
+        lines: list[str] = []
+        for y in range(grid.grid_height):
+            row_chars = [state_to_char[cell] for cell in grid.cells[y]]
+            lines.append("".join(row_chars))
+        full_frame = "\033[H" + "\n".join(lines) + menu
         print(full_frame)
 
-    def _is_key_pressed(self) -> bool:
+    @staticmethod
+    def _is_key_pressed() -> bool:
         return select.select([sys.stdin], [], [], 0.0)[0] != []
 
     def start_loop(self, controller: "AppController") -> None:
@@ -61,7 +76,7 @@ class TerminalBackend(GraphicBackend):
             tty.setcbreak(sys.stdin.fileno())
             while controller.is_running:
                 controller.tick()
-                self.render_frame()
+                self.render_frame(grid=controller.grid)
                 if self._is_key_pressed():
                     key = sys.stdin.read(1)
                     if key == "4":

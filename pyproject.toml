@@ -21,8 +21,12 @@ dependencies = []
 module-root = ""
 module-name = "mazegen"
 
+[tool.uv.sources]
+mlx = { path = "pkgs/mlx-2.2-py3-none-any.whl" }
+
 [dependency-groups]
 app = [
+    "mlx",
     "pydantic>=2.13.5",
 ]
 test = [
