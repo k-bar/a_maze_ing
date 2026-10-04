@@ -223,4 +223,6 @@ __marimo__/
 maze.txt
 /PROJECT-SPEC.pdf
 /FREE-AGENT-SETUP.pdf
-pkgs/
+pkgs/*
+!pkgs/
+!pkgs/*.whl

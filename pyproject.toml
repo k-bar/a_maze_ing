@@ -24,6 +24,10 @@ module-name = "mazegen"
 [tool.uv.sources]
 mlx = { path = "pkgs/mlx-2.2-py3-none-any.whl" }
 
+[[tool.mypy.overrides]]
+module="mlx"
+ignore_missing_imports = true
+
 [dependency-groups]
 app = [
     "mlx",

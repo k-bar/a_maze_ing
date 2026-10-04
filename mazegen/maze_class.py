@@ -33,7 +33,7 @@ class Maze:
                  perfect: bool,
                  m_entry: tuple[int, int],
                  m_exit: tuple[int, int],
-                 seed: str | None,
+                 seed: int | None,
                  output_file: str | None,
                  algorithm: str | None,
                  ) -> None:

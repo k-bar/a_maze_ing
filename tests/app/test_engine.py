@@ -5,11 +5,12 @@ from mazegen.generator import MazeGenerator
 
 
 def test_controller_tick_should_process_generator_step() -> None:
-    generator = MazeGenerator(width=3, height=3)
+    # generator = MazeGenerator(width=3, height=3)
     backend = TerminalBackend()
-
-    backend.init_window(generator.width, generator.height, "Test Engine")
-    controller = AppController(generator=generator, backend=backend)
+    width, height = 3, 3
+    backend.init_window(width, height, "Test Engine")
+    controller = AppController(width=width, height=height, backend=backend,
+                               generator_class=MazeGenerator, initial_seed=42)
 
     controller.tick()
 
@@ -17,10 +18,11 @@ def test_controller_tick_should_process_generator_step() -> None:
 
 
 def test_controller_should_set_running_to_false_on_quit_action() -> None:
-    generator = MazeGenerator(width=3, height=3)
     backend = TerminalBackend()
-    backend.init_window(generator.width, generator.height, "Test Engine")
-    controller = AppController(generator=generator, backend=backend)
+    width, height = 3, 3
+    backend.init_window(width, height, "Test Engine")
+    controller = AppController(width=width, height=height, backend=backend,
+                               generator_class=MazeGenerator, initial_seed=42)
 
     assert controller.is_running is True
 
@@ -29,10 +31,11 @@ def test_controller_should_set_running_to_false_on_quit_action() -> None:
 
 
 def test_controller_should_reset_generator_on_regen_action() -> None:
-    generator = MazeGenerator(width=3, height=3)
     backend = TerminalBackend()
-    backend.init_window(generator.width, generator.height, "Test Engine")
-    controller = AppController(generator=generator, backend=backend)
+    width, height = 3, 3
+    backend.init_window(width, height, "Test Engine")
+    controller = AppController(width=width, height=height, backend=backend,
+                               generator_class=MazeGenerator, initial_seed=42)
 
     controller.tick()
     controller.tick()
@@ -45,10 +48,11 @@ def test_controller_should_reset_generator_on_regen_action() -> None:
 
 
 def test_controller_should_reset_generator_on_quit_action() -> None:
-    generator = MazeGenerator(width=3, height=3)
     backend = TerminalBackend()
-    backend.init_window(generator.width, generator.height, "Test Engine")
-    controller = AppController(generator=generator, backend=backend)
+    width, height = 3, 3
+    backend.init_window(width, height, "Test Engine")
+    controller = AppController(width=width, height=height, backend=backend,
+                               generator_class=MazeGenerator, initial_seed=42)
 
     assert controller.is_generating is True
     assert controller.is_running is True
@@ -65,10 +69,11 @@ def test_controller_should_reset_generator_on_quit_action() -> None:
 
 
 def test_controller_and_backend_interaction_on_action() -> None:
-    generator = MazeGenerator(width=3, height=3)
     backend = TerminalBackend()
-    backend.init_window(generator.width, generator.height, "Test")
-    controller = AppController(generator=generator, backend=backend)
+    width, height = 3, 3
+    backend.init_window(width, height, "Test Engine")
+    controller = AppController(width=width, height=height, backend=backend,
+                               generator_class=MazeGenerator, initial_seed=42)
 
     assert controller.is_generating is True
 
@@ -80,9 +85,13 @@ def test_controller_and_backend_interaction_on_action() -> None:
 
 
 def test_should_correctly_modify_shared_grid_states_based_on_bits() -> None:
-    generator = MazeGenerator(width=3, height=3)
     backend = TerminalBackend()
-    controller = AppController(generator=generator, backend=backend)
+    width, height = 3, 3
+
+    controller = AppController(width=width, height=height, backend=backend,
+                               generator_class=MazeGenerator, initial_seed=42)
+
+    generator: MazeGenerator = controller.generator
 
     # simulate for cell  (1, 1) a mas
     # bit 0 (N) = 1 (closed)

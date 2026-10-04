@@ -1,8 +1,10 @@
 import random
 from typing import Generator
 
+from mazegen.base import BaseGenerator
 
-class MazeGenerator:
+
+class MazeGenerator(BaseGenerator):
     """Temporary mock of generator using yield"""
 
     def __init__(self, width: int, height: int,
