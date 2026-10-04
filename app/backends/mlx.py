@@ -1,12 +1,9 @@
-from typing import TYPE_CHECKING
+from app.engine import AppController
 from app.backends.base import GraphicBackend
 from app.backends.mlx_image import MLXImage
 from app.grid import RenderGrid, CellState
 from app.keys import MLX_EVENT_DESTROY, MLX_MASK_NO_MASK, KEY_MAP
-from mlx import Mlx  # type: ignore[import-untyped]
-
-if TYPE_CHECKING:
-    from app.engine import AppController
+from mlx import Mlx
 
 
 class MlxBackend(GraphicBackend):
@@ -25,6 +22,11 @@ class MlxBackend(GraphicBackend):
         blocks_y = (height * 2) + 1
         self.pixel_width = blocks_x * self.block_size
         self.pixel_height = blocks_y * self.block_size
+        self.win_ptr = self.mlx.mlx_new_window(
+            self.mlx_ptr, self.pixel_width, self.pixel_height, "A MLX"
+        )
+        self.image = MLXImage(self.mlx, self.mlx_ptr, self.pixel_width,
+                              self.pixel_height)
 
     def _draw_pixel_block(self, gx: int, gy: int,
                           color: tuple[int, int, int]) -> None:
@@ -61,31 +63,23 @@ class MlxBackend(GraphicBackend):
 
     def start_loop(self, controller: AppController) -> None:
 
-        self.win_ptr = self.mlx.mlx_new_window(
-            self.mlx_ptr, self.pixel_width, self.pixel_height, "A MLX"
-        )
-
-        self.image = MLXImage(self.mlx, self.mlx_ptr, self.pixel_width,
-                              self.pixel_height)
-
         self.mlx.mlx_hook(self.win_ptr, MLX_EVENT_DESTROY,
                           MLX_MASK_NO_MASK,
                           lambda *args: controller.handle_action("quit"), 0)
 
-        def handle_mlx_keys(keycode: int, param: any = None) -> None:
+        def handle_mlx_keys(keycode: int, param: None = None) -> None:
             action = KEY_MAP.get(keycode)
             if action:
                 controller.handle_action(action)
 
         self.mlx.mlx_key_hook(self.win_ptr, handle_mlx_keys, None)
 
-        def loop_tick(param) -> None:
+        def loop_tick(param: None = None) -> None:
             if controller.is_running:
                 controller.tick()
                 self.render_frame(controller.grid)
             else:
-                import sys
-                sys.exit(0)
+                self.mlx.mlx_loop_exit(self.mlx_ptr)
 
         self.mlx.mlx_loop_hook(self.mlx_ptr, loop_tick, None)
         self.mlx.mlx_loop(self.mlx_ptr)

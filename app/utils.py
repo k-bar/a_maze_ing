@@ -2,7 +2,7 @@ from enum import Enum
 
 
 class Direction(Enum):
-    NORTH = ("N", - 1, 0)
+    NORTH = ("N", -1, 0)
     EAST = ("E", 0, 1)
     SOUTH = ("S", 1, 0)
     WEST = ("W", 0, -1)

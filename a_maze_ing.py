@@ -1,13 +1,15 @@
 from app import display_solved_labyrinth, display_solved
+from app.backends.base import GraphicBackend
 from app.backends.mlx import MlxBackend
+from app.backends.terminal import TerminalBackend
 from app.export_func import export_to_file
 from mazegen import Maze
 from app.config_parser import read_config
 import sys
 import time
 from app.engine import AppController
+
 from mazegen.generator import MazeGenerator
-from app.backends.terminal import TerminalBackend
 from mazegen.solvers import solver_bfs, solver_dfs
 
 
@@ -45,9 +47,21 @@ def main() -> None:
                     config.OUTPUT_FILE,
                     config.ALGORITHM)
 
-        generator = MazeGenerator(width=config.WIDTH, height=config.HEIGHT, )
-        backend = MlxBackend()
-        controller = AppController(generator=generator, backend=backend)
+        backend: GraphicBackend
+        if config.DISPLAY_MODE == "Terminal":
+            backend = TerminalBackend()
+        else:
+            backend = MlxBackend()
+
+        if config.ALGORITHM == "KRUSKAL":
+            generator_class = MazeGenerator
+        else:
+            generator_class = MazeGenerator
+        controller = AppController(width=config.WIDTH,
+                                   height=config.HEIGHT,
+                                   generator_class=generator_class,
+                                   backend=backend,
+                                   initial_seed=config.SEED)
 
         print("\033[2J")
         print("START KURLA")

@@ -21,7 +21,7 @@ class Config(BaseModel):
         EXIT (tuple): Target coordinates (x, y). Default is (0, 0).
         OUTPUT_FILE (str | None): File path to save the output.
         PERFECT (bool): If True, generates a perfect maze without loops.
-        SEED (str): Random seed used for generation reproducible results.
+        SEED (int): Random seed used for generation reproducible results.
         ALGORITHM (str): The maze generation algorithm to use.
         ANIMATION (bool): If True, enables solving/generation animation.
         COLOR (str): Primary color for rendering.
@@ -34,7 +34,7 @@ class Config(BaseModel):
     OUTPUT_FILE: str = Field(default="maze.txt", min_length=1, max_length=80)
     PERFECT: bool = Field(default=True)
 
-    SEED: str | None = Field(default=None, max_length=80)
+    SEED: int | None = Field(default=None)
 
     ALGORITHM: Literal["KRUSKAL", "PRIM", "BACKTRACKER"] = (
         Field(default="KRUSKAL"))

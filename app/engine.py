@@ -1,18 +1,58 @@
+import random
+from typing import Type
+
 from app.backends.base import GraphicBackend
 from app.grid import RenderGrid, CellState
 from app.utils import Direction
-from mazegen.generator import MazeGenerator
+from mazegen.base import BaseGenerator
 
 
 class AppController:
-    def __init__(self, generator: MazeGenerator,
-                 backend: GraphicBackend) -> None:
-        self.generator = generator
+    def __init__(self,
+                 width: int,
+                 height: int,
+                 backend: GraphicBackend,
+                 generator_class: Type[BaseGenerator],
+                 initial_seed: int | None = None,
+                 ) -> None:
+        self.width = width
+        self.height = height
         self.backend = backend
+        self.generator_class = generator_class
+        self.initial_seed = initial_seed
+
+        self.current_seed: int = 0
         self.is_running = True
         self.is_generating = True
-        self.grid = RenderGrid(width=generator.width,
-                               height=generator.height)
+
+        self.grid = RenderGrid(width=width, height=height)
+
+        self.generator: BaseGenerator = self.create_generator()
+
+    def create_generator(self) -> BaseGenerator:
+        """factory for generator and managing seed"""
+        if self.initial_seed is not None:
+            self.current_seed = self.initial_seed
+        else:
+            self.current_seed = random.randint(1, 999999)
+            print(
+                f"[ENGINE] initiating algorithm: "
+                f"{self.generator_class.__name__}"
+                f" with seed: {self.current_seed}"
+            )
+        return self.generator_class(width=self.width,
+                                    height=self.height,
+                                    seed=self.current_seed)
+
+    def change_algorithm_class(self,
+                               new_generator_class: Type[BaseGenerator]
+                               ) -> None:
+        print(
+            f"[ENGINE] Changing algorithm class to "
+            f"{new_generator_class.__name__}"
+            f"it will be used after next regen"
+        )
+        self.generator_class = new_generator_class
 
     def tick(self) -> None:
         """Performs exactly one logic step of application"""
@@ -42,53 +82,16 @@ class AppController:
             if (current_mask & (1 << cell_index)) == 0:
                 self.grid.cells[cy + dy][cx + dx] = CellState.FLOOR
 
-        # cell_mask = 0
-        # if (walls_n & (1 << cell_index)) != 0:
-        #     cell_mask |= (1 << 0)
-        # if (walls_e & (1 << cell_index)) != 0:
-        #     cell_mask |= (1 << 1)
-        # if (walls_s & (1 << cell_index)) != 0:
-        #     cell_mask |= (1 << 2)
-        # if (walls_w & (1 << cell_index)) != 0:
-        #     cell_mask |= (1 << 3)
-
-        # print('TUTAj', x, y)
-        # self.backend.update_cell_in_buffer(x, y, cell_mask, self.grid)
-
     def handle_action(self, action: str) -> None:
         """Abstract central of action. Backends only send event strings here"""
         if action == "quit":
             self.is_running = False
         elif action == "regen":
-            self.generator = MazeGenerator(width=self.generator.width,
-                                           height=self.generator.height)
+            self.generator = self.create_generator()
             self.is_generating = True
             self.grid.clear()
-            self.backend.init_window(self.generator.width,
-                                     self.generator.height, "AAA")
 
     def start(self) -> None:
         self.backend.init_window(self.generator.width, self.generator.height,
                                  "BBB")
         self.backend.start_loop(controller=self)
-
-    # def start_animation(self) -> None:
-    #     """Main loop with step by step animation"""
-    #     # \033[?1049h   - enables alternative screen (no scrolling history)
-    #     # \033[?25l     - hides blinking cursor
-    #     print("\033[?1049h\033[?25l", end="")
-    #     self.backend.init_window(self.generator.width, self.generator.height,
-    #                              "AAA")
-    #     try:
-    #         self.is_running = True
-    #         while self.is_running:
-    #             self.is_generating = self.tick()
-    #             self.backend.render_frame()
-    #             if not self.is_generating:
-    #                 self.is_running = False
-    #
-    #             time.sleep(0.05)
-    #         time.sleep(2)
-    #
-    #     finally:  # Execute Around Pattern
-    #         print("\033[?1049l\033[?25h", end="")
