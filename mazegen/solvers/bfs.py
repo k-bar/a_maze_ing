@@ -1,5 +1,5 @@
 from collections import deque
-from ..maze_class import Maze, Wall
+from ..maze_model import Maze, Wall
 
 
 def solver_bfs(maze: 'Maze') -> list[tuple[int, int]]:

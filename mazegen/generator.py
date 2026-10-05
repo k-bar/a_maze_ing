@@ -23,9 +23,9 @@ class MazeGenerator(BaseGenerator):
         self.walls_w: int = full_mask
 
         self.animation_iterator: Generator[
-            tuple[int, int], None, None] = self._algorithm_loop()
+            tuple[int, int, int], None, None] = self._algorithm_loop()
 
-    def _algorithm_loop(self) -> Generator[tuple[int, int], None, None]:
+    def _algorithm_loop(self) -> Generator[tuple[int, int, int], None, None]:
         """simulation fo destroying walls step by step"""
 
         for y in range(self.height):
@@ -40,9 +40,9 @@ class MazeGenerator(BaseGenerator):
                     self.walls_s &= ~(1 << cell_index)
                 if random.choice([True, False]):
                     self.walls_w &= ~(1 << cell_index)
-                yield x, y
+                yield x, y,
 
-    def step(self) -> tuple[int, int] | None:
+    def step(self) -> tuple[int, int, int] | None:
         try:
             return next(self.animation_iterator)
         except StopIteration:

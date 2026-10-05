@@ -28,4 +28,4 @@ COLOR=green
 ################## wish to have #########
 
 # Renderer modes: MLX, Terminal
-DISPLAY_MODE=MLX
+DISPLAY_MODE=Terminal

@@ -1,3 +1,3 @@
-from .kruskal import UnionFind, generate_kruskal
+from .kruskal import KruskalGenerator
 
-__all__ = ['UnionFind', 'generate_kruskal']
+__all__ = [KruskalGenerator]
