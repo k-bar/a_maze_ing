@@ -9,6 +9,7 @@ from mlx import Mlx
 class MlxBackend(GraphicBackend):
     def __init__(self) -> None:
         self.block_size = 20
+        self.wall_size: int = int(self.block_size / 10)
         self.pixel_width = 0
         self.pixel_height = 0
         self.mlx: Mlx = Mlx()
@@ -18,10 +19,14 @@ class MlxBackend(GraphicBackend):
         # image: writable memory view of the image raw pixels plus metadata
 
     def init_window(self, width: int, height: int, title: str) -> None:
-        blocks_x = (width * 2) + 1
-        blocks_y = (height * 2) + 1
-        self.pixel_width = blocks_x * self.block_size
-        self.pixel_height = blocks_y * self.block_size
+        blocks_x = width
+        blocks_y = height
+        walls_x = width + 1
+        walls_y = height + 1
+        self.pixel_width = ((blocks_x * self.block_size)
+                            + (walls_x * self.wall_size))
+        self.pixel_height = ((blocks_y * self.block_size)
+                             + (walls_y * self.wall_size))
         self.win_ptr = self.mlx.mlx_new_window(
             self.mlx_ptr, self.pixel_width, self.pixel_height, "A MLX"
         )
@@ -33,12 +38,31 @@ class MlxBackend(GraphicBackend):
         if self.image is None:
             return
 
-        start_x = gx * self.block_size
-        start_y = gy * self.block_size
+        if gx % 2 == 0:
+            start_x = (((gx // 2) * self.wall_size)
+                        + ((gx // 2) * self.block_size))
+            size_x = self.block_size
+        else:
+
+            start_x = (((gx // 2) * self.wall_size)
+                       + (((gx // 2) + (gx % 2)) * self.block_size))
+            size_x = self.wall_size
+
+        if gy % 2 == 0:
+            start_y = (((gy // 2) * self.wall_size)
+                            + ((gy // 2) * self.block_size))
+            size_y = self.block_size
+        else:
+            start_y = (((gy // 2) * self.wall_size)
+                          + (((gy // 2) + (gy % 2)) * self.block_size))
+            size_y = self.wall_size
+
+        # start_x = gx * self.block_size
+        # start_y = gy * self.block_size
         r, g, b = color
 
-        for y in range(start_y, start_y + self.block_size):
-            for x in range(start_x, start_x + self.block_size):
+        for y in range(start_y, start_y + size_y):
+            for x in range(start_x, start_x + size_x):
                 self.image.put_pixel(x, y, r, g, b)
 
     def render_frame(self, grid: RenderGrid) -> None:
