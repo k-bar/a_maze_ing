@@ -1,4 +1,4 @@
-from ..maze_class import Maze, Wall
+from ..maze_model import Maze, Wall
 
 
 def solver_dfs(maze: 'Maze') -> list[tuple[int, int]]:

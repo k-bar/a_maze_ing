@@ -1,4 +1,4 @@
-from mazegen.maze_class import Maze, Wall
+from mazegen.maze_model import Maze, Wall
 
 # Colors for terminal output
 CZERWONY = "\033[31m"

@@ -1,16 +1,15 @@
-from app import display_solved_labyrinth, display_solved
+# from app import display_solved_labyrinth, display_solved
 from app.backends.base import GraphicBackend
 from app.backends.mlx import MlxBackend
 from app.backends.terminal import TerminalBackend
-from app.export_func import export_to_file
-from mazegen import Maze
+# from app.export_func import export_to_file
+# from mazegen import Maze
 from app.config_parser import read_config
 import sys
 import time
 from app.engine import AppController
 
-from mazegen.generator import MazeGenerator
-from mazegen.solvers import solver_bfs, solver_dfs
+# from mazegen.solvers import solver_bfs, solver_dfs
 
 
 def main() -> None:
@@ -38,14 +37,14 @@ def main() -> None:
         print(config)
         print(config.model_dump_json(indent=2))
 
-        maze = Maze(config.WIDTH,
-                    config.HEIGHT,
-                    config.PERFECT,
-                    config.ENTRY,
-                    config.EXIT,
-                    config.SEED,
-                    config.OUTPUT_FILE,
-                    config.ALGORITHM)
+        # maze = Maze(config.WIDTH,
+        #             config.HEIGHT,
+        #             config.PERFECT,
+        #             config.ENTRY,
+        #             config.EXIT,
+        #             config.SEED,
+        #             config.OUTPUT_FILE,
+        #             config.ALGORITHM)
 
         backend: GraphicBackend
         if config.DISPLAY_MODE == "Terminal":
@@ -53,15 +52,11 @@ def main() -> None:
         else:
             backend = MlxBackend()
 
-        if config.ALGORITHM == "KRUSKAL":
-            generator_class = MazeGenerator
-        else:
-            generator_class = MazeGenerator
-        controller = AppController(width=config.WIDTH,
-                                   height=config.HEIGHT,
-                                   generator_class=generator_class,
-                                   backend=backend,
-                                   initial_seed=config.SEED)
+        # if config.ALGORITHM == "KRUSKAL":
+        #     generator_class = MazeGenerator
+        # else:
+        #     generator_class = MazeGenerator
+        controller = AppController(config, backend)
 
         print("\033[2J")
         print("START KURLA")
@@ -69,14 +64,14 @@ def main() -> None:
         controller.start()
         print("END KURLA")
 
-        path = solver_dfs(maze)
-        display_solved_labyrinth(maze, path)
-        print()
-        display_solved(maze, path)
-        print()
-        path3 = solver_bfs(maze)
-        display_solved_labyrinth(maze, path3)
-        export_to_file(maze)
+        # path = solver_dfs(maze)
+        # display_solved_labyrinth(maze, path)
+        # print()
+        # display_solved(maze, path)
+        # print()
+        # path3 = solver_bfs(maze)
+        # display_solved_labyrinth(maze, path3)
+        # export_to_file(maze)
 
     sys.exit(0)
 
