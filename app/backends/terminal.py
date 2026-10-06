@@ -18,6 +18,9 @@ class TerminalBackend(GraphicBackend):
 
     def render_frame(self, grid: RenderGrid) -> None:
 
+        if not grid.cells:
+            return
+
         state_to_char = {
             CellState.WALL: "#",
             CellState.FLOOR: " ",
@@ -33,10 +36,40 @@ class TerminalBackend(GraphicBackend):
             "| 3: Rotate colors | 4: Quit"
             "Choice? (press key 1-4): "
         )
+
         lines: list[str] = []
-        for y in range(grid.grid_height):
-            row_chars = [state_to_char[cell] for cell in grid.cells[y]]
-            lines.append("".join(row_chars))
+        for y, row in enumerate(grid.cells):
+
+            row_chars: str = ""
+            for x, cell in enumerate(row):
+
+                if x % 2 == 0:
+                    if y % 2 == 0:
+                        content = "\033[32m+\033[0m"
+                    else:
+                        if state_to_char[cell] == "#":
+                            content = "\033[32m|\033[0m"
+                        else:
+                            content = " "
+                else:
+                    if y % 2 == 0:
+                        if state_to_char[cell] == "#":
+                            content = "\033[32m---\033[0m"
+                        else:
+                            content = "   "
+                    else:
+                        if state_to_char[cell] == "S":
+                            content = "\033[34m S \033[0m"
+                        elif state_to_char[cell] == "E":
+                            content = "\033[33m E \033[0m"
+                        elif state_to_char[cell] == "$":
+                            content = "\033[31m[$]\033[0m"
+                        else:
+                            content = "   "
+
+                row_chars += content
+            lines.append(row_chars)
+
         full_frame = "\033[H" + "\n".join(lines) + menu
         print(full_frame)
 
