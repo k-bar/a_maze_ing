@@ -21,6 +21,14 @@ class BaseGenerator(ABC):
         self.perfect = perfect
         self.seed = seed
 
+        # total_cells = width * height
+        # full_mask = (1 << total_cells) - 1
+        #
+        self.walls_n: int
+        self.walls_e: int
+        self.walls_s: int
+        self.walls_w: int
+
     @abstractmethod
     def step(self) -> tuple[int, int, Direction] | None:
         """

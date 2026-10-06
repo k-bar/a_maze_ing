@@ -207,18 +207,35 @@ class KruskalGenerator(BaseGenerator):
                 # maze.grid[y1][x1] &= ~wall1
                 # maze.grid[y2][x2] &= ~wall2
 
-                cell_a = (y1 * self.width) + x1
-                cell_b = (y2 * self.width) + x2
+                cell_a = 1 << ((y1 * self.width) + x1)
+                cell_b = 1 << ((y2 * self.width) + x2)
 
-                if dx:
-
-                    self.walls_e &= ~(1 << cell_a)
-                    self.walls_w &= ~(1 << cell_b)
+                if dx > 0:
+                    self.walls_e &= ~cell_a
+                    self.walls_w &= ~cell_b
                     yield x1, y1, Direction.EAST
-                elif dy:
-                    self.walls_n &= ~(1 << cell_a)
-                    self.walls_s &= ~(1 << cell_b)
+                elif dx < 0:
+                    self.walls_w &= ~cell_a
+                    self.walls_e &= ~cell_b
+                    yield x1, y1, Direction.WEST
+                elif dy > 0:
+                    self.walls_s &= ~cell_a
+                    self.walls_n &= ~cell_b
                     yield x1, y1, Direction.SOUTH
+                elif dy < 0:
+                    self.walls_n &= ~cell_a
+                    self.walls_s &= ~cell_b
+                    yield x1, y1, Direction.NORTH
+                #
+                # if dx:
+                #
+                #     self.walls_e &= ~(1 << cell_a)
+                #     self.walls_w &= ~(1 << cell_b)
+                #     yield x1, y1, Direction.EAST
+                # elif dy:
+                #     self.walls_n &= ~(1 << cell_a)
+                #     self.walls_s &= ~(1 << cell_b)
+                #     yield x1, y1, Direction.SOUTH
 
         # if not self.perfect:
         #     del_death_ends(maze)
