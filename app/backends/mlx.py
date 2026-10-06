@@ -8,7 +8,7 @@ from mlx import Mlx
 
 class MlxBackend(GraphicBackend):
     def __init__(self) -> None:
-        self.block_size = 20
+        self.block_size = 30
         self.wall_size: int = int(self.block_size / 10)
         self.pixel_width = 0
         self.pixel_height = 0
