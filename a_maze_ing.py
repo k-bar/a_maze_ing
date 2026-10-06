@@ -51,11 +51,6 @@ def main() -> None:
             backend = TerminalBackend()
         else:
             backend = MlxBackend()
-
-        # if config.ALGORITHM == "KRUSKAL":
-        #     generator_class = MazeGenerator
-        # else:
-        #     generator_class = MazeGenerator
         controller = AppController(config, backend)
 
         print("\033[2J")

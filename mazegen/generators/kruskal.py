@@ -3,7 +3,7 @@ from typing import Generator
 
 from mazegen import BaseGenerator
 from mazegen.maze_model import Wall
-from mazegen.utils import Direction
+from mazegen.utils import Direction, get_pattern_locked_cells
 
 
 # from mazegen.generators.death_ends_destroyer import del_death_ends
@@ -38,8 +38,8 @@ class KruskalGenerator(BaseGenerator):
         self.parent: dict[tuple[int, int], tuple[int, int]] = {}
         self.deep: dict[tuple[int, int], int] = {}
 
-        # TODO protected
-        self.locked_cells: set[tuple[int, int]] = set()
+        self.locked_cells: set[tuple[int, int]] = get_pattern_locked_cells(
+            self.width, self.height)
 
         # TODO ADJUST
         self.edges: list[tuple[int, int, str]] = []
@@ -135,30 +135,29 @@ class KruskalGenerator(BaseGenerator):
     def get_walls(self) -> tuple[int, int, int, int]:
         return self.walls_n, self.walls_e, self.walls_s, self.walls_w
 
+    # class UnionFind:
+    #     """
+    #     Disjoint-set (Union-Find) data structure.
+    #     Used in graph theory to find the Minimum Spanning Tree (MST)
+    #     and prevent the formation of cycles (loops).
+    #     """
+    #
+    #     def __init__(self) -> None:
+    #         """
+    #         Initializes the structure storing the trees and their depths.
+    #
+    #         Attributes:
+    #             parent: A dictionary where each cell points to its parent cell.
+    #                     It resembles a linked list. If a cell points to itself,
+    #                     it is the root node of the tree (corridor).
+    #             deep: A dictionary storing the "depth" (rank) of the tree,
+    #                   representing how many levels the tree contains.
+    #         """
+    #         self.parent: dict[tuple[int, int], tuple[int, int]] = {}
+    #         self.deep: dict[tuple[int, int], int] = {}
 
-# class UnionFind:
-#     """
-#     Disjoint-set (Union-Find) data structure.
-#     Used in graph theory to find the Minimum Spanning Tree (MST)
-#     and prevent the formation of cycles (loops).
-#     """
-#
-#     def __init__(self) -> None:
-#         """
-#         Initializes the structure storing the trees and their depths.
-#
-#         Attributes:
-#             parent: A dictionary where each cell points to its parent cell.
-#                     It resembles a linked list. If a cell points to itself,
-#                     it is the root node of the tree (corridor).
-#             deep: A dictionary storing the "depth" (rank) of the tree,
-#                   representing how many levels the tree contains.
-#         """
-#         self.parent: dict[tuple[int, int], tuple[int, int]] = {}
-#         self.deep: dict[tuple[int, int], int] = {}
-
-
-    def _algorithm_loop(self) -> Generator[tuple[int, int, Direction], None, None]:
+    def _algorithm_loop(self) -> Generator[
+        tuple[int, int, Direction], None, None]:
         """
         Generates the maze using a randomized Kruskal's algorithm.
 

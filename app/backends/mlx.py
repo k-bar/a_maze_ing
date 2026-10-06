@@ -49,6 +49,7 @@ class MlxBackend(GraphicBackend):
             CellState.ENTRY: (0, 255, 0),  # Green
             CellState.EXIT: (255, 0, 0),  # Red
             CellState.PATH: (0, 255, 255),  # Cyan
+            CellState.LOCK: (0, 0, 255)
         }
 
         for y in range(grid.grid_height):
