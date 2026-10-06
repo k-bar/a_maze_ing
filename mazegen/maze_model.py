@@ -1,6 +1,8 @@
 # from __future__ import annotations
 from enum import IntFlag
 
+from mazegen.utils import get_pattern_locked_cells
+
 
 class Wall(IntFlag):
     """
@@ -52,6 +54,8 @@ class Maze:
         self.walls_s: int = walls_s
         self.walls_w: int = walls_w
 
+        self.locked_cells = get_pattern_locked_cells(self.width, self.height)
+
     def solve(self) -> list[str]:
         """mocked solve"""
         # TODO IMPLEMENT
@@ -61,7 +65,6 @@ class Maze:
         """Saves the maze to a file"""
         # TODO IMPLEMENT
         pass
-
 
     # self.generator: BaseGenerator | None = None
 
@@ -89,42 +92,14 @@ class Maze:
     #     self.walls_n, self.walls_e, self.walls_s, self.walls_w \
     #         = self.generator.get_walls()
 
-    def step(self) -> tuple[int, int] | None:
-        if self.generator is None:
-            return None
-
-        changed_cell = self.generator.step()
-        if changed_cell is not None:
-            return None
-
-        self.walls_n, self.walls_e, self.walls_s, self.walls_w \
-            = self.generator.get_walls()
-        return changed_cell
-
-    def _forty_two(self) -> None:
-        """
-        Blocks specific cells in the center of the grid to form a '42' shape.
-
-        Algorithms building the maze must check `is_locked(x, y)` to avoid
-        routing paths through these coordinates. If the maze dimensions are
-        too small (width < 9 or height < 7) to enclose the pattern, it is
-        aborted and a warning is printed.
-        """
-        pattern = [
-            (-3, -2), (1, -2), (2, -2), (3, -2),
-            (-3, -1), (3, -1),
-            (-3, 0), (-2, 0), (-1, 0), (1, 0), (2, 0), (3, 0),
-            (-1, 1), (1, 1),
-            (-1, 2), (1, 2), (2, 2), (3, 2)
-        ]
-
-        if self.width < 9 or self.height < 7:
-            print("Size of the MAZE is too small to include '42' pattern!")
-            return
-
-        cx = self.width // 2
-        cy = self.height // 2
-
-        for dx, dy in pattern:
-            loc_x, loc_y = cx + dx, cy + dy
-            self.locked_cells.add((loc_x, loc_y))
+    # def step(self) -> tuple[int, int] | None:
+    #     if self.generator is None:
+    #         return None
+    #
+    #     changed_cell = self.generator.step()
+    #     if changed_cell is not None:
+    #         return None
+    #
+    #     self.walls_n, self.walls_e, self.walls_s, self.walls_w \
+    #         = self.generator.get_walls()
+    #     return changed_cell

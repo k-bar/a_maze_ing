@@ -1,5 +1,7 @@
 from enum import Enum, auto
 
+from mazegen.utils import get_pattern_locked_cells
+
 
 class CellState(Enum):
     WALL = auto()
@@ -46,6 +48,9 @@ class RenderGrid:
                 self.cells[(y * 2) + 1][(x * 2) + 1] = CellState.FLOOR
 
         # TODO: add locked pattern
+        for cx, cy in get_pattern_locked_cells(self.width, self.height):
+            fx, fy = (cx * 2) + 1, (cy * 2) + 1
+            self.cells[fy][fx] = CellState.LOCK
 
 
         en_x, en_y = self.m_entry

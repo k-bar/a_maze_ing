@@ -23,7 +23,8 @@ class TerminalBackend(GraphicBackend):
             CellState.FLOOR: " ",
             CellState.ENTRY: "S",
             CellState.EXIT: "E",
-            CellState.PATH: "."
+            CellState.PATH: ".",
+            CellState.LOCK: "$"
         }
 
         menu = (
