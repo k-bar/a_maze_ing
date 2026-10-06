@@ -1,3 +1,4 @@
+from idlelib.debugobj_r import remote_object_tree_item
 from typing import Type
 
 from .base import BaseGenerator
@@ -66,7 +67,11 @@ def create_stepping_generator(
         raise ValueError(f"Algorithm {algorithm_name} not available")
 
     generator_class = _ALGORITHMS[algorithm_name]
-    return generator_class(width, height, m_entry, m_exit, perfect, seed)
+    gen = generator_class(width, height, m_entry, m_exit, perfect, seed)
+    if not perfect:
+        from mazegen.generators.imperfect import ImperfectGenerator
+        return ImperfectGenerator(base_generator=gen)
+    return gen
 
 
 __all__ = ['Maze', 'Wall', "BaseGenerator",
