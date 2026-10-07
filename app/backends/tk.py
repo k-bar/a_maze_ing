@@ -6,17 +6,41 @@ from app.grid import CellState, RenderGrid
 
 
 class TkBackend(GraphicBackend):
-    BLOCK_SIZE = 30
+    BLOCK_SIZE = 35
     WALL_SIZE = BLOCK_SIZE // 10
-    FRAME_DELAY_MS = 40
-    COLORS = {
-        CellState.WALL: "#332211",
-        CellState.FLOOR: "#111111",
-        CellState.ENTRY: "#00ff00",
-        CellState.EXIT: "#ff0000",
-        CellState.PATH: "#00ffff",
-        CellState.LOCK: "#332211",
+    FRAME_DELAY_MS = 30
+    # COLORS = {
+    #     CellState.WALL: "#332211",
+    #     CellState.FLOOR: "#f11111",
+    #     CellState.ENTRY: "#00ff00",
+    #     CellState.EXIT: "#ff0000",
+    #     CellState.PATH: "#00ffff",
+    #     CellState.LOCK: "#332211",
+    # }
+    COLORS = { # neutralne odcienie
+        CellState.WALL: "#263238",  # ciemny grafit
+        CellState.FLOOR: "#f0e9dd",  # jasny, neutralny
+        CellState.ENTRY: "#00897B",  # morski
+        CellState.EXIT: "#E64A19",  # pomarańczowy
+        CellState.PATH: "#1565C0",  # niebieski
+        CellState.LOCK: "#F9A825",  # złoty
     }
+    # COLORS = { # ciemne odcienie
+    #     CellState.WALL: "#20252B",
+    #     CellState.FLOOR: "#343B44",
+    #     CellState.ENTRY: "#66BB6A",
+    #     CellState.EXIT: "#FF7043",
+    #     CellState.PATH: "#4FC3F7",
+    #     CellState.LOCK: "#FFD54F",
+    # }
+    # COLORS = { # odcienie szarości
+    #     CellState.WALL: "#252525",
+    #     CellState.FLOOR: "#E0E0E0",
+    #     CellState.ENTRY: "#9E9E9E",
+    #     CellState.EXIT: "#616161",
+    #     CellState.PATH: "#BDBDBD",
+    #     CellState.LOCK: "#424242",
+    # }
 
     def __init__(self) -> None:
         self.root: tk.Tk | None = None

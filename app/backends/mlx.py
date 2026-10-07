@@ -67,13 +67,21 @@ class MlxBackend(GraphicBackend):
 
     def render_frame(self, grid: RenderGrid) -> None:
 
-        color_map = {
-            CellState.WALL: (128, 81, 37),  # Brown
-            CellState.FLOOR: (30, 30, 30),  # Black
-            CellState.ENTRY: (0, 255, 0),  # Green
-            CellState.EXIT: (255, 0, 0),  # Red
-            CellState.PATH: (0, 255, 255),  # Cyan
-            CellState.LOCK: (222, 217, 213)
+        # color_map = {
+        #     CellState.WALL: (128, 81, 37),  # Brown
+        #     CellState.FLOOR: (30, 30, 30),  # Black
+        #     CellState.ENTRY: (0, 255, 0),  # Green
+        #     CellState.EXIT: (255, 0, 0),  # Red
+        #     CellState.PATH: (0, 255, 255),  # Cyan
+        #     CellState.LOCK: (222, 217, 213)
+        # }
+        color_map = {  # neutralne odcienie
+            CellState.WALL: (38, 50, 56),  # ciemny grafit
+            CellState.FLOOR: (240, 233, 221),  # jasny, neutralny
+            CellState.ENTRY: (0, 137, 123),  # morski
+            CellState.EXIT: (230, 74, 25),  # pomarańczowy
+            CellState.PATH: (21, 101, 192),  # niebieski
+            CellState.LOCK: (249, 168, 37),  # złoty
         }
 
         for y in range(grid.grid_height):
