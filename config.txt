@@ -3,13 +3,13 @@
 #########################################
 
 ######################## mandatory:
-WIDTH=21
-HEIGHT=21
+WIDTH=20
+HEIGHT=20
 ENTRY=0,0
-EXIT=19,20
+EXIT=18,15
 OUTPUT_FILE=maze.txt
-PERFECT=False
-SEED=42
+PERFECT=True
+SEED=124
 
 ######################## for bonus:
 

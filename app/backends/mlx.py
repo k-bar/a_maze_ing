@@ -65,6 +65,38 @@ class MlxBackend(GraphicBackend):
             for x in range(start_x, start_x + size_x):
                 self.image.put_pixel(x, y, r, g, b)
 
+    def _draw_pixel_block(self, gx: int, gy: int,
+                          color: tuple[int, int, int]) -> None:
+        if self.image is None:
+            return
+
+        if gx % 2 == 0:
+            start_x = (((gx // 2) * self.block_size)
+                        + ((gx // 2) * self.wall_size))
+            size_x = self.wall_size
+        else:
+
+            start_x = (((gx // 2) * self.block_size)
+                       + (((gx // 2) + (gx % 2)) * self.wall_size))
+            size_x = self.block_size
+
+        if gy % 2 == 0:
+            start_y = (((gy // 2) * self.wall_size)
+                            + ((gy // 2) * self.block_size))
+            size_y = self.wall_size
+        else:
+            start_y = (((gy // 2) * self.block_size)
+                          + (((gy // 2) + (gy % 2)) * self.wall_size))
+            size_y = self.block_size
+
+        # start_x = gx * self.block_size
+        # start_y = gy * self.block_size
+        r, g, b = color
+
+        for y in range(start_y, start_y + size_y):
+            for x in range(start_x, start_x + size_x):
+                self.image.put_pixel(x, y, r, g, b)
+
     def render_frame(self, grid: RenderGrid) -> None:
 
         # color_map = {
@@ -89,6 +121,9 @@ class MlxBackend(GraphicBackend):
                 state = grid.cells[y][x]
                 color = color_map.get(state, color_map[CellState.WALL])
                 self._draw_pixel_block(x, y, color)
+
+        # if path:
+        self._draw_pixel_block(11, 11, (29, 1, 37))
 
         if self.win_ptr and self.image:
             self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.win_ptr,
