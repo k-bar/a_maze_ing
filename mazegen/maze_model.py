@@ -123,7 +123,6 @@ class Maze:
                 self.path = path
                 print(path)
                 break
-                # raise StopIteration
 
             if current is not None:
                 x, y = current
@@ -144,53 +143,3 @@ class Maze:
                                 queue.append((nx, ny))
                                 # TU
                                 yield nx, ny, directions[(nx - x, ny - y)]
-
-
-        # path = []
-        # curr: tuple[int, int] | None = self.m_exit
-        #
-        # while curr is not None:
-        #     path.append(curr)
-        #     curr = came_from[curr]
-        #
-        # path.reverse()
-        # self.path = path
-        # print(path)
-
-    # self.generator: BaseGenerator | None = None
-
-    # self.grid: list[list[Wall]] = [
-    #     [Wall.ALL for _ in range(self.width)] for _ in range(self.height)
-    # ]
-
-    # self.locked_cells: set[tuple[int, int]] = set()
-    # self._forty_two()
-    # self.path: list[tuple[int, int]] = []
-    # self.output_file = output_file
-
-    # if self.algorithm == "KRUSKAL":
-    #     try:
-    #         from mazegen.generators import generate_kruskal, UnionFind
-    #     except ImportError as e:
-    #         print(f"Error importing Kruskal's algorithm: {e}")
-    #         return
-    #     self.uf = UnionFind()
-    #     generate_kruskal(self)
-
-    # def attach_generator(self, algorithm_name: str, seed: int) -> None:
-    #   self.generator = create_stepping_generator(algorithm_name, self.width,
-    #                                                self.height, seed)
-    #     self.walls_n, self.walls_e, self.walls_s, self.walls_w \
-    #         = self.generator.get_walls()
-
-    # def step(self) -> tuple[int, int] | None:
-    #     if self.generator is None:
-    #         return None
-    #
-    #     changed_cell = self.generator.step()
-    #     if changed_cell is not None:
-    #         return None
-    #
-    #     self.walls_n, self.walls_e, self.walls_s, self.walls_w \
-    #         = self.generator.get_walls()
-    #     return changed_cell
