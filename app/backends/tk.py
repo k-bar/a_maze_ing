@@ -17,7 +17,7 @@ class TkBackend(GraphicBackend):
     #     CellState.PATH: "#00ffff",
     #     CellState.LOCK: "#332211",
     # }
-    COLORS = { # neutralne odcienie
+    COLORS = { # neutral
         CellState.WALL: "#263238",  # ciemny grafit
         CellState.FLOOR: "#f0e9dd",  # jasny, neutralny
         CellState.ENTRY: "#00897B",  # morski
@@ -25,7 +25,7 @@ class TkBackend(GraphicBackend):
         CellState.PATH: "#1565C0",  # niebieski
         CellState.LOCK: "#F9A825",  # złoty
     }
-    # COLORS = { # ciemne odcienie
+    # COLORS = { # dark
     #     CellState.WALL: "#20252B",
     #     CellState.FLOOR: "#343B44",
     #     CellState.ENTRY: "#66BB6A",
@@ -33,7 +33,7 @@ class TkBackend(GraphicBackend):
     #     CellState.PATH: "#4FC3F7",
     #     CellState.LOCK: "#FFD54F",
     # }
-    # COLORS = { # odcienie szarości
+    # COLORS = { # gray
     #     CellState.WALL: "#252525",
     #     CellState.FLOOR: "#E0E0E0",
     #     CellState.ENTRY: "#9E9E9E",

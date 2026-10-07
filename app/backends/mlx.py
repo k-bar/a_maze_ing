@@ -107,13 +107,13 @@ class MlxBackend(GraphicBackend):
         #     CellState.PATH: (0, 255, 255),  # Cyan
         #     CellState.LOCK: (222, 217, 213)
         # }
-        color_map = {  # neutralne odcienie
-            CellState.WALL: (38, 50, 56),  # ciemny grafit
-            CellState.FLOOR: (240, 233, 221),  # jasny, neutralny
-            CellState.ENTRY: (0, 137, 123),  # morski
-            CellState.EXIT: (230, 74, 25),  # pomarańczowy
-            CellState.PATH: (21, 101, 192),  # niebieski
-            CellState.LOCK: (249, 168, 37),  # złoty
+        color_map = {  # neutral
+            CellState.WALL: (38, 50, 56),  # graphite
+            CellState.FLOOR: (240, 233, 221),  # light
+            CellState.ENTRY: (0, 137, 123),  # ocean
+            CellState.EXIT: (230, 74, 25),  # orange
+            CellState.PATH: (21, 101, 192),  # blue
+            CellState.LOCK: (249, 168, 37),  # gold
         }
 
         for y in range(grid.grid_height):
