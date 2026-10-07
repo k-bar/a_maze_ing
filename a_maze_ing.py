@@ -1,6 +1,5 @@
 # from app import display_solved_labyrinth, display_solved
 from app.backends.base import GraphicBackend
-from app.backends.mlx import MlxBackend
 from app.backends.terminal import TerminalBackend
 # from app.export_func import export_to_file
 # from mazegen import Maze
@@ -49,7 +48,13 @@ def main() -> None:
         backend: GraphicBackend
         if config.DISPLAY_MODE == "Terminal":
             backend = TerminalBackend()
+        elif sys.platform == "darwin":
+            from app.backends.tk import TkBackend
+
+            backend = TkBackend()
         else:
+            from app.backends.mlx import MlxBackend
+
             backend = MlxBackend()
         controller = AppController(config, backend)
 
