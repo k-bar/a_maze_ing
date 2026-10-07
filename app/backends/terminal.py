@@ -26,7 +26,7 @@ class TerminalBackend(GraphicBackend):
             CellState.FLOOR: " ",
             CellState.ENTRY: "S",
             CellState.EXIT: "E",
-            CellState.PATH: ".",
+            CellState.PATH: "0",
             CellState.LOCK: "$"
         }
 
@@ -49,12 +49,16 @@ class TerminalBackend(GraphicBackend):
                     else:
                         if state_to_char[cell] == "#":
                             content = "\033[32m|\033[0m"
+                        elif state_to_char[cell] == "0":
+                            content = "\033[30m0\033[0m"
                         else:
                             content = " "
                 else:
                     if y % 2 == 0:
                         if state_to_char[cell] == "#":
                             content = "\033[32m---\033[0m"
+                        elif state_to_char[cell] == "0":
+                            content = "\033[30m 0 \033[0m"
                         else:
                             content = "   "
                     else:
@@ -64,6 +68,8 @@ class TerminalBackend(GraphicBackend):
                             content = "\033[33m E \033[0m"
                         elif state_to_char[cell] == "$":
                             content = "\033[31m[$]\033[0m"
+                        elif state_to_char[cell] == "0":
+                            content = "\033[30m 0 \033[0m"
                         else:
                             content = "   "
 
