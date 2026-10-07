@@ -20,6 +20,7 @@ class KruskalGenerator(BaseGenerator):
             perfect: bool,
             seed: int | None = None
     ) -> None:
+
         super().__init__(width, height, m_entry, m_exit, perfect, seed)
 
         if seed is None:

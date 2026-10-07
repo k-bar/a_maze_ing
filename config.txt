@@ -9,7 +9,7 @@ ENTRY=0,0
 EXIT=9,10
 OUTPUT_FILE=maze.txt
 PERFECT=False
-SEED=42
+SEED=
 
 ######################## for bonus:
 
@@ -22,4 +22,4 @@ ANIMATION=TRUE
 COLOR=green
 
 # Renderer modes: MLX, Terminal
-DISPLAY_MODE=MLX
+DISPLAY_MODE=Terminal
