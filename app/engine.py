@@ -139,5 +139,5 @@ class AppController:
 
     def start(self) -> None:
         self.backend.init_window(self.generator.width, self.generator.height,
-                                 "BBB")
+                                 "A-Maze-ing <kbartosz> <kdzwigal>")
         self.backend.start_loop(controller=self)
