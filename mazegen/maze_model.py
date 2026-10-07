@@ -2,6 +2,9 @@
 from enum import IntFlag
 
 from mazegen.utils import get_pattern_locked_cells
+from .utils import Direction
+from typing import Generator
+from collections import deque
 
 
 class Wall(IntFlag):
@@ -56,6 +59,10 @@ class Maze:
 
         self.locked_cells = get_pattern_locked_cells(self.width, self.height)
 
+        self.path: list[tuple[int, int]] = []
+
+        self._animation_iterator = self.solver_bfs()
+
     def solve(self) -> list[str]:
         """mocked solve"""
         # TODO IMPLEMENT
@@ -65,6 +72,90 @@ class Maze:
         """Saves the maze to a file"""
         # TODO IMPLEMENT
         pass
+
+    def get_walls(self) -> tuple[int, int, int, int]:
+        return self.walls_n, self.walls_e, self.walls_s, self.walls_w
+
+    def step(self) -> tuple[int, int, Direction] | None:
+
+        try:
+            return next(self._animation_iterator)
+        except StopIteration:
+            return None
+
+    def solver_bfs(self) -> Generator[
+        tuple[int, int, Direction], None, None]:
+        """Find corridor from ENTRY to EXIT as BFS.
+        """
+        queue: deque[tuple[int, int]] = deque([self.m_entry])
+
+        visited: set[tuple[int, int]] = {self.m_entry}
+
+        came_from: dict[tuple[int, int], tuple[int, int] | None] \
+            = {self.m_entry: None}
+
+        directions = {
+            (0, -1): Direction.NORTH,
+            (1, 0): Direction.EAST,
+            (0, 1): Direction.SOUTH,
+            (-1, 0): Direction.WEST
+        }
+
+        moves = [
+            (0, -1),
+            (1, 0),
+            (0, 1),
+            (-1, 0)
+        ]
+
+        while queue:
+            current: tuple[int, int] | None = queue.popleft()
+
+            if current == self.m_exit:
+                path = []
+                curr: tuple[int, int] | None = self.m_exit
+
+                while curr is not None:
+                    path.append(curr)
+                    curr = came_from[curr]
+
+                path.reverse()
+                self.path = path
+                print(path)
+                break
+                # raise StopIteration
+
+            if current is not None:
+                x, y = current
+                cell_position = 1 << (y * self.width + x)
+
+                for wall_number, wall in enumerate(self.get_walls()):
+
+                    dx , dy = moves[wall_number]
+                    nx = x + dx
+                    ny = y + dy
+                    if (0 <= nx < self.width and 0 <= ny < self.height
+                            and (nx, ny) not in self.locked_cells):
+                        if not wall & cell_position:
+
+                            if (nx, ny) not in visited:
+                                visited.add((nx, ny))
+                                came_from[(nx, ny)] = current
+                                queue.append((nx, ny))
+                                # TU
+                                yield nx, ny, directions[(nx - x, ny - y)]
+
+
+        # path = []
+        # curr: tuple[int, int] | None = self.m_exit
+        #
+        # while curr is not None:
+        #     path.append(curr)
+        #     curr = came_from[curr]
+        #
+        # path.reverse()
+        # self.path = path
+        # print(path)
 
     # self.generator: BaseGenerator | None = None
 

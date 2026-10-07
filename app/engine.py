@@ -4,6 +4,7 @@ from mazegen import create_stepping_generator, Maze, BaseGenerator
 from app import Config
 from app.grid import RenderGrid, CellState
 from app.backends.base import GraphicBackend
+from mazegen.utils import Direction
 
 
 class AppController:
@@ -21,8 +22,7 @@ class AppController:
         self.is_generating = True
         self.show_path = False
 
-        self.maze : Maze | None = None
-
+        self.maze: Maze | None = None
 
         # self.maze = Maze(
         #     width=self.config.WIDTH,
@@ -63,7 +63,6 @@ class AppController:
             seed=self.current_seed
         )
 
-
     # def change_algorithm_in_runtime(self, new_algorithm: str) -> None:
     #     if new_algorithm in get_available_algorithm():
     #         self.algorithm_name = new_algorithm
@@ -79,42 +78,69 @@ class AppController:
             return
 
         changed_cell = self.generator.step()
-        if changed_cell is None:
-            self.is_generating = False
-            return
+        if changed_cell is not None:
+            x, y, dirs = changed_cell
+            cx = (x * 2) + 1
+            cy = (y * 2) + 1
 
-        # TODO remake for local_mask
+            protected_cells = (CellState.ENTRY, CellState.EXIT, CellState.LOCK)
+            if self.grid.cells[cy + dirs.dy][
+                cx + dirs.dx] not in protected_cells:
+                self.grid.cells[cy + dirs.dy][cx + dirs.dx] = CellState.FLOOR
+        else:
+            if self.maze is None:
+                wn, we, ws, ww = self.generator.get_walls()
+                self.maze = Maze(width=self.width,
+                                 height=self.height,
+                                 m_entry=self.config.ENTRY,
+                                 m_exit=self.config.EXIT,
+                                 perfect=self.config.PERFECT,
+                                 walls_n=wn,
+                                 walls_e=we,
+                                 walls_s=ws,
+                                 walls_w=ww)
+            if self.maze is not None:
+                path_cell = self.maze.step()
+                if path_cell is not None:
+                    x, y, dirs = path_cell
 
-        x, y, dirs = changed_cell
-        # walls_n, walls_e, walls_s, walls_w = self.generator.get_walls()
-        cell_index = (y * self.width) + x
+                    cx = (x * 2) + 1
+                    cy = (y * 2) + 1
 
-        # center of the cell...
-        cx = (x * 2) + 1
-        cy = (y * 2) + 1
-        # ...is always corridor (empty)
+                    wx = cx - dirs.dx
+                    wy = cy - dirs.dy
 
-        protected_cells = (CellState.ENTRY, CellState.EXIT, CellState.LOCK)
-
-        # if self.grid.cells[cy][cx] not in protected_cells:
-        #     self.grid.cells[cy][cx] = CellState.FLOOR
-
-        # masks = {
-        #     0: self.maze.walls_n,
-        #     1: self.maze.walls_e,
-        #     2: self.maze.walls_s,
-        #     3: self.maze.walls_w
-        # }
+                    # nx = cx - 2 * dirs.dx
+                    # ny = cy - 2 * dirs.dy
+                    self.grid.cells[cy][cx] = CellState.PATH
+                    self.grid.cells[wy][wx] = CellState.PATH
+                    # self.grid.cells[ny][nx] = CellState.PATH
+                else:
+                    for y in range(self.grid.grid_height):
+                        for x in range(self.grid.grid_width):
+                            if self.grid.cells[y][x] == CellState.PATH:
+                                self.grid.cells[y][x] = CellState.FLOOR
+                    # self.grid.cells[self.maze.m_entry[0] * 2 + 1][self.maze.m_entry[1] * 2 + 1] = CellState.ENTRY
+                    # self.grid.cells[self.maze.m_exit[0] * 2 + 1][self.maze.m_exit[1] * 2 + 1] = CellState.EXIT
 
 
+                    # for y in range(self.height):
+                    #     for x in range(self.width):
+                for x, y in self.maze.path:
+                    if (x, y) in self.maze.path:
+                        self.grid.cells[y*2+1][x*2+1] = CellState.PATH
+                        i = self.maze.path.index((x, y))
+                        if i > 0:
+                            nx, ny = self.maze.path[i - 1]
+                            px = nx - x
+                            py = ny - y
+                            self.grid.cells[y * 2 + 1 + py][
+                                x * 2 + 1 + px] = CellState.PATH
 
-        # for bit_index, direction in enumerate(Direction):
-        #
-        #     _, dy, dx = direction.value
-        #     # current_mask = masks[bit_index]
-        #     if (dir & (1 << cell_index)) == 0:
-        if self.grid.cells[cy + dirs.dy][cx + dirs.dx] not in protected_cells:
-            self.grid.cells[cy + dirs.dy][cx + dirs.dx] = CellState.FLOOR
+                self.grid.cells[self.maze.m_entry[1] * 2 + 1][self.maze.m_entry[0] * 2 + 1] = CellState.ENTRY
+                self.grid.cells[self.maze.m_exit[1] * 2 + 1][self.maze.m_exit[0] * 2 + 1] = CellState.EXIT
+
+
 
     def handle_action(self, action: str) -> None:
         """Abstract central of action. Backends only send event strings here"""
@@ -136,6 +162,7 @@ class AppController:
         #     (entry_x * 2) + 1] = CellState.ENTRY
         # self.grid.cells[(exit_y * 2) + 1][
         #     (exit_x * 2) + 1] = CellState.EXIT
+
 
     def start(self) -> None:
         self.backend.init_window(self.generator.width, self.generator.height,

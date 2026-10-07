@@ -40,6 +40,7 @@ def solver_bfs(maze: 'Maze') -> list[tuple[int, int]]:
                         visited.add((nx, ny))
                         came_from[(nx, ny)] = current
                         queue.append((nx, ny))
+                        yield (x, y, nx, ny)
 
     path = []
     curr: tuple[int, int] | None = maze.m_exit
