@@ -1,4 +1,4 @@
-from mazegen.maze_model import Maze, Wall
+from mazegen.maze_model import Maze
 
 # Colors for terminal output
 CZERWONY = "\033[31m"
@@ -6,6 +6,7 @@ ZIELONY = "\033[32m"
 ZOLTY = "\033[33m"
 NIEBIESKI = "\033[34m"
 RESET = "\033[0m"  # Resets the terminal color to default
+
 
 def display_solved_labyrinth(maze: 'Maze',
                              path: list[tuple[int, int]]) -> None:

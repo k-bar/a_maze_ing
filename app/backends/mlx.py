@@ -40,7 +40,7 @@ class MlxBackend(GraphicBackend):
 
         if gx % 2 == 0:
             start_x = (((gx // 2) * self.block_size)
-                        + ((gx // 2) * self.wall_size))
+                       + ((gx // 2) * self.wall_size))
             size_x = self.wall_size
         else:
 
@@ -50,11 +50,11 @@ class MlxBackend(GraphicBackend):
 
         if gy % 2 == 0:
             start_y = (((gy // 2) * self.wall_size)
-                            + ((gy // 2) * self.block_size))
+                       + ((gy // 2) * self.block_size))
             size_y = self.wall_size
         else:
             start_y = (((gy // 2) * self.block_size)
-                          + (((gy // 2) + (gy % 2)) * self.wall_size))
+                       + (((gy // 2) + (gy % 2)) * self.wall_size))
             size_y = self.block_size
 
         # start_x = gx * self.block_size

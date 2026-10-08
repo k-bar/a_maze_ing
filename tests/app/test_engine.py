@@ -1,128 +1,83 @@
+from unittest.mock import MagicMock
+
+import pytest
+
+from app import Config
 from app.engine import AppController
-from app.backends.terminal import TerminalBackend
 from app.grid import CellState
-from mazegen.generator import MazeGenerator
 
 
-def test_controller_tick_should_process_generator_step() -> None:
-    # generator = MazeGenerator(width=3, height=3)
-    backend = TerminalBackend()
-    width, height = 3, 3
-    backend.init_window(width, height, "Test Engine")
-    controller = AppController(width=width, height=height, backend=backend,
-                               generator_class=MazeGenerator, initial_seed=42)
+@pytest.fixture
+def default_config() -> Config:
+    return Config(
+        WIDTH=3,
+        HEIGHT=3,
+        ENTRY=(0, 0),
+        EXIT=(2, 2),
+        PERFECT=True,
+        ALGORITHM="KRUSKAL",
+        SEED=123
+    )
 
-    controller.tick()
 
-    assert controller.grid.cells[1][1] == CellState.FLOOR
+def test_app_controller_should_initialize_correctly(
+        default_config: Config) -> None:
+    mock_backend = MagicMock()
+    controller = AppController(default_config, backend=mock_backend)
+    assert controller.width == 3
+    assert controller.height == 3
+    assert controller.algorithm_name == "KRUSKAL"
 
 
-def test_controller_should_set_running_to_false_on_quit_action() -> None:
-    backend = TerminalBackend()
-    width, height = 3, 3
-    backend.init_window(width, height, "Test Engine")
-    controller = AppController(width=width, height=height, backend=backend,
-                               generator_class=MazeGenerator, initial_seed=42)
+def test_controller_start_should_register_with_backend(
+        default_config: Config) -> None:
+    mock_backend = MagicMock()
+    controller = AppController(default_config, backend=mock_backend)
 
     assert controller.is_running is True
+    assert controller.is_generating is True
 
+    # tests if method were called on mock with proper arguments
+    controller.start()
+    mock_backend.init_window.assert_called_once_with(3, 3, "A-Maze-ing")
+    mock_backend.start_loop.assert_called_once_with(controller=controller)
+
+
+def test_handle_action_regen_should_reset_generation_state(
+        default_config: Config) -> None:
+    backend = MagicMock()
+    controller = AppController(default_config, backend=backend)
+
+    controller.is_generating = False
+
+    assert controller.is_generating is False
+    controller.handle_action("regen")
+    assert controller.is_generating is True
+
+
+def test_handle_action_quit_should_stop_the_engine(
+        default_config: Config) -> None:
+    mock_backend = MagicMock()
+    controller = AppController(default_config, backend=mock_backend)
+
+    assert controller.is_running is True
     controller.handle_action("quit")
     assert controller.is_running is False
 
 
-def test_controller_should_reset_generator_on_regen_action() -> None:
-    backend = TerminalBackend()
-    width, height = 3, 3
-    backend.init_window(width, height, "Test Engine")
-    controller = AppController(width=width, height=height, backend=backend,
-                               generator_class=MazeGenerator, initial_seed=42)
+def test_should_destroy_only_the_physical_wall_tile(
+        default_config: Config) -> None:
+    class MockDirection:
+        dy = 0
+        dx = 1
 
+    mock_backend = MagicMock()
+    controller = AppController(default_config, backend=mock_backend)
+
+    controller.generator = MagicMock()
+    controller.generator.step.return_value = (0, 0, MockDirection())
+
+    assert controller.grid.cells[1][2] == CellState.WALL
     controller.tick()
-    controller.tick()
-
-    controller.handle_action("regen")
-
-    assert controller.is_generating is True
-
-    assert controller.grid.cells[1][1] == CellState.WALL
-
-
-def test_controller_should_reset_generator_on_quit_action() -> None:
-    backend = TerminalBackend()
-    width, height = 3, 3
-    backend.init_window(width, height, "Test Engine")
-    controller = AppController(width=width, height=height, backend=backend,
-                               generator_class=MazeGenerator, initial_seed=42)
-
-    assert controller.is_generating is True
-    assert controller.is_running is True
-
-    controller.tick()
-
-    controller.handle_action("regen")
-
-    assert controller.is_generating is True
-    assert controller.grid.cells[1][1] == CellState.WALL
-
-    controller.handle_action("quit")
-    assert controller.is_running is False
-
-
-def test_controller_and_backend_interaction_on_action() -> None:
-    backend = TerminalBackend()
-    width, height = 3, 3
-    backend.init_window(width, height, "Test Engine")
-    controller = AppController(width=width, height=height, backend=backend,
-                               generator_class=MazeGenerator, initial_seed=42)
-
-    assert controller.is_generating is True
-
-    controller.tick()
-    controller.handle_action("regen")
-
-    assert controller.is_generating is True
-    assert controller.grid.cells[1][1] == CellState.WALL
-
-
-def test_should_correctly_modify_shared_grid_states_based_on_bits() -> None:
-    backend = TerminalBackend()
-    width, height = 3, 3
-
-    controller = AppController(width=width, height=height, backend=backend,
-                               generator_class=MazeGenerator, initial_seed=42)
-
-    generator: MazeGenerator = controller.generator
-
-    # simulate for cell  (1, 1) a mas
-    # bit 0 (N) = 1 (closed)
-    # bit 1 (E) = 0 (open)
-    # bit 2 (S) = 1 (closed)
-    # bit 3 (W) = 0 (open)
-    # 0101 = 5 (decimal)
-
-    cell_index = 4
-
-    # enable bits for closed walls
-    generator.walls_n = 1 << cell_index
-    generator.walls_s = 1 << cell_index
-    # disable bits for open walls
-    generator.walls_e = ~(1 << cell_index)
-    generator.walls_w = ~(1 << cell_index)
-
-    # overwrite generator's iterator
-    def single_step_mock() -> generator[tuple[int, int], None, None]:
-        yield 1, 1
-
-    generator.animation_iterator = single_step_mock()
-
-    controller.tick()
-
-    bx, by = 3, 3
-    # center is always floor
-    assert controller.grid.cells[by][bx] == CellState.FLOOR  # Open Center
-    # closed cells (wall)
-    assert controller.grid.cells[by - 1][bx] == CellState.WALL  # Open N wall
-    assert controller.grid.cells[by + 1][bx] == CellState.WALL  # Open S wall
-    # open cells (floor)
-    assert controller.grid.cells[by][bx + 1] == CellState.FLOOR  # Open E wall
-    assert controller.grid.cells[by][bx - 1] == CellState.FLOOR  # Open W wall
+    assert controller.grid.cells[1][2] == CellState.FLOOR
+    assert controller.grid.cells[1][1] == CellState.ENTRY
