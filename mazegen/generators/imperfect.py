@@ -2,7 +2,6 @@ import random
 from typing import Generator
 
 from .. import BaseGenerator
-from ..maze_model import Wall
 from ..utils import Direction, get_pattern_locked_cells
 
 
@@ -19,8 +18,9 @@ class ImperfectGenerator(BaseGenerator):
         )
 
         self.base_generator = base_generator
-        self.locked_cells = get_pattern_locked_cells(self.base_generator.width,
-                                                     self.base_generator.height)
+        self.locked_cells = (
+            get_pattern_locked_cells(self.base_generator.width,
+                                     self.base_generator.height))
 
         self._animation_iterator = self.del_death_ends()
 
@@ -34,14 +34,14 @@ class ImperfectGenerator(BaseGenerator):
     def get_walls(self) -> tuple[int, int, int, int]:
         return self.base_generator.get_walls()
 
-    def del_death_ends(self) -> Generator[
-        tuple[int, int, Direction], None, None]:
+    def del_death_ends(self) \
+            -> Generator[tuple[int, int, Direction], None, None]:
         """Remove walls from eligible dead-end cells.
 
-        Scans the maze in row-major order. For each unlocked cell with exactly
-        three walls, removes a randomly selected wall to an eligible neighboring
-        cell, if one exists. The maze grid is modified in place. Random choices
-        are initialized using the maze seed.
+        Scans the maze in row-major order. For each unlocked cell with
+        exactly three walls, removes a randomly selected wall to an eligible
+        neighboring cell, if one exists. The maze grid is modified in place.
+        Random choices are initialized using the maze seed.
 
         Args:
             maze: Maze whose dead ends should be opened.
@@ -118,5 +118,3 @@ class ImperfectGenerator(BaseGenerator):
                                 self.base_generator.walls_n &= ~cell_a
                                 self.base_generator.walls_s &= ~cell_b
                                 yield x, y, Direction.NORTH
-
-

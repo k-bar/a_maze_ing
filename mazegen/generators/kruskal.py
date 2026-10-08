@@ -2,14 +2,15 @@ import random
 from typing import Generator
 
 from mazegen import BaseGenerator
-from mazegen.maze_model import Wall
 from mazegen.utils import Direction, get_pattern_locked_cells
 
 
-# from mazegen.generators.death_ends_destroyer import del_death_ends
-
-
 class KruskalGenerator(BaseGenerator):
+    """
+    Disjoint-set (Union-Find) data structure.
+    Used in graph theory to find the Minimum Spanning Tree (MST)
+    and prevent the formation of cycles (loops).
+    """
 
     def __init__(
             self,
@@ -20,7 +21,15 @@ class KruskalGenerator(BaseGenerator):
             perfect: bool,
             seed: int | None = None
     ) -> None:
+        """
+        Initializes the structure storing the trees and their depths.
 
+        Attributes:
+            parent: A dictionary where each cell points to its parent cell.
+                    It resembles a linked list. If a cell points to itself,
+                    it is the root node of the tree (corridor).
+            deep: A dictionary storing the "depth" (rank) of the tree,
+            """
         super().__init__(width, height, m_entry, m_exit, perfect, seed)
 
         if seed is None:
@@ -34,24 +43,19 @@ class KruskalGenerator(BaseGenerator):
         self.walls_s: int = full_mask
         self.walls_w: int = full_mask
 
-        # TODO adjust to current solution
-        # self.parent: list[int] = list(range(total_cells))
         self.parent: dict[tuple[int, int], tuple[int, int]] = {}
         self.deep: dict[tuple[int, int], int] = {}
 
         self.locked_cells: set[tuple[int, int]] = get_pattern_locked_cells(
             self.width, self.height)
 
-        # TODO ADJUST
         self.edges: list[tuple[int, int, str]] = []
-        # self.prepare_edges()
+
         random.shuffle(self.edges)
 
-        self._animation_iterator: Generator[
-            tuple[int, int, Direction], None, None
-        ] = (
-            self._algorithm_loop()
-        )
+        self._animation_iterator: \
+            Generator[tuple[
+                int, int, Direction], None, None] = self._algorithm_loop()
 
     def find(self, node: tuple[int, int]) -> tuple[int, int]:
         """
@@ -116,16 +120,11 @@ class KruskalGenerator(BaseGenerator):
         Adds every cell coordinates to the Union-Find structure as a separate
         set, skipping any coordinates belonging to the locked '42' pattern.
         """
-        # maze.uf = UnionFind()
 
         for y in range(self.height):
             for x in range(self.width):
                 if (x, y) not in self.locked_cells:
                     self.add((x, y))
-
-    # def _algorithm_loop(self) -> Generator[tuple[int, int, int], None, None]:
-    #     for cell_a, cell_b, direction in self.edges:
-    #         yield cell_a, cell_b, self.get_local_cell_mask
 
     def step(self) -> tuple[int, int, Direction] | None:
         try:
@@ -136,29 +135,8 @@ class KruskalGenerator(BaseGenerator):
     def get_walls(self) -> tuple[int, int, int, int]:
         return self.walls_n, self.walls_e, self.walls_s, self.walls_w
 
-    # class UnionFind:
-    #     """
-    #     Disjoint-set (Union-Find) data structure.
-    #     Used in graph theory to find the Minimum Spanning Tree (MST)
-    #     and prevent the formation of cycles (loops).
-    #     """
-    #
-    #     def __init__(self) -> None:
-    #         """
-    #         Initializes the structure storing the trees and their depths.
-    #
-    #         Attributes:
-    #             parent: A dictionary where each cell points to its parent cell.
-    #                     It resembles a linked list. If a cell points to itself,
-    #                     it is the root node of the tree (corridor).
-    #             deep: A dictionary storing the "depth" (rank) of the tree,
-    #                   representing how many levels the tree contains.
-    #         """
-    #         self.parent: dict[tuple[int, int], tuple[int, int]] = {}
-    #         self.deep: dict[tuple[int, int], int] = {}
-
-    def _algorithm_loop(self) -> Generator[
-        tuple[int, int, Direction], None, None]:
+    def _algorithm_loop(self) \
+            -> Generator[tuple[int, int, Direction], None, None]:
         """
         Generates the maze using a randomized Kruskal's algorithm.
 
@@ -173,12 +151,7 @@ class KruskalGenerator(BaseGenerator):
                       generator for reproducible maze layouts.
         """
         self.prepare_kruskal()
-        DIRECTION_MAP = {
-            (1, 0): (Wall.E, Wall.W),
-            (-1, 0): (Wall.W, Wall.E),
-            (0, 1): (Wall.S, Wall.N),
-            (0, -1): (Wall.N, Wall.S),
-        }
+
         random.seed(self.seed)
 
         edges: list[tuple[tuple[int, int], tuple[int, int]]] = []
@@ -203,11 +176,6 @@ class KruskalGenerator(BaseGenerator):
                 dx = x2 - x1
                 dy = y2 - y1
 
-                wall1, wall2 = DIRECTION_MAP[(dx, dy)]
-
-                # maze.grid[y1][x1] &= ~wall1
-                # maze.grid[y2][x2] &= ~wall2
-
                 cell_a = 1 << ((y1 * self.width) + x1)
                 cell_b = 1 << ((y2 * self.width) + x2)
 
@@ -227,16 +195,3 @@ class KruskalGenerator(BaseGenerator):
                     self.walls_n &= ~cell_a
                     self.walls_s &= ~cell_b
                     yield x1, y1, Direction.NORTH
-                #
-                # if dx:
-                #
-                #     self.walls_e &= ~(1 << cell_a)
-                #     self.walls_w &= ~(1 << cell_b)
-                #     yield x1, y1, Direction.EAST
-                # elif dy:
-                #     self.walls_n &= ~(1 << cell_a)
-                #     self.walls_s &= ~(1 << cell_b)
-                #     yield x1, y1, Direction.SOUTH
-
-        # if not self.perfect:
-        #     del_death_ends(maze)

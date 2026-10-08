@@ -73,7 +73,7 @@ class Config(BaseModel):
                 raise ValueError(f"is out of bounds for a "
                                  f"{self.WIDTH}x{self.HEIGHT} maze!")
             elif (x, y) in get_pattern_locked_cells(width, height):
-                raise ValueError(f"is in '42' pattern!")
+                raise ValueError("is in '42' pattern!")
             else:
                 return True
 
@@ -86,7 +86,6 @@ class Config(BaseModel):
             entry_exit(self.EXIT, self.HEIGHT, self.WIDTH)
         except ValueError as e:
             raise ValueError(f"Point EXIT {e}")
-
 
         return self
 
