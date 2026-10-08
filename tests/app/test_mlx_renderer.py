@@ -8,6 +8,11 @@ def test_mlx_backend_should_calculate_correct_pixel_dimensions(
     width, height = 15, 25
     backend = MlxBackend()
 
+    # class FakeMLXImage:
+    #     def __init__(mlx, mlx_ptr, pixel_width,
+    #                           pixel_height) -> None:
+    #         pass
+
     class FakeMLX:
         def mlx_init(self) -> None:
             pass
@@ -18,10 +23,11 @@ def test_mlx_backend_should_calculate_correct_pixel_dimensions(
         def mlx_new_image(self, mlx_ptr: str, w: int) -> str:
             return "fake_img_ptr"
 
-        def mlx_get_data_addr(self, mlx_pt: str) -> str:
+        def mlx_get_data_addr(self, mlx_pt: str = "mlx_pt") -> str:
             return "fake_addr_ptr"
 
     monkeypatch.setattr(backend, "mlx", FakeMLX)
+    # monkeypatch.setattr(backend, "image", FakeMLXImage)
 
     backend.init_window(width, height, "Monkey see, monkey do")
 
