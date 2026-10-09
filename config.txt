@@ -6,9 +6,9 @@
 WIDTH=20
 HEIGHT=20
 ENTRY=0,0
-EXIT=18,15
+EXIT=15,18
 OUTPUT_FILE=maze.txt
-PERFECT=True
+PERFECT=False
 SEED=124
 
 ######################## for bonus:
@@ -16,6 +16,8 @@ SEED=124
 
 # Algorithms: KRUSKAL, PRIM, BACKTRACKER
 ALGORITHM=KRUSKAL
+# Solvers: BFS, DFS
+# SOLVER=BFS
 
 ANIMATION=TRUE
 
