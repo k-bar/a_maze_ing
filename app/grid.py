@@ -30,7 +30,7 @@ class RenderGrid:
         self.m_entry = m_entry
         self.m_exit = m_exit
         self.cells: list[list[CellState]] = (
-                    [[CellState.FLOOR] * self.grid_width]
+                    [[CellState.WALL] * self.grid_width]
                     * self.grid_height)
         self.changed: deque[tuple[int, int, CellState]] = deque()
         self.clear()
@@ -42,8 +42,8 @@ class RenderGrid:
             for x in range(self.grid_width):
                 self.register_change(x, y, CellState.WALL)
 
-        for x in range(self.width):
-            for y in range(self.height):
+        for y in range(self.height):
+            for x in range(self.width):
                 self.register_change((x * 2) + 1, (y * 2) + 1, CellState.FLOOR)
 
         for cx, cy in get_pattern_locked_cells(self.width, self.height):
