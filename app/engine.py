@@ -1,4 +1,6 @@
+import copy
 import random
+import time
 
 from mazegen import create_stepping_generator, Maze, BaseGenerator
 from app import Config
@@ -105,7 +107,6 @@ class AppController:
 
                     self.grid.register_change(cx, cy, CellState.PATH)
                     self.grid.register_change(wx, wy, CellState.PATH)
-
                 else:
                     for y in range(self.grid.grid_height):
                         for x in range(self.grid.grid_width):
@@ -114,29 +115,29 @@ class AppController:
                                                           CellState.FLOOR)
 
                     for x, y in self.maze.path:
-                        if (x, y) in self.maze.path:
-                            self.grid.register_change(x * 2 + 1, y * 2 + 1,
+                        self.grid.register_change(x * 2 + 1, y * 2 + 1,
+                                                  CellState.PATH)
+
+                        i = self.maze.path.index((x, y))
+                        if i > 0:
+                            nx, ny = self.maze.path[i - 1]
+                            px = nx - x
+                            py = ny - y
+                            self.grid.register_change(x * 2 + 1 + px,
+                                                      y * 2 + 1 + py,
                                                       CellState.PATH)
+                        gx_en = self.maze.m_entry[1] * 2 + 1
+                        gy_en = self.maze.m_entry[0] * 2 + 1
+                        if self.grid.cells[gy_en][gx_en] != CellState.ENTRY:
+                            self.grid.register_change(gx_en, gy_en,
+                                                      CellState.ENTRY)
 
-                            i = self.maze.path.index((x, y))
-                            if i > 0:
-                                nx, ny = self.maze.path[i - 1]
-                                px = nx - x
-                                py = ny - y
-                                self.grid.register_change(x * 2 + 1 + px,
-                                                          y * 2 + 1 + py,
-                                                          CellState.PATH)
-
-                self.grid.register_change(
-                    self.maze.m_entry[0] * 2 + 1,
-                    self.maze.m_entry[1] * 2 + 1,
-                    CellState.ENTRY
-                )
-
-                self.grid.register_change(self.maze.m_exit[0] * 2 + 1,
-                                          self.maze.m_exit[1] * 2 + 1,
-                                          CellState.EXIT
-                                          )
+                        gx_ex = self.maze.m_exit[1] * 2 + 1
+                        gy_ex = self.maze.m_exit[0] * 2 + 1
+                        if self.grid.cells[gy_ex][gx_ex] != CellState.EXIT:
+                            self.grid.register_change(gx_ex, gy_ex,
+                                                      CellState.EXIT)
+                        self.is_generating = False
 
     def handle_action(self, action: str) -> None:
         """Abstract central of action. Backends only send event strings here"""
@@ -173,6 +174,7 @@ class AppController:
         #     (exit_x * 2) + 1] = CellState.EXIT
 
     def start(self) -> None:
-        self.backend.init_window(self.generator.width, self.generator.height,
+        self.backend.init_window(self.generator.width,
+                                 self.generator.height,
                                  "A-Maze-ing")
         self.backend.start_loop(controller=self)
