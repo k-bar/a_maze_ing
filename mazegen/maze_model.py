@@ -59,13 +59,12 @@ class Maze:
 
         self.locked_cells = get_pattern_locked_cells(self.width, self.height)
 
-        self.solver: str = 'bfs' # dfs or bfs, need to solve it in config !!!!!!!
+        self.solver: str = 'bfs' # dfs or bfs, need to solve it in config !!!!
         self.path: list[tuple[int, int]] = []
         if self.solver == 'dfs':
             self._animation_iterator = self.solver_dfs()
         else:
             self._animation_iterator = self.solver_bfs()
-
 
     def solve(self) -> list[str]:
         """mocked solve"""
@@ -87,10 +86,8 @@ class Maze:
         except StopIteration:
             return None
 
-    def solver_bfs(self) -> Generator[
-        tuple[int, int, Direction], None, None]:
-        """Find corridor from ENTRY to EXIT as BFS.
-        """
+    def solver_bfs(self) -> Generator[tuple[int, int, Direction], None, None]:
+        """Find corridor from ENTRY to EXIT as BFS."""
         queue: deque[tuple[int, int]] = deque([self.m_entry])
 
         visited: set[tuple[int, int]] = {self.m_entry}
@@ -134,7 +131,7 @@ class Maze:
 
                 for wall_number, wall in enumerate(self.get_walls()):
 
-                    dx , dy = moves[wall_number]
+                    dx, dy = moves[wall_number]
                     nx = x + dx
                     ny = y + dy
                     if (0 <= nx < self.width and 0 <= ny < self.height
@@ -162,11 +159,8 @@ class Maze:
 
 
 
-
-    def solver_dfs(self) -> Generator[
-        tuple[int, int, Direction], None, None]:
-        """Find corridor from ENTRY to EXIT as BFS.
-        """
+    def solver_dfs(self) -> Generator[tuple[int, int, Direction], None, None]:
+        """Find corridor from ENTRY to EXIT as BFS."""
         stack: list[tuple[int, int]] = [self.m_entry]
 
         visited: set[tuple[int, int]] = {self.m_entry}
@@ -210,7 +204,7 @@ class Maze:
 
                 for wall_number, wall in enumerate(self.get_walls()):
 
-                    dx , dy = moves[wall_number]
+                    dx, dy = moves[wall_number]
                     nx = x + dx
                     ny = y + dy
                     if (0 <= nx < self.width and 0 <= ny < self.height

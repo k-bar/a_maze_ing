@@ -80,6 +80,14 @@ def test_should_destroy_only_the_physical_wall_tile(
     cell_value: CellState = controller.grid.cells[1][2]
     assert cell_value == CellState.WALL
 
+    controller.grid.changed.clear()
+    controller.tick()
+    # emulate that backend popped changed cell
+    x, y, state = controller.grid.changed.popleft()
+    assert state == CellState.FLOOR
+    assert x == 2
+    assert y == 1
+
     controller.tick()
     assert controller.grid.cells[1][2] == CellState.FLOOR
     cell_value_after: CellState = controller.grid.cells[1][2]

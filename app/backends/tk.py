@@ -17,7 +17,7 @@ class TkBackend(GraphicBackend):
     #     CellState.PATH: "#00ffff",
     #     CellState.LOCK: "#332211",
     # }
-    COLORS = { # neutral
+    COLORS = {   # neutral
         CellState.WALL: "#263238",  # ciemny grafit
         CellState.FLOOR: "#f0e9dd",  # jasny, neutralny
         CellState.ENTRY: "#00897B",  # morski
