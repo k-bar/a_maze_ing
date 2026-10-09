@@ -59,9 +59,13 @@ class Maze:
 
         self.locked_cells = get_pattern_locked_cells(self.width, self.height)
 
+        self.solver: str = 'bfs' # dfs or bfs, need to solve it in config !!!!!!!
         self.path: list[tuple[int, int]] = []
+        if self.solver == 'dfs':
+            self._animation_iterator = self.solver_dfs()
+        else:
+            self._animation_iterator = self.solver_bfs()
 
-        self._animation_iterator = self.solver_bfs()
 
     def solve(self) -> list[str]:
         """mocked solve"""
@@ -123,7 +127,6 @@ class Maze:
                 self.path = path
                 print(path)
                 break
-                # raise StopIteration
 
             if current is not None:
                 x, y = current
@@ -146,51 +149,63 @@ class Maze:
                                 yield nx, ny, directions[(nx - x, ny - y)]
 
 
-        # path = []
-        # curr: tuple[int, int] | None = self.m_exit
-        #
-        # while curr is not None:
-        #     path.append(curr)
-        #     curr = came_from[curr]
-        #
-        # path.reverse()
-        # self.path = path
-        # print(path)
+    def solver_dfs(self) -> Generator[
+        tuple[int, int, Direction], None, None]:
+        """Find corridor from ENTRY to EXIT as BFS.
+        """
+        stack: list[tuple[int, int]] = [self.m_entry]
 
-    # self.generator: BaseGenerator | None = None
+        visited: set[tuple[int, int]] = {self.m_entry}
 
-    # self.grid: list[list[Wall]] = [
-    #     [Wall.ALL for _ in range(self.width)] for _ in range(self.height)
-    # ]
+        came_from: dict[tuple[int, int], tuple[int, int] | None] \
+            = {self.m_entry: None}
 
-    # self.locked_cells: set[tuple[int, int]] = set()
-    # self._forty_two()
-    # self.path: list[tuple[int, int]] = []
-    # self.output_file = output_file
+        directions = {
+            (0, -1): Direction.NORTH,
+            (1, 0): Direction.EAST,
+            (0, 1): Direction.SOUTH,
+            (-1, 0): Direction.WEST
+        }
 
-    # if self.algorithm == "KRUSKAL":
-    #     try:
-    #         from mazegen.generators import generate_kruskal, UnionFind
-    #     except ImportError as e:
-    #         print(f"Error importing Kruskal's algorithm: {e}")
-    #         return
-    #     self.uf = UnionFind()
-    #     generate_kruskal(self)
+        moves = [
+            (0, -1),
+            (1, 0),
+            (0, 1),
+            (-1, 0)
+        ]
 
-    # def attach_generator(self, algorithm_name: str, seed: int) -> None:
-    #   self.generator = create_stepping_generator(algorithm_name, self.width,
-    #                                                self.height, seed)
-    #     self.walls_n, self.walls_e, self.walls_s, self.walls_w \
-    #         = self.generator.get_walls()
+        while stack:
+            current: tuple[int, int] | None = stack.pop()
 
-    # def step(self) -> tuple[int, int] | None:
-    #     if self.generator is None:
-    #         return None
-    #
-    #     changed_cell = self.generator.step()
-    #     if changed_cell is not None:
-    #         return None
-    #
-    #     self.walls_n, self.walls_e, self.walls_s, self.walls_w \
-    #         = self.generator.get_walls()
-    #     return changed_cell
+            if current == self.m_exit:
+                path = []
+                curr: tuple[int, int] | None = self.m_exit
+
+                while curr is not None:
+                    path.append(curr)
+                    curr = came_from[curr]
+
+                path.reverse()
+                self.path = path
+                print(path)
+                break
+
+            if current is not None:
+                x, y = current
+                cell_position = 1 << (y * self.width + x)
+
+                for wall_number, wall in enumerate(self.get_walls()):
+
+                    dx , dy = moves[wall_number]
+                    nx = x + dx
+                    ny = y + dy
+                    if (0 <= nx < self.width and 0 <= ny < self.height
+                            and (nx, ny) not in self.locked_cells):
+                        if not wall & cell_position:
+
+                            if (nx, ny) not in visited:
+                                visited.add((nx, ny))
+                                came_from[(nx, ny)] = current
+                                stack.append((nx, ny))
+                                # TU
+                                yield nx, ny, directions[(nx - x, ny - y)]
