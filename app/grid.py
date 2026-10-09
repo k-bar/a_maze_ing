@@ -29,9 +29,10 @@ class RenderGrid:
         self.grid_height = (height * 2) + 1
         self.m_entry = m_entry
         self.m_exit = m_exit
-        self.cells: list[list[CellState]] = (
-                    [[CellState.FLOOR] * self.grid_width]
-                    * self.grid_height)
+        self.cells: list[list[CellState]] = [
+            [CellState.FLOOR for _ in range(self.grid_width)]
+            for _ in range(self.grid_height)
+        ]
         self.changed: deque[tuple[int, int, CellState]] = deque()
         self.clear()
 
