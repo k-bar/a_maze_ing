@@ -59,7 +59,7 @@ class Maze:
 
         self.locked_cells = get_pattern_locked_cells(self.width, self.height)
 
-        self.solver: str = 'dfs' # dfs or bfs, need to solve it in config !!!!!!!
+        self.solver: str = 'bfs' # dfs or bfs, need to solve it in config !!!!!!!
         self.path: list[tuple[int, int]] = []
         if self.solver == 'dfs':
             self._animation_iterator = self.solver_dfs()
@@ -112,21 +112,21 @@ class Maze:
             (-1, 0)
         ]
 
-        while queue:
+        while queue and self.m_exit not in visited:
             current: tuple[int, int] | None = queue.popleft()
 
-            if current == self.m_exit:
-                path = []
-                curr: tuple[int, int] | None = self.m_exit
-
-                while curr is not None:
-                    path.append(curr)
-                    curr = came_from[curr]
-
-                path.reverse()
-                self.path = path
-                print(path)
-                break
+            # if current == self.m_exit:
+            #     path = []
+            #     curr: tuple[int, int] | None = self.m_exit
+            #
+            #     while curr is not None:
+            #         path.append(curr)
+            #         curr = came_from[curr]
+            #
+            #     path.reverse()
+            #     self.path = path
+            #     print(path)
+            #     break
 
             if current is not None:
                 x, y = current
@@ -147,6 +147,20 @@ class Maze:
                                 queue.append((nx, ny))
                                 # TU
                                 yield nx, ny, directions[(nx - x, ny - y)]
+                                if (nx, ny) == self.m_exit:
+                                    path = []
+                                    curr: tuple[int, int] | None = self.m_exit
+
+                                    while curr is not None:
+                                        path.append(curr)
+                                        curr = came_from[curr]
+
+                                    path.reverse()
+                                    self.path = path
+                                    print(path)
+                                    break
+
+
 
 
     def solver_dfs(self) -> Generator[
@@ -174,21 +188,21 @@ class Maze:
             (-1, 0)
         ]
 
-        while stack:
+        while stack and self.m_exit not in visited:
             current: tuple[int, int] | None = stack.pop()
 
-            if current == self.m_exit:
-                path = []
-                curr: tuple[int, int] | None = self.m_exit
-
-                while curr is not None:
-                    path.append(curr)
-                    curr = came_from[curr]
-
-                path.reverse()
-                self.path = path
-                print(path)
-                break
+            # if current == self.m_exit:
+            #     path = []
+            #     curr: tuple[int, int] | None = self.m_exit
+            #
+            #     while curr is not None:
+            #         path.append(curr)
+            #         curr = came_from[curr]
+            #
+            #     path.reverse()
+            #     self.path = path
+            #     print(path)
+            #     break
 
             if current is not None:
                 x, y = current
@@ -208,4 +222,16 @@ class Maze:
                                 came_from[(nx, ny)] = current
                                 stack.append((nx, ny))
                                 # TU
+                                if current == self.m_exit:
+                                    path = []
+                                    curr: tuple[int, int] | None = self.m_exit
+
+                                    while curr is not None:
+                                        path.append(curr)
+                                        curr = came_from[curr]
+
+                                    path.reverse()
+                                    self.path = path
+                                    print(path)
+                                    break
                                 yield nx, ny, directions[(nx - x, ny - y)]
