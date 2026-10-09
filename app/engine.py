@@ -107,11 +107,12 @@ class AppController:
                     self.grid.register_change(wx, wy, CellState.PATH)
 
                 else:
-                    for y in range(self.grid.grid_height):
-                        for x in range(self.grid.grid_width):
-                            if self.grid.cells[y][x] == CellState.PATH:
-                                self.grid.register_change(x, y,
-                                                          CellState.FLOOR)
+                    # for y in range(self.grid.grid_height):
+                    #     for x in range(self.grid.grid_width):
+                    #         if self.grid.cells[y][x] == CellState.PATH:
+                    #             self.grid.register_change(x, y,
+                    #                                       CellState.FLOOR)
+                    self.grid.clear()
 
                     for x, y in self.maze.path:
                         if (x, y) in self.maze.path:
