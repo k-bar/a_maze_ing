@@ -4,7 +4,6 @@ from mazegen import create_stepping_generator, Maze, BaseGenerator
 from app import Config
 from app.grid import RenderGrid, CellState
 from app.backends.base import GraphicBackend
-from mazegen.utils import Direction
 
 
 class AppController:
@@ -24,19 +23,11 @@ class AppController:
 
         self.maze: Maze | None = None
 
-        # self.maze = Maze(
-        #     width=self.config.WIDTH,
-        #     height=self.config.HEIGHT,
-        #     m_entry=self.config.ENTRY,
-        #     m_exit=self.config.EXIT,
-        #     perfect=m_config.PERFECT
-        # )
-
         self.grid = RenderGrid(
             width=self.width,
             height=self.height,
-            m_entry=m_config.ENTRY,
-            m_exit=m_config.EXIT
+            m_entry=self.config.ENTRY,
+            m_exit=self.config.EXIT
         )
 
         self.generator = self.create_generator()
@@ -74,6 +65,9 @@ class AppController:
 
     def tick(self) -> None:
         """Performs exactly one logic step of application"""
+        if self.grid.changed:
+            return
+
         if not self.is_generating:
             return
 
@@ -83,10 +77,8 @@ class AppController:
             cx = (x * 2) + 1
             cy = (y * 2) + 1
 
-            protected_cells = (CellState.ENTRY, CellState.EXIT, CellState.LOCK)
-            if self.grid.cells[cy + dirs.dy][
-                cx + dirs.dx] not in protected_cells:
-                self.grid.cells[cy + dirs.dy][cx + dirs.dx] = CellState.FLOOR
+            self.grid.register_change(cx + dirs.dx, cy + dirs.dy,
+                                      CellState.FLOOR)
         else:
             if self.maze is None:
                 wn, we, ws, ww = self.generator.get_walls()
@@ -99,6 +91,7 @@ class AppController:
                                  walls_e=we,
                                  walls_s=ws,
                                  walls_w=ww)
+
             if self.maze is not None:
                 path_cell = self.maze.step()
                 if path_cell is not None:
@@ -110,37 +103,40 @@ class AppController:
                     wx = cx - dirs.dx
                     wy = cy - dirs.dy
 
-                    # nx = cx - 2 * dirs.dx
-                    # ny = cy - 2 * dirs.dy
-                    self.grid.cells[cy][cx] = CellState.PATH
-                    self.grid.cells[wy][wx] = CellState.PATH
-                    # self.grid.cells[ny][nx] = CellState.PATH
+                    self.grid.register_change(cx, cy, CellState.PATH)
+                    self.grid.register_change(wx, wy, CellState.PATH)
+
                 else:
                     for y in range(self.grid.grid_height):
                         for x in range(self.grid.grid_width):
                             if self.grid.cells[y][x] == CellState.PATH:
-                                self.grid.cells[y][x] = CellState.FLOOR
-                    # self.grid.cells[self.maze.m_entry[0] * 2 + 1][self.maze.m_entry[1] * 2 + 1] = CellState.ENTRY
-                    # self.grid.cells[self.maze.m_exit[0] * 2 + 1][self.maze.m_exit[1] * 2 + 1] = CellState.EXIT
+                                self.grid.register_change(x, y,
+                                                          CellState.FLOOR)
 
+                    for x, y in self.maze.path:
+                        if (x, y) in self.maze.path:
+                            self.grid.register_change(x * 2 + 1, y * 2 + 1,
+                                                      CellState.PATH)
 
-                    # for y in range(self.height):
-                    #     for x in range(self.width):
-                for x, y in self.maze.path:
-                    if (x, y) in self.maze.path:
-                        self.grid.cells[y*2+1][x*2+1] = CellState.PATH
-                        i = self.maze.path.index((x, y))
-                        if i > 0:
-                            nx, ny = self.maze.path[i - 1]
-                            px = nx - x
-                            py = ny - y
-                            self.grid.cells[y * 2 + 1 + py][
-                                x * 2 + 1 + px] = CellState.PATH
+                            i = self.maze.path.index((x, y))
+                            if i > 0:
+                                nx, ny = self.maze.path[i - 1]
+                                px = nx - x
+                                py = ny - y
+                                self.grid.register_change(x * 2 + 1 + px,
+                                                          y * 2 + 1 + py,
+                                                          CellState.PATH)
 
-                self.grid.cells[self.maze.m_entry[1] * 2 + 1][self.maze.m_entry[0] * 2 + 1] = CellState.ENTRY
-                self.grid.cells[self.maze.m_exit[1] * 2 + 1][self.maze.m_exit[0] * 2 + 1] = CellState.EXIT
+                self.grid.register_change(
+                    self.maze.m_entry[0] * 2 + 1,
+                    self.maze.m_entry[1] * 2 + 1,
+                    CellState.ENTRY
+                )
 
-
+                self.grid.register_change(self.maze.m_exit[0] * 2 + 1,
+                                          self.maze.m_exit[1] * 2 + 1,
+                                          CellState.EXIT
+                                          )
 
     def handle_action(self, action: str) -> None:
         """Abstract central of action. Backends only send event strings here"""
@@ -150,8 +146,21 @@ class AppController:
         elif action == "regen":
             self.generator = self.create_generator()
             self.is_generating = True
-            self.show_path = False
-            self.grid.clear()
+            self.maze = None
+            self.generator = self.create_generator()
+            # total_cells = self.config.WIDTH * self.config.HEIGHT
+            # full_mask = (1 << total_cells) - 1
+            #
+            # self.generator.walls_n = full_mask
+            # self.generator.walls_e = full_mask
+            # self.generator.walls_s = full_mask
+            # self.generator.walls_w = full_mask
+            self.grid = RenderGrid(
+                width=self.width,
+                height=self.height,
+                m_entry=self.config.ENTRY,
+                m_exit=self.config.EXIT
+            )
 
         # TODO: add path
         # TODO: save to file
@@ -163,8 +172,7 @@ class AppController:
         # self.grid.cells[(exit_y * 2) + 1][
         #     (exit_x * 2) + 1] = CellState.EXIT
 
-
     def start(self) -> None:
         self.backend.init_window(self.generator.width, self.generator.height,
-                                 "A-Maze-ing <kbartosz> <kdzwigal>")
+                                 "A-Maze-ing")
         self.backend.start_loop(controller=self)
