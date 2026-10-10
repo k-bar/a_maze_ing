@@ -1,3 +1,4 @@
+import sys
 from enum import Enum
 
 
@@ -38,7 +39,8 @@ def get_pattern_locked_cells(width: int, height: int) -> set[tuple[int, int]]:
     coords: set[tuple[int, int]] = set()
 
     if width < 9 or height < 7:
-        print("Size of the MAZE is too small to include '42' pattern!")
+        print("Size of the MAZE is too small to include '42' pattern!",
+              file=sys.stderr)
         return coords
 
     pattern = [
