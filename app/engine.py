@@ -1,6 +1,4 @@
-import copy
 import random
-import time
 
 from mazegen import create_stepping_generator, Maze, BaseGenerator
 from app import Config

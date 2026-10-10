@@ -4,7 +4,6 @@ import time
 import tty
 import termios
 from typing import Any, Optional
-
 from app.backends.base import GraphicBackend
 from app.grid import RenderGrid, CellState
 from app.engine import AppController
@@ -80,10 +79,6 @@ class TerminalBackend(GraphicBackend):
         full_frame = "\033[H" + "\n".join(lines) + menu
         print(full_frame)
 
-    @staticmethod
-    def _is_key_pressed() -> bool:
-        return select.select([sys.stdin], [], [], 0.0)[0] != []
-
     def start_loop(self, controller: "AppController") -> None:
         """Main loop with step by step animation"""
 
@@ -92,18 +87,21 @@ class TerminalBackend(GraphicBackend):
             while controller.is_running:
                 controller.tick()
                 self.render_frame(grid=controller.grid)
-                if self._is_key_pressed():
-                    key = sys.stdin.read(1)
-                    if key == "4":
+                key = handle_input()
+                if key:
+                    if key.lower() == "4":
                         controller.handle_action("quit")
-                    elif key == "1":
+                    elif key.lower() == "1":
                         controller.handle_action("regen")
+
                 time.sleep(0.04)
+        except KeyboardInterrupt:
+            pass
         finally:  # Execute Around Pattern
             restore_terminal()
 
 
-def move_cursor(x, y) -> None:
+def move_cursor(x: int, y: int) -> None:
     sys.stdout.write(f"\033[{y};{x}H")
 
 
@@ -129,9 +127,17 @@ def setup_terminal() -> None:
 
 
 def restore_terminal() -> None:
-    global _original_terminal_settings
     if _original_terminal_settings is not None:
         fd = sys.stdin.fileno()
+        termios.tcflush(fd, termios.TCIFLUSH)
         termios.tcsetattr(fd, termios.TCSADRAIN, _original_terminal_settings)
         sys.stdout.write("\033[?1049l\033[?25h")
         sys.stdout.flush()
+
+
+def handle_input() -> str:
+    fd = sys.stdin.fileno()
+    ready_to_read, _, _ = select.select([fd], [], [], 0.0)
+    if ready_to_read:
+        return sys.stdin.read(1)
+    return ""
