@@ -21,13 +21,6 @@ class TerminalBackend(GraphicBackend):
         if not grid.cells:
             return
 
-        menu = (
-            "\n=== A-Maze-ing Menu ==="
-            "1: Regenerate maze | 2: Show/hide shortest path "
-            "| 3: Rotate colors | 4: Quit"
-            "Choice? (press key 1-4): "
-        )
-
         lines: list[str] = []
         for y, row in enumerate(grid.cells):
             row_chars: str = ""
@@ -36,7 +29,7 @@ class TerminalBackend(GraphicBackend):
                 row_chars += content
             lines.append(row_chars)
 
-        full_frame = "\033[H" + "\n".join(lines) + menu
+        full_frame = "\033[H" + "\n".join(lines)
         sys.stdout.write(full_frame)
         sys.stdout.flush()
 
@@ -45,6 +38,7 @@ class TerminalBackend(GraphicBackend):
 
         try:
             setup_terminal()
+            draw_menu(len(controller.grid.cells) + 2)
             while controller.is_running:
                 controller.tick()
                 self.render_frame(grid=controller.grid)
@@ -157,3 +151,14 @@ def resolve_cell_content(x: int, y: int, state: CellState) -> tuple[str, int]:
     if not is_x_even and is_y_even:
         return _resolve_horizontal_wall(state)
     return _resolve_room(state)
+
+
+def draw_menu(y_offset: int) -> None:
+    menu = (
+        "\n=== A-Maze-ing Menu ==="
+        "1: Regenerate maze | 2: Show/hide shortest path "
+        "| 3: Rotate colors | 4: Quit"
+        "Choice? (press key 1-4): "
+    )
+    sys.stdout.write(f"\033[{y_offset};1H{menu}")
+    sys.stdout.flush()
