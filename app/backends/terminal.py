@@ -18,20 +18,30 @@ class TerminalBackend(GraphicBackend):
 
     def render_frame(self, grid: RenderGrid) -> None:
 
-        if not grid.cells:
+        if not grid.changed:
             return
 
-        lines: list[str] = []
-        for y, row in enumerate(grid.cells):
-            row_chars: str = ""
-            for x, cell_state in enumerate(row):
-                content, _ = resolve_cell_content(x, y, cell_state)
-                row_chars += content
-            lines.append(row_chars)
+        # lines: list[str] = []
 
-        full_frame = "\033[H" + "\n".join(lines)
-        sys.stdout.write(full_frame)
+        changed_cell = grid.changed.popleft()
+        if not changed_cell:
+            return
+        x, y, state = changed_cell
+        content = resolve_cell_content(x, y, state)
+        move_cursor(x, y)
+        sys.stdout.write(content)
         sys.stdout.flush()
+
+    #
+    #     row_chars: str = ""
+    #     for x, cell_state in enumerate(row):
+    #         content, _ = resolve_cell_content(x, y, cell_state)
+    #         row_chars += content
+    #     lines.append(row_chars)
+    #
+    # full_frame = "\033[H" + "\n".join(lines)
+    # sys.stdout.write(full_frame)
+    # sys.stdout.flush()
 
     def start_loop(self, controller: "AppController") -> None:
         """Main loop with step by step animation"""
@@ -49,7 +59,7 @@ class TerminalBackend(GraphicBackend):
                     elif key.lower() == "1":
                         controller.handle_action("regen")
 
-                time.sleep(0.04)
+                time.sleep(0.01)
         except KeyboardInterrupt:
             pass
         finally:  # Execute Around Pattern
@@ -57,9 +67,14 @@ class TerminalBackend(GraphicBackend):
 
 
 def move_cursor(x: int, y: int) -> None:
-    sys.stdout.write(f"\033[{y};{x}H")
+    screen_x = x // 2 * 4
+    if x % 2 != 0:
+        screen_x += 1
+    screen_y = y + 1
+    sys.stdout.write(f"\033[{screen_y};{screen_x + 1}H")
 
 
+# global stash for terminal settings
 _original_terminal_settings: Optional[list[Any]] = None
 
 
@@ -106,41 +121,41 @@ STYLE_EXIT = "\033[33m"  # yello exit
 STYLE_LOCK = "\033[31m"  # red lock
 
 
-def _resolve_corner() -> tuple[str, int]:
-    return f"{STYLE_WALL}+{STYLE_RESET}", 1
+def _resolve_corner() -> str:
+    return f"{STYLE_WALL}+{STYLE_RESET}"
 
 
-def _resolve_vertical_wall(state: CellState) -> tuple[str, int]:
+def _resolve_vertical_wall(state: CellState) -> str:
     if state == CellState.WALL:
-        return f"{STYLE_WALL}|{STYLE_RESET}", 1
+        return f"{STYLE_WALL}|{STYLE_RESET}"
     if state == CellState.PATH:
-        return f"{STYLE_PATH}0{STYLE_RESET}", 1
-    return " ", 1
+        return f"{STYLE_PATH}0{STYLE_RESET}"
+    return " "
 
 
-def _resolve_horizontal_wall(state: CellState) -> tuple[str, int]:
+def _resolve_horizontal_wall(state: CellState) -> str:
     if state == CellState.WALL:
-        return f"{STYLE_WALL}---{STYLE_RESET}", 3
+        return f"{STYLE_WALL}---{STYLE_RESET}"
     if state == CellState.PATH:
-        return f"{STYLE_PATH} 0 {STYLE_RESET}", 3
-    return "   ", 3
+        return f"{STYLE_PATH} 0 {STYLE_RESET}"
+    return "   "
 
 
-def _resolve_room(state: CellState) -> tuple[str, int]:
-    if state == CellState.WALL:
-        return f"{STYLE_WALL}---{STYLE_RESET}", 3
+def _resolve_room(state: CellState) -> str:
+    # if state == CellState.WALL:
+    #     return f"{STYLE_WALL}---{STYLE_RESET}"
     if state == CellState.PATH:
-        return f"{STYLE_PATH} 0 {STYLE_RESET}", 3
+        return f"{STYLE_PATH} 0 {STYLE_RESET}"
     if state == CellState.ENTRY:
-        return f"{STYLE_ENTRY} S {STYLE_RESET}", 3
+        return f"{STYLE_ENTRY} S {STYLE_RESET}"
     if state == CellState.EXIT:
-        return f"{STYLE_EXIT} E {STYLE_RESET}", 3
+        return f"{STYLE_EXIT} E {STYLE_RESET}"
     if state == CellState.LOCK:
-        return f"{STYLE_LOCK}[$]{STYLE_RESET}", 3
-    return "   ", 3
+        return f"{STYLE_LOCK}[$]{STYLE_RESET}"
+    return "   "
 
 
-def resolve_cell_content(x: int, y: int, state: CellState) -> tuple[str, int]:
+def resolve_cell_content(x: int, y: int, state: CellState) -> str:
     is_x_even = (x % 2 == 0)
     is_y_even = (y % 2 == 0)
 
