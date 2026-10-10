@@ -21,15 +21,6 @@ class TerminalBackend(GraphicBackend):
         if not grid.cells:
             return
 
-        state_to_char = {
-            CellState.WALL: "#",
-            CellState.FLOOR: " ",
-            CellState.ENTRY: "S",
-            CellState.EXIT: "E",
-            CellState.PATH: "0",
-            CellState.LOCK: "$"
-        }
-
         menu = (
             "\n=== A-Maze-ing Menu ==="
             "1: Regenerate maze | 2: Show/hide shortest path "
@@ -39,45 +30,15 @@ class TerminalBackend(GraphicBackend):
 
         lines: list[str] = []
         for y, row in enumerate(grid.cells):
-
             row_chars: str = ""
-            for x, cell in enumerate(row):
-
-                if x % 2 == 0:
-                    if y % 2 == 0:
-                        content = "\033[32m+\033[0m"
-                    else:
-                        if state_to_char[cell] == "#":
-                            content = "\033[32m|\033[0m"
-                        elif state_to_char[cell] == "0":
-                            content = "\033[30m0\033[0m"
-                        else:
-                            content = " "
-                else:
-                    if y % 2 == 0:
-                        if state_to_char[cell] == "#":
-                            content = "\033[32m---\033[0m"
-                        elif state_to_char[cell] == "0":
-                            content = "\033[30m 0 \033[0m"
-                        else:
-                            content = "   "
-                    else:
-                        if state_to_char[cell] == "S":
-                            content = "\033[34m S \033[0m"
-                        elif state_to_char[cell] == "E":
-                            content = "\033[33m E \033[0m"
-                        elif state_to_char[cell] == "$":
-                            content = "\033[31m[$]\033[0m"
-                        elif state_to_char[cell] == "0":
-                            content = "\033[30m 0 \033[0m"
-                        else:
-                            content = "   "
-
+            for x, cell_state in enumerate(row):
+                content, _ = resolve_cell_content(x, y, cell_state)
                 row_chars += content
             lines.append(row_chars)
 
         full_frame = "\033[H" + "\n".join(lines) + menu
-        print(full_frame)
+        sys.stdout.write(full_frame)
+        sys.stdout.flush()
 
     def start_loop(self, controller: "AppController") -> None:
         """Main loop with step by step animation"""
@@ -141,3 +102,58 @@ def handle_input() -> str:
     if ready_to_read:
         return sys.stdin.read(1)
     return ""
+
+
+STYLE_RESET = "\033[0m"
+STYLE_WALL = "\033[32m"  # green walls
+STYLE_PATH = "\033[30m"  # black path
+STYLE_ENTRY = "\033[34m"  # blue start
+STYLE_EXIT = "\033[33m"  # yello exit
+STYLE_LOCK = "\033[31m"  # red lock
+
+
+def _resolve_corner() -> tuple[str, int]:
+    return f"{STYLE_WALL}+{STYLE_RESET}", 1
+
+
+def _resolve_vertical_wall(state: CellState) -> tuple[str, int]:
+    if state == CellState.WALL:
+        return f"{STYLE_WALL}|{STYLE_RESET}", 1
+    if state == CellState.PATH:
+        return f"{STYLE_PATH}0{STYLE_RESET}", 1
+    return " ", 1
+
+
+def _resolve_horizontal_wall(state: CellState) -> tuple[str, int]:
+    if state == CellState.WALL:
+        return f"{STYLE_WALL}---{STYLE_RESET}", 3
+    if state == CellState.PATH:
+        return f"{STYLE_PATH} 0 {STYLE_RESET}", 3
+    return "   ", 3
+
+
+def _resolve_room(state: CellState) -> tuple[str, int]:
+    if state == CellState.WALL:
+        return f"{STYLE_WALL}---{STYLE_RESET}", 3
+    if state == CellState.PATH:
+        return f"{STYLE_PATH} 0 {STYLE_RESET}", 3
+    if state == CellState.ENTRY:
+        return f"{STYLE_ENTRY} S {STYLE_RESET}", 3
+    if state == CellState.EXIT:
+        return f"{STYLE_EXIT} E {STYLE_RESET}", 3
+    if state == CellState.LOCK:
+        return f"{STYLE_LOCK}[$]{STYLE_RESET}", 3
+    return "   ", 3
+
+
+def resolve_cell_content(x: int, y: int, state: CellState) -> tuple[str, int]:
+    is_x_even = (x % 2 == 0)
+    is_y_even = (y % 2 == 0)
+
+    if is_x_even and is_y_even:
+        return _resolve_corner()
+    if is_x_even and not is_y_even:
+        return _resolve_vertical_wall(state)
+    if not is_x_even and is_y_even:
+        return _resolve_horizontal_wall(state)
+    return _resolve_room(state)
