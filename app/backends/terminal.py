@@ -3,6 +3,7 @@ import sys
 import time
 import tty
 import termios
+from typing import Any, Optional
 
 from app.backends.base import GraphicBackend
 from app.grid import RenderGrid, CellState
@@ -86,12 +87,8 @@ class TerminalBackend(GraphicBackend):
     def start_loop(self, controller: "AppController") -> None:
         """Main loop with step by step animation"""
 
-        # \033[?1049h   - enables alternative screen (no scrolling history)
-        # \033[?25l     - hides blinking cursor
-        print("\033[?1049h\033[?25l", end="", flush=True)
-        old_settings = termios.tcgetattr(sys.stdin)
         try:
-            tty.setcbreak(sys.stdin.fileno())
+            setup_terminal()
             while controller.is_running:
                 controller.tick()
                 self.render_frame(grid=controller.grid)
@@ -103,5 +100,38 @@ class TerminalBackend(GraphicBackend):
                         controller.handle_action("regen")
                 time.sleep(0.04)
         finally:  # Execute Around Pattern
-            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
-            print("\033[?1049l\033[?25h", end="", flush=True)
+            restore_terminal()
+
+
+def move_cursor(x, y) -> None:
+    sys.stdout.write(f"\033[{y};{x}H")
+
+
+_original_terminal_settings: Optional[list[Any]] = None
+
+
+def setup_terminal() -> None:
+    global _original_terminal_settings
+    fd = sys.stdin.fileno()
+
+    # save original terminal state
+    _original_terminal_settings = termios.tcgetattr(fd)
+
+    # keyboard cbreak mode (immediate read)
+    tty.setcbreak(fd)
+
+    # \033[?1049h   - enables alternative screen (no scrolling history)
+    # \033[?25l     - hides blinking cursor
+    # \033[2J       - clear screen
+    # \033[1;1H     - cursor on starting position 1,1
+    sys.stdout.write("\033[?1049h\033[?25l\033[2J\033[1;1H")
+    sys.stdout.flush()
+
+
+def restore_terminal() -> None:
+    global _original_terminal_settings
+    if _original_terminal_settings is not None:
+        fd = sys.stdin.fileno()
+        termios.tcsetattr(fd, termios.TCSADRAIN, _original_terminal_settings)
+        sys.stdout.write("\033[?1049l\033[?25h")
+        sys.stdout.flush()
