@@ -18,30 +18,15 @@ class TerminalBackend(GraphicBackend):
 
     def render_frame(self, grid: RenderGrid) -> None:
 
-        if not grid.changed:
-            return
-
-        # lines: list[str] = []
-
-        changed_cell = grid.changed.popleft()
-        if not changed_cell:
-            return
-        x, y, state = changed_cell
-        content = resolve_cell_content(x, y, state)
-        move_cursor(x, y)
-        sys.stdout.write(content)
-        sys.stdout.flush()
-
-    #
-    #     row_chars: str = ""
-    #     for x, cell_state in enumerate(row):
-    #         content, _ = resolve_cell_content(x, y, cell_state)
-    #         row_chars += content
-    #     lines.append(row_chars)
-    #
-    # full_frame = "\033[H" + "\n".join(lines)
-    # sys.stdout.write(full_frame)
-    # sys.stdout.flush()
+        while grid.changed:
+            changed_cell = grid.changed.popleft()
+            if not changed_cell:
+                return
+            x, y, state = changed_cell
+            content = resolve_cell_content(x, y, state)
+            move_cursor(x, y)
+            sys.stdout.write(content)
+            sys.stdout.flush()
 
     def start_loop(self, controller: "AppController") -> None:
         """Main loop with step by step animation"""
@@ -59,7 +44,7 @@ class TerminalBackend(GraphicBackend):
                     elif key.lower() == "1":
                         controller.handle_action("regen")
 
-                time.sleep(0.01)
+                time.sleep(0.04)
         except KeyboardInterrupt:
             pass
         finally:  # Execute Around Pattern
@@ -117,7 +102,7 @@ STYLE_RESET = "\033[0m"
 STYLE_WALL = "\033[32m"  # green walls
 STYLE_PATH = "\033[30m"  # black path
 STYLE_ENTRY = "\033[34m"  # blue start
-STYLE_EXIT = "\033[33m"  # yello exit
+STYLE_EXIT = "\033[33m"  # yellow exit
 STYLE_LOCK = "\033[31m"  # red lock
 
 
@@ -142,8 +127,6 @@ def _resolve_horizontal_wall(state: CellState) -> str:
 
 
 def _resolve_room(state: CellState) -> str:
-    # if state == CellState.WALL:
-    #     return f"{STYLE_WALL}---{STYLE_RESET}"
     if state == CellState.PATH:
         return f"{STYLE_PATH} 0 {STYLE_RESET}"
     if state == CellState.ENTRY:

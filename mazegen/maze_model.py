@@ -154,7 +154,7 @@ class Maze:
 
                                     path.reverse()
                                     self.path = path
-                                    print(path)
+                                    # print(path)
                                     break
 
     def solver_dfs(self) -> Generator[tuple[int, int, Direction], None, None]:
@@ -224,6 +224,6 @@ class Maze:
 
                                     path.reverse()
                                     self.path = path
-                                    print(path)
+                                    # print(path)
                                     break
                                 yield nx, ny, directions[(nx - x, ny - y)]
