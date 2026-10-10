@@ -59,7 +59,7 @@ class Maze:
 
         self.locked_cells = get_pattern_locked_cells(self.width, self.height)
 
-        self.solver: str = 'bfs' # dfs or bfs, need to solve it in config !!!!
+        self.solver: str = 'bfs'  # dfs or bfs, need to solve it in config !!!!
         self.path: list[tuple[int, int]] = []
         if self.solver == 'dfs':
             self._animation_iterator = self.solver_dfs()
@@ -156,8 +156,6 @@ class Maze:
                                     self.path = path
                                     print(path)
                                     break
-
-
 
     def solver_dfs(self) -> Generator[tuple[int, int, Direction], None, None]:
         """Find corridor from ENTRY to EXIT as BFS."""
