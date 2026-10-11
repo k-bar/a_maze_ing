@@ -1,4 +1,3 @@
-# from __future__ import annotations
 from enum import IntFlag
 
 from mazegen.utils import get_pattern_locked_cells
@@ -60,11 +59,11 @@ class Maze:
         self.locked_cells = get_pattern_locked_cells(self.width, self.height)
 
         self.solver: str = 'bfs'  # dfs or bfs, need to solve it in config !!!!
-        self.path: list[tuple[int, int]] = []
-        if self.solver == 'dfs':
-            self._animation_iterator = self.solver_dfs()
-        else:
-            self._animation_iterator = self.solver_bfs()
+        self.path: list[tuple[int, int, Direction | None]] = []
+        # if self.solver == 'dfs':
+        #     self._animation_iterator = self.solver_dfs()
+        # else:
+        self._animation_iterator = self.solver_bfs()
 
     def solve(self) -> list[str]:
         """mocked solve"""
@@ -92,7 +91,7 @@ class Maze:
 
         visited: set[tuple[int, int]] = {self.m_entry}
 
-        came_from: dict[tuple[int, int], tuple[int, int] | None] \
+        came_from_dict: dict[tuple[int, int], tuple[int, int] | None] \
             = {self.m_entry: None}
 
         directions = {
@@ -140,90 +139,110 @@ class Maze:
 
                             if (nx, ny) not in visited:
                                 visited.add((nx, ny))
-                                came_from[(nx, ny)] = current
+                                came_from_dict[(nx, ny)] = current
                                 queue.append((nx, ny))
                                 # TU
-                                yield nx, ny, directions[(nx - x, ny - y)]
+                                yield nx, ny, directions[(x - nx, y - ny)]
                                 if (nx, ny) == self.m_exit:
-                                    path = []
-                                    curr: tuple[int, int] | None = self.m_exit
+                                    path: (
+                                        list)[
+                                        tuple[int, int, Direction | None]] = []
+                                    curr_coords_from_dict: \
+                                        tuple[int, int] | None = self.m_exit
+                                    if curr_coords_from_dict is not None:
+                                        ex, ey = curr_coords_from_dict
+                                        path.append((ex, ey, None))
+                                        while (curr_coords_from_dict
+                                               is not None):
+                                            cx, cy = curr_coords_from_dict
+                                            previous_came_from_coords = \
+                                                came_from_dict[(cx, cy)]
+                                            if (previous_came_from_coords
+                                                    is not None):
+                                                px, py \
+                                                    = previous_came_from_coords
 
-                                    while curr is not None:
-                                        path.append(curr)
-                                        curr = came_from[curr]
-
-                                    path.reverse()
-                                    self.path = path
-                                    # print(path)
-                                    break
-
-    def solver_dfs(self) -> Generator[tuple[int, int, Direction], None, None]:
-        """Find corridor from ENTRY to EXIT as BFS."""
-        stack: list[tuple[int, int]] = [self.m_entry]
-
-        visited: set[tuple[int, int]] = {self.m_entry}
-
-        came_from: dict[tuple[int, int], tuple[int, int] | None] \
-            = {self.m_entry: None}
-
-        directions = {
-            (0, -1): Direction.NORTH,
-            (1, 0): Direction.EAST,
-            (0, 1): Direction.SOUTH,
-            (-1, 0): Direction.WEST
-        }
-
-        moves = [
-            (0, -1),
-            (1, 0),
-            (0, 1),
-            (-1, 0)
-        ]
-
-        while stack and self.m_exit not in visited:
-            current: tuple[int, int] | None = stack.pop()
-
-            # if current == self.m_exit:
-            #     path = []
-            #     curr: tuple[int, int] | None = self.m_exit
-            #
-            #     while curr is not None:
-            #         path.append(curr)
-            #         curr = came_from[curr]
-            #
-            #     path.reverse()
-            #     self.path = path
-            #     print(path)
-            #     break
-
-            if current is not None:
-                x, y = current
-                cell_position = 1 << (y * self.width + x)
-
-                for wall_number, wall in enumerate(self.get_walls()):
-
-                    dx, dy = moves[wall_number]
-                    nx = x + dx
-                    ny = y + dy
-                    if (0 <= nx < self.width and 0 <= ny < self.height
-                            and (nx, ny) not in self.locked_cells):
-                        if not wall & cell_position:
-
-                            if (nx, ny) not in visited:
-                                visited.add((nx, ny))
-                                came_from[(nx, ny)] = current
-                                stack.append((nx, ny))
-                                # TU
-                                if current == self.m_exit:
-                                    path = []
-                                    curr: tuple[int, int] | None = self.m_exit
-
-                                    while curr is not None:
-                                        path.append(curr)
-                                        curr = came_from[curr]
+                                                path.append((cx, cy,
+                                                             directions[
+                                                                 (px - cx,
+                                                                  py - cy)]))
+                                            curr_coords_from_dict \
+                                                = previous_came_from_coords
 
                                     path.reverse()
                                     self.path = path
                                     # print(path)
                                     break
-                                yield nx, ny, directions[(nx - x, ny - y)]
+
+    # def solver_dfs(self) -> Generator[tuple[int, int, Direction],
+                    # None, None]:
+    #     """Find corridor from ENTRY to EXIT as BFS."""
+    #     stack: list[tuple[int, int]] = [self.m_entry]
+    #
+    #     visited: set[tuple[int, int]] = {self.m_entry}
+    #
+    #     came_from: dict[tuple[int, int], tuple[int, int] | None] \
+    #         = {self.m_entry: None}
+    #
+    #     directions = {
+    #         (0, -1): Direction.NORTH,
+    #         (1, 0): Direction.EAST,
+    #         (0, 1): Direction.SOUTH,
+    #         (-1, 0): Direction.WEST
+    #     }
+    #
+    #     moves = [
+    #         (0, -1),
+    #         (1, 0),
+    #         (0, 1),
+    #         (-1, 0)
+    #     ]
+    #
+    #     while stack and self.m_exit not in visited:
+    #         current: tuple[int, int] | None = stack.pop()
+    #
+    #         # if current == self.m_exit:
+    #         #     path = []
+    #         #     curr: tuple[int, int] | None = self.m_exit
+    #         #
+    #         #     while curr is not None:
+    #         #         path.append(curr)
+    #         #         curr = came_from[curr]
+    #         #
+    #         #     path.reverse()
+    #         #     self.path = path
+    #         #     print(path)
+    #         #     break
+    #
+    #         if current is not None:
+    #             x, y = current
+    #             cell_position = 1 << (y * self.width + x)
+    #
+    #             for wall_number, wall in enumerate(self.get_walls()):
+    #
+    #                 dx, dy = moves[wall_number]
+    #                 nx = x + dx
+    #                 ny = y + dy
+    #                 if (0 <= nx < self.width and 0 <= ny < self.height
+    #                         and (nx, ny) not in self.locked_cells):
+    #                     if not wall & cell_position:
+    #
+    #                         if (nx, ny) not in visited:
+    #                             visited.add((nx, ny))
+    #                             came_from[(nx, ny)] = current
+    #                             stack.append((nx, ny))
+    #                             # TU
+    #                             if current == self.m_exit:
+    #                                 path = []
+    #                                 curr: tuple[int, int] | None
+    #                                 = self.m_exit
+    #
+    #                                 while curr is not None:
+    #                                     path.append(curr)
+    #                                     curr = came_from[curr]
+    #
+    #                                 path.reverse()
+    #                                 self.path = path
+    #                                 # print(path)
+    #                                 break
+    #                             yield nx, ny, directions[(nx - x, ny - y)]

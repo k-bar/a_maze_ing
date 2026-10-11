@@ -5,6 +5,8 @@ from app.grid import RenderGrid, CellState
 from app.keys import MLX_EVENT_DESTROY, MLX_MASK_NO_MASK, KEY_MAP
 from mlx import Mlx
 
+from mazegen.utils import Direction
+
 
 class MlxBackend(GraphicBackend):
     def __init__(self) -> None:
@@ -63,6 +65,36 @@ class MlxBackend(GraphicBackend):
             for x in range(start_x, start_x + size_x):
                 self.image.put_pixel(x, y, r, g, b)
 
+    def _draw_path_block(self, gx: int, gy: int, next_dir: Direction | None,
+                         color: tuple[int, int, int]) -> None:
+        if self.image is None:
+            return
+
+        if gx % 2 != 0 and gy % 2 != 0:
+            start_x = (((gx // 2) * self.block_size)
+                       + (((gx // 2) + (gx % 2)) * self.wall_size)) + 10
+
+            start_y = (((gy // 2) * self.block_size)
+                       + (((gy // 2) + (gy % 2)) * self.wall_size)) + 10
+
+            if next_dir == Direction.WEST:
+                start_x -= self.block_size
+            if next_dir == Direction.NORTH:
+                start_y -= self.block_size
+
+            if next_dir == Direction.WEST or next_dir == Direction.EAST:
+                size_x = self.block_size + 10
+                size_y = self.block_size // 3
+            else:
+                size_x = self.block_size // 3
+                size_y = self.block_size + 10
+
+            r, g, b = color
+
+            for y in range(start_y, start_y + size_y):
+                for x in range(start_x, start_x + size_x):
+                    self.image.put_pixel(x, y, r, g, b)
+
     def render_frame(self, grid: RenderGrid) -> None:
 
         # color_map = {
@@ -84,8 +116,17 @@ class MlxBackend(GraphicBackend):
 
         while grid.changed:
             x, y, state = grid.changed.popleft()
-            color = color_map.get(state, color_map[CellState.WALL])
-            self._draw_pixel_block(x, y, color)
+            if state == CellState.PATH:
+                # next_dir: Direction = Direction.NORTH
+                for xp, yp, dirp in grid.path:
+                    if x == xp * 2 + 1 and y == yp * 2 + 1:
+                        next_dir = dirp
+                        color = color_map.get(state, color_map[CellState.WALL])
+                        self._draw_path_block(x, y, next_dir, color)
+            else:
+
+                color = color_map.get(state, color_map[CellState.WALL])
+                self._draw_pixel_block(x, y, color)
 
         if self.win_ptr and self.image:
             self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.win_ptr,

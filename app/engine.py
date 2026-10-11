@@ -100,9 +100,10 @@ class AppController:
                     cx = (x * 2) + 1
                     cy = (y * 2) + 1
 
-                    wx = cx - dirs.dx
-                    wy = cy - dirs.dy
+                    wx = dirs.dx + cx
+                    wy = dirs.dy + cy
 
+                    self.grid.path.append((x, y, dirs))
                     self.grid.register_change(cx, cy, CellState.PATH)
                     self.grid.register_change(wx, wy, CellState.PATH)
                 else:
@@ -111,14 +112,16 @@ class AppController:
                             if self.grid.cells[y][x] == CellState.PATH:
                                 self.grid.register_change(x, y,
                                                           CellState.FLOOR)
+                    self.grid.path.clear()
+                    for x, y, p_dir in self.maze.path:
 
-                    for x, y in self.maze.path:
+                        self.grid.path.append((x, y, p_dir))
                         self.grid.register_change(x * 2 + 1, y * 2 + 1,
                                                   CellState.PATH)
 
-                        i = self.maze.path.index((x, y))
+                        i = self.maze.path.index((x, y, p_dir))
                         if i > 0:
-                            nx, ny = self.maze.path[i - 1]
+                            nx, ny, _ = self.maze.path[i - 1]
                             px = nx - x
                             py = ny - y
                             self.grid.register_change(x * 2 + 1 + px,
@@ -126,15 +129,14 @@ class AppController:
                                                       CellState.PATH)
                         gx_en = self.maze.m_entry[0] * 2 + 1
                         gy_en = self.maze.m_entry[1] * 2 + 1
-                        if self.grid.cells[gy_en][gx_en] != CellState.ENTRY:
-                            self.grid.register_change(gx_en, gy_en,
-                                                      CellState.ENTRY)
+
+                        self.grid.register_change(gx_en, gy_en,
+                                                  CellState.ENTRY)
 
                         gx_ex = self.maze.m_exit[0] * 2 + 1
                         gy_ex = self.maze.m_exit[1] * 2 + 1
-                        if self.grid.cells[gy_ex][gx_ex] != CellState.EXIT:
-                            self.grid.register_change(gx_ex, gy_ex,
-                                                      CellState.EXIT)
+                        self.grid.register_change(gx_ex, gy_ex,
+                                                  CellState.EXIT)
                         self.is_generating = False
 
     def handle_action(self, action: str) -> None:

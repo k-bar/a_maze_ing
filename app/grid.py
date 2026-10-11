@@ -1,7 +1,7 @@
 from collections import deque
 from enum import Enum, auto
 
-from mazegen.utils import get_pattern_locked_cells
+from mazegen.utils import get_pattern_locked_cells, Direction
 
 
 class CellState(Enum):
@@ -34,6 +34,7 @@ class RenderGrid:
             for _ in range(self.grid_height)
         ]
         self.changed: deque[tuple[int, int, CellState]] = deque()
+        self.path: list[tuple[int, int, Direction | None]] = []
         self.clear()
 
     def clear(self) -> None:
