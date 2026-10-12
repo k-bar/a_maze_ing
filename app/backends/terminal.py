@@ -43,6 +43,8 @@ class TerminalBackend(GraphicBackend):
                         controller.handle_action("quit")
                     elif key.lower() == "1":
                         controller.handle_action("regen")
+                    elif key.lower() == "5":
+                        controller.handle_action("hide_toggle")
 
                 time.sleep(0.04)
         except KeyboardInterrupt:

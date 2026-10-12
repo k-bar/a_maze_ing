@@ -50,10 +50,10 @@ def test_handle_action_regen_should_reset_generation_state(
 
     # controller.is_generating = False
 
-    assert controller.state == EngineState.INITIALIZING
+    assert controller.state.value == EngineState.INITIALIZING.value
     controller.handle_action("regen")
-    assert (controller.state
-            == EngineState.GENERATING)  # type: ignore[comparison-overlap]
+    s = controller.state
+    assert (s == EngineState.GENERATING)
 
 
 def test_handle_action_quit_should_stop_the_engine(
