@@ -28,4 +28,6 @@ KEY_MAP = {
     KEY_4: "quit",
     N_KEY_4: "quit",
     KEY_ESC: "quit",
+    KEY_5: "hide_toggle",
+    N_KEY_5: "hide_toggle",
 }

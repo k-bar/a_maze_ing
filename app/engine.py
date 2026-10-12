@@ -29,7 +29,7 @@ class AppController:
         self.current_seed: int = 0
         self.is_running = True
         # self.is_generating = True
-        # self.show_path = False
+        self.path_visible = True
 
         self.maze: Maze | None = None
 
@@ -100,9 +100,18 @@ class AppController:
             self.maze = None
             self.grid.clear()
             self.state = EngineState.GENERATING
+        elif action == "hide_toggle":
+            if self.state != EngineState.IDLE:
+                return
+            if self.path_visible:
+                self.hide_path()
+                self.path_visible = False
+            else:
+                self.show_path()
+                self.path_visible = True
 
-        # TODO: add path
-        # TODO: save to file
+    # TODO: add path
+    # TODO: save to file
 
     def start(self) -> None:
         self.backend.init_window(self.generator.width,
@@ -158,11 +167,7 @@ class AppController:
     def show_path(self) -> None:
         if self.maze is None:
             return
-        for y in range(self.grid.grid_height):
-            for x in range(self.grid.grid_width):
-                if self.grid.cells[y][x] == CellState.PATH:
-                    self.grid.register_change(x, y,
-                                              CellState.FLOOR)
+        self.hide_path()
 
         for x, y in self.maze.path:
             self.grid.register_change(x * 2 + 1, y * 2 + 1,
@@ -188,3 +193,10 @@ class AppController:
                 self.grid.register_change(gx_ex, gy_ex,
                                           CellState.EXIT)
         self.state = EngineState.IDLE
+
+    def hide_path(self) -> None:
+        for y in range(self.grid.grid_height):
+            for x in range(self.grid.grid_width):
+                if self.grid.cells[y][x] == CellState.PATH:
+                    self.grid.register_change(x, y,
+                                              CellState.FLOOR)
