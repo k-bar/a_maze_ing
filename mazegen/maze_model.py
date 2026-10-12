@@ -60,7 +60,7 @@ class Maze:
 
         self.locked_cells = get_pattern_locked_cells(self.width, self.height)
 
-        self.solver: str = solver  # dfs or bfs, need to solve it in config !!!!
+        self.solver: str = solver
         self.path: list[tuple[int, int]] = []
         if self.solver == 'DFS':
             self._animation_iterator = self.solver_dfs()
@@ -228,4 +228,3 @@ class Maze:
                                     self.path = path
                                     # print(path)
                                     break
-

@@ -70,27 +70,25 @@ class MlxBackend(GraphicBackend):
 
         if gx % 2 != 0 and gy % 2 != 0:
             start_x = ((((gx // 2) * self.block_size)
-                       + (((gx // 2) + (gx % 2)) * self.wall_size))
+                        + (((gx // 2) + (gx % 2)) * self.wall_size))
                        + self.block_size // 3)
 
             start_y = ((((gy // 2) * self.block_size)
-                       + (((gy // 2) + (gy % 2)) * self.wall_size))
+                        + (((gy // 2) + (gy % 2)) * self.wall_size))
                        + self.block_size // 3)
-
 
             size_y = self.block_size // 3
             size_x = self.block_size // 3
 
             r, g, b = color
 
-
         elif gx % 2 == 0 and gy % 2 != 0:
             start_x = ((((gx // 2) * self.block_size)
-                       + (((gx // 2) + (gx % 2)) * self.wall_size))
+                        + (((gx // 2) + (gx % 2)) * self.wall_size))
                        - self.block_size // 2)
 
             start_y = ((((gy // 2) * self.block_size)
-                       + (((gy // 2) + (gy % 2)) * self.wall_size))
+                        + (((gy // 2) + (gy % 2)) * self.wall_size))
                        + self.block_size // 3)
 
             size_y = self.block_size // 3

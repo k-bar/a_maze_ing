@@ -40,7 +40,7 @@ class AppController:
             m_exit=self.config.EXIT
         )
 
-        self.state = EngineState.INITIALIZING
+        self.state: EngineState = EngineState.INITIALIZING
 
         self.generator = self.create_generator()
 
@@ -111,7 +111,7 @@ class AppController:
         self.state = EngineState.GENERATING
         self.backend.start_loop(controller=self)
 
-    def generate_maze(self):
+    def generate_maze(self) -> None:
 
         changed_cell = self.generator.step()
         if changed_cell is not None:
@@ -124,7 +124,7 @@ class AppController:
         else:
             self.state = EngineState.SOLVING
 
-    def solve(self):
+    def solve(self) -> None:
         if self.maze is None:
             wn, we, ws, ww = self.generator.get_walls()
             self.maze = Maze(width=self.width,
@@ -155,7 +155,9 @@ class AppController:
             else:
                 self.state = EngineState.SOLVED
 
-    def show_path(self):
+    def show_path(self) -> None:
+        if self.maze is None:
+            return
         for y in range(self.grid.grid_height):
             for x in range(self.grid.grid_width):
                 if self.grid.cells[y][x] == CellState.PATH:
