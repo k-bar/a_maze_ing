@@ -87,6 +87,7 @@ class AppController:
                                  m_entry=self.config.ENTRY,
                                  m_exit=self.config.EXIT,
                                  perfect=self.config.PERFECT,
+                                 solver=self.config.SOLVER,
                                  walls_n=wn,
                                  walls_e=we,
                                  walls_s=ws,
@@ -111,6 +112,7 @@ class AppController:
                             if self.grid.cells[y][x] == CellState.PATH:
                                 self.grid.register_change(x, y,
                                                           CellState.FLOOR)
+
 
                     for x, y in self.maze.path:
                         self.grid.register_change(x * 2 + 1, y * 2 + 1,
