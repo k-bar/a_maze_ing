@@ -110,7 +110,6 @@ class AppController:
                 self.show_path()
                 self.path_visible = True
 
-    # TODO: add path
     # TODO: save to file
 
     def start(self) -> None:
