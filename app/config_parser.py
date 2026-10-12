@@ -36,6 +36,7 @@ class Config(BaseModel):
     PERFECT: bool = Field(default=True)
 
     SEED: int | None = Field(default=None)
+    SOLVER: Literal["BFS", "DFS"] = (Field(default="BFS"))
 
     ALGORITHM: Literal["KRUSKAL", "PRIM", "BACKTRACKER"] = (
         Field(default="KRUSKAL"))

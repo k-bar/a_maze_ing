@@ -38,6 +38,7 @@ class Maze:
             m_entry: tuple[int, int],
             m_exit: tuple[int, int],
             perfect: bool,
+            solver: str,
             walls_n: int,
             walls_e: int,
             walls_s: int,
@@ -59,9 +60,9 @@ class Maze:
 
         self.locked_cells = get_pattern_locked_cells(self.width, self.height)
 
-        self.solver: str = 'dfs'  # dfs or bfs, need to solve it in config !!!!
+        self.solver: str = solver  # dfs or bfs, need to solve it in config !!!!
         self.path: list[tuple[int, int]] = []
-        if self.solver == 'dfs':
+        if self.solver == 'DFS':
             self._animation_iterator = self.solver_dfs()
         else:
             self._animation_iterator = self.solver_bfs()

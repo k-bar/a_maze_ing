@@ -3,10 +3,10 @@
 #########################################
 
 ######################## mandatory:
-WIDTH=10
-HEIGHT=5
+WIDTH=25
+HEIGHT=25
 ENTRY=0,0
-EXIT=9,4
+EXIT=19,24
 OUTPUT_FILE=maze.txt
 PERFECT=False
 SEED=124
@@ -17,7 +17,7 @@ SEED=124
 # Algorithms: KRUSKAL, PRIM, BACKTRACKER
 ALGORITHM=KRUSKAL
 # Solvers: BFS, DFS
-# SOLVER=BFS
+SOLVER=DFS
 
 ANIMATION=TRUE
 
