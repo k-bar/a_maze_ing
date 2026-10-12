@@ -11,7 +11,7 @@ from app.engine import AppController
 
 class TerminalBackend(GraphicBackend):
     def __init__(self) -> None:
-        pass
+        self.colors: dict[str, str] = palette1
 
     def init_window(self, width: int, height: int, title: str) -> None:
         pass
@@ -23,7 +23,7 @@ class TerminalBackend(GraphicBackend):
             if not changed_cell:
                 return
             x, y, state = changed_cell
-            content = resolve_cell_content(x, y, state)
+            content = resolve_cell_content(x, y, state, self.colors)
             move_cursor(x, y)
             sys.stdout.write(content)
             sys.stdout.flush()
@@ -45,6 +45,12 @@ class TerminalBackend(GraphicBackend):
                         controller.handle_action("regen")
                     elif key.lower() == "5":
                         controller.handle_action("hide_toggle")
+                    elif key.lower() == "3":
+                        self.colors = change_colors(self.colors)
+                        for y in range(controller.grid.grid_height):
+                            for x in range(controller.grid.grid_width):
+                                state = controller.grid.cells[y][x]
+                                controller.grid.register_change(x, y, state)
 
                 time.sleep(0.04)
         except KeyboardInterrupt:
@@ -100,57 +106,69 @@ def handle_input() -> str:
     return ""
 
 
-STYLE_RESET = "\033[0m"
-STYLE_WALL = "\033[32m"  # green walls
-STYLE_PATH = "\033[30m"  # black path
-STYLE_ENTRY = "\033[34m"  # blue start
-STYLE_EXIT = "\033[33m"  # yellow exit
-STYLE_LOCK = "\033[31m"  # red lock
+palette1: dict[str, str] = {
+    "STYLE_RESET": "\033[0m",
+    "STYLE_WALL": "\033[32m",  # green walls
+    "STYLE_PATH": "\033[30m",  # black path
+    "STYLE_ENTRY": "\033[34m",  # blue start
+    "STYLE_EXIT": "\033[33m",  # yellow exit
+    "STYLE_LOCK": "\033[31m"  # red lock
+}
+
+palette2: dict[str, str] = {
+    "STYLE_RESET": "\033[0m",
+    "STYLE_WALL": "\033[30m",  # black walls
+    "STYLE_PATH": "\033[32m",  # green path
+    "STYLE_ENTRY": "\033[33m",  # yellow start
+    "STYLE_EXIT": "\033[34m",  # blue exit
+    "STYLE_LOCK": "\033[36m"  # lock
+}
 
 
-def _resolve_corner() -> str:
-    return f"{STYLE_WALL}+{STYLE_RESET}"
+def _resolve_corner(pal: dict[str, str]) -> str:
+    return f"{pal['STYLE_WALL']}+{pal['STYLE_RESET']}"
 
 
-def _resolve_vertical_wall(state: CellState) -> str:
+def _resolve_vertical_wall(state: CellState, pal: dict[str, str]) -> str:
     if state == CellState.WALL:
-        return f"{STYLE_WALL}|{STYLE_RESET}"
+        return f"{pal['STYLE_WALL']}|{pal['STYLE_RESET']}"
     if state == CellState.PATH:
-        return f"{STYLE_PATH}0{STYLE_RESET}"
+        return f"{pal['STYLE_PATH']}0{pal['STYLE_RESET']}"
     return " "
 
 
-def _resolve_horizontal_wall(state: CellState) -> str:
+def _resolve_horizontal_wall(state: CellState, pal: dict[str, str]) -> str:
     if state == CellState.WALL:
-        return f"{STYLE_WALL}---{STYLE_RESET}"
+        return f"{pal['STYLE_WALL']}---{pal['STYLE_RESET']}"
     if state == CellState.PATH:
-        return f"{STYLE_PATH} 0 {STYLE_RESET}"
+        return f"{pal['STYLE_PATH']} 0 {pal['STYLE_RESET']}"
     return "   "
 
 
-def _resolve_room(state: CellState) -> str:
+def _resolve_room(state: CellState, pal: dict[str, str]) -> str:
     if state == CellState.PATH:
-        return f"{STYLE_PATH} 0 {STYLE_RESET}"
+        return f"{pal['STYLE_PATH']} 0 {pal['STYLE_RESET']}"
     if state == CellState.ENTRY:
-        return f"{STYLE_ENTRY} S {STYLE_RESET}"
+        return f"{pal['STYLE_ENTRY']} S {pal['STYLE_RESET']}"
     if state == CellState.EXIT:
-        return f"{STYLE_EXIT} E {STYLE_RESET}"
+        return f"{pal['STYLE_EXIT']} E {pal['STYLE_RESET']}"
     if state == CellState.LOCK:
-        return f"{STYLE_LOCK}[$]{STYLE_RESET}"
+        return f"{pal['STYLE_LOCK']}[$]{pal['STYLE_RESET']}"
     return "   "
 
 
-def resolve_cell_content(x: int, y: int, state: CellState) -> str:
+def resolve_cell_content(x: int, y: int, state: CellState,
+                         pal: dict[str, str]) -> str:
     is_x_even = (x % 2 == 0)
     is_y_even = (y % 2 == 0)
 
     if is_x_even and is_y_even:
-        return _resolve_corner()
+        return _resolve_corner(pal)
     if is_x_even and not is_y_even:
-        return _resolve_vertical_wall(state)
+        return _resolve_vertical_wall(state, pal)
     if not is_x_even and is_y_even:
-        return _resolve_horizontal_wall(state)
-    return _resolve_room(state)
+        return _resolve_horizontal_wall(state, pal)
+    return _resolve_room(state, pal)
 
 
 def draw_menu(y_offset: int) -> None:
@@ -162,3 +180,10 @@ def draw_menu(y_offset: int) -> None:
     )
     sys.stdout.write(f"\033[{y_offset};1H{menu}")
     sys.stdout.flush()
+
+
+def change_colors(palette: dict[str, str]) -> dict[str, str]:
+    if palette == palette1:
+        return palette2
+    else:
+        return palette1

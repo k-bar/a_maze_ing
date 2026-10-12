@@ -1,4 +1,6 @@
-from app.engine import AppController
+import copy
+
+from app.engine import AppController, EngineState
 from app.backends.base import GraphicBackend
 from app.backends.mlx_image import MLXImage
 from app.grid import RenderGrid, CellState
@@ -16,6 +18,7 @@ class MlxBackend(GraphicBackend):
         self.mlx_ptr = self.mlx.mlx_init()
         self.win_ptr = None
         self.image: MLXImage | None = None
+        self.palette: dict[CellState, tuple[int, int, int]] = color_map1
         # image: writable memory view of the image raw pixels plus metadata
 
     def init_window(self, width: int, height: int, title: str) -> None:
@@ -116,23 +119,7 @@ class MlxBackend(GraphicBackend):
 
     def render_frame(self, grid: RenderGrid) -> None:
 
-        # color_map = {
-        #     CellState.WALL: (128, 81, 37),  # Brown
-        #     CellState.FLOOR: (30, 30, 30),  # Black
-        #     CellState.ENTRY: (0, 255, 0),  # Green
-        #     CellState.EXIT: (255, 0, 0),  # Red
-        #     CellState.PATH: (0, 255, 255),  # Cyan
-        #     CellState.LOCK: (222, 217, 213)
-        # }
-        color_map = {  # neutral
-            CellState.WALL: (38, 50, 56),  # graphite
-            CellState.FLOOR: (240, 233, 221),  # light
-            CellState.ENTRY: (0, 137, 123),  # ocean
-            CellState.EXIT: (230, 74, 25),  # orange
-            CellState.PATH: (21, 101, 192),  # blue
-            CellState.LOCK: (249, 168, 37),  # gold
-        }
-
+        color_map = self.palette
         while grid.changed:
             x, y, state = grid.changed.popleft()
             if state == CellState.PATH:
@@ -154,6 +141,9 @@ class MlxBackend(GraphicBackend):
 
         def handle_mlx_keys(keycode: int, param: None = None) -> None:
             action = KEY_MAP.get(keycode)
+            if action == "cycle_color":
+                self.change_colors(controller)
+                return
             if action:
                 controller.handle_action(action)
 
@@ -168,3 +158,40 @@ class MlxBackend(GraphicBackend):
 
         self.mlx.mlx_loop_hook(self.mlx_ptr, loop_tick, None)
         self.mlx.mlx_loop(self.mlx_ptr)
+
+    def change_colors(self, controller: AppController) -> None:
+        if controller.state != EngineState.IDLE:
+            return
+        if self.palette == color_map1:
+            self.palette = color_map2
+        else:
+            self.palette = color_map1
+        grid_cells_copy = copy.deepcopy(controller.grid.cells)
+        for y in range(controller.grid.grid_height):
+            for x in range(controller.grid.grid_width):
+                cur_state = grid_cells_copy[y][x]
+                if cur_state == CellState.PATH:
+                    controller.grid.register_change(x, y, CellState.FLOOR)
+                else:
+                    controller.grid.register_change(x, y, cur_state)
+        if controller.path_visible:
+            controller.show_path()
+
+
+color_map1 = {
+    CellState.WALL: (128, 81, 37),  # Brown
+    CellState.FLOOR: (30, 30, 30),  # Black
+    CellState.ENTRY: (0, 255, 0),  # Green
+    CellState.EXIT: (255, 0, 0),  # Red
+    CellState.PATH: (0, 255, 255),  # Cyan
+    CellState.LOCK: (222, 217, 213)
+}
+
+color_map2 = {
+    CellState.WALL: (38, 50, 56),  # graphite
+    CellState.FLOOR: (240, 233, 221),  # light
+    CellState.ENTRY: (0, 137, 123),  # ocean
+    CellState.EXIT: (230, 74, 25),  # orange
+    CellState.PATH: (21, 101, 192),  # blue
+    CellState.LOCK: (249, 168, 37),  # gold
+}

@@ -30,4 +30,6 @@ KEY_MAP = {
     KEY_ESC: "quit",
     KEY_5: "hide_toggle",
     N_KEY_5: "hide_toggle",
+    KEY_3: "cycle_color",
+    N_KEY_3: "cycle_color",
 }
