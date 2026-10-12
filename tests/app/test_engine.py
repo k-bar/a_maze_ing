@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from app import Config
-from app.engine import AppController
+from app.engine import AppController, EngineState
 from app.grid import CellState
 
 
@@ -35,7 +35,7 @@ def test_controller_start_should_register_with_backend(
     controller = AppController(default_config, backend=mock_backend)
 
     assert controller.is_running is True
-    assert controller.is_generating is True
+    assert controller.state == EngineState.INITIALIZING
 
     # tests if method were called on mock with proper arguments
     controller.start()
@@ -48,11 +48,12 @@ def test_handle_action_regen_should_reset_generation_state(
     backend = MagicMock()
     controller = AppController(default_config, backend=backend)
 
-    controller.is_generating = False
+    # controller.is_generating = False
 
-    assert controller.is_generating is False
+    assert controller.state == EngineState.INITIALIZING
     controller.handle_action("regen")
-    assert controller.is_generating is True
+    assert (controller.state
+            == EngineState.GENERATING)  # type: ignore[comparison-overlap]
 
 
 def test_handle_action_quit_should_stop_the_engine(
@@ -81,6 +82,7 @@ def test_should_destroy_only_the_physical_wall_tile(
     assert cell_value == CellState.WALL
 
     controller.grid.changed.clear()
+    controller.state = EngineState.GENERATING
     controller.tick()
     # emulate that backend popped changed cell
     x, y, state = controller.grid.changed.popleft()
