@@ -38,7 +38,7 @@ class Config(BaseModel):
     SEED: int | None = Field(default=None)
     SOLVER: Literal["BFS", "DFS"] = (Field(default="BFS"))
 
-    ALGORITHM: Literal["KRUSKAL", "PRIM", "BACKTRACKER"] = (
+    ALGORITHM: Literal["KRUSKAL", "PRIM", "BACKTRACKER", "WILSON"] = (
         Field(default="KRUSKAL"))
 
     ANIMATION: bool = Field(default=True)
