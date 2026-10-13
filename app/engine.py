@@ -86,8 +86,10 @@ class AppController:
             case EngineState.IDLE:
                 return
             case EngineState.SOLVING:
+                # pass
                 self.solve()
             case EngineState.SOLVED:
+                # pass
                 self.show_path()
 
     def handle_action(self, action: str) -> None:
@@ -127,8 +129,12 @@ class AppController:
             cx = (x * 2) + 1
             cy = (y * 2) + 1
 
-            self.grid.register_change(cx + dirs.dx, cy + dirs.dy,
-                                      CellState.FLOOR)
+            if self.grid.cells[cy + dirs.dy][cx + dirs.dx] == CellState.FLOOR:
+                self.grid.register_change(cx + dirs.dx, cy + dirs.dy,
+                                          CellState.WALL)
+            else:
+                self.grid.register_change(cx + dirs.dx, cy + dirs.dy,
+                                          CellState.FLOOR)
         else:
             self.state = EngineState.SOLVING
 

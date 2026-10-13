@@ -1,11 +1,13 @@
 from typing import Type
 
 from .base import BaseGenerator
+from .generators import WilsonGenerator
 from .generators.kruskal import KruskalGenerator
 from .maze_model import Maze, Wall
 
 _ALGORITHMS: dict[str, Type[BaseGenerator]] = {
-    "KRUSKAL": KruskalGenerator
+    "KRUSKAL": KruskalGenerator,
+    "WILSON": WilsonGenerator,
 }
 
 

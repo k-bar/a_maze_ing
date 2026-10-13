@@ -89,8 +89,7 @@ def test_should_destroy_only_the_physical_wall_tile(
     assert state == CellState.FLOOR
     assert x == 2
     assert y == 1
-
-    controller.tick()
     assert controller.grid.cells[1][2] == CellState.FLOOR
+    controller.tick()
     cell_value_after: CellState = controller.grid.cells[1][2]
-    assert cell_value_after == CellState.FLOOR
+    assert cell_value_after == CellState.WALL
