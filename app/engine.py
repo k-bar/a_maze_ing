@@ -86,9 +86,11 @@ class AppController:
             case EngineState.IDLE:
                 return
             case EngineState.SOLVING:
-                self.solve()
+                pass
+                # self.solve()
             case EngineState.SOLVED:
-                self.show_path()
+                pass
+                # self.show_path()
 
     def handle_action(self, action: str) -> None:
         """Abstract central of action. Backends only send event strings here"""
