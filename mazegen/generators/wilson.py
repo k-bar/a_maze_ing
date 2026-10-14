@@ -1,5 +1,4 @@
 import random
-from http.cookiejar import cut_port_re
 from typing import Generator
 
 from mazegen import BaseGenerator
@@ -49,128 +48,87 @@ class WilsonGenerator(BaseGenerator):
     def get_coords(self, index: int) -> tuple[int, int]:
         return index % self.width, index // self.width
 
-    def destroy_both_walls(self, index: int, dir: Direction) -> None:
-        n_index = self.next_index(index, dir)
-        match dir:
+    def flip_both_walls(self, cell: int, next_cell: int) -> None:
+        _, _, direction = self.get_coords_and_dir(cell, next_cell)
+        match direction:
             case Direction.NORTH:
-                self.walls_n &= ~(1 << index)
-                self.walls_s &= ~(1 << n_index)
+                self.walls_n &= ~(1 << cell)
+                self.walls_s &= ~(1 << next_cell)
             case Direction.EAST:
-                self.walls_e &= ~(1 << index)
-                self.walls_w &= ~(1 << n_index)
+                self.walls_e &= ~(1 << cell)
+                self.walls_w &= ~(1 << next_cell)
             case Direction.SOUTH:
-                self.walls_s &= ~(1 << index)
-                self.walls_n &= ~(1 << n_index)
+                self.walls_s &= ~(1 << cell)
+                self.walls_n &= ~(1 << next_cell)
             case Direction.WEST:
-                self.walls_w &= ~(1 << index)
-                self.walls_e &= ~(1 << n_index)
+                self.walls_w &= ~(1 << cell)
+                self.walls_e &= ~(1 << next_cell)
+
+    def get_coords_and_dir(self, cell: int, next_cell: int) -> tuple[int, int, Direction]:
+        x, y = self.get_coords(cell)
+        xp, yp = self.get_coords(next_cell)
+        dx = xp - x
+        dy = yp - y
+        direction = Direction.from_xy(dx, dy)
+        return x, y, direction
+
+    def pick_possible_direction(self, cell: int) -> Direction:
+        picked_direction = random.choice(list(Direction))
+        while not is_move_possible(cell, self.width,
+                                   self.height,
+                                   picked_direction):
+            picked_direction = random.choice(list(Direction))
+        return picked_direction
 
     def _algorithm_loop(self) -> Generator[
         tuple[int, int, Direction], None, None]:
         # TODO needed?
         random.seed(self.seed)
 
-        ### steps ###
+        max_cells = self.width * self.height
+        untouched_cells = (1 << max_cells) - 1
 
-        # pick random cell A
-
-        wn, we, ws, ww = self.get_walls()
-        untouched_mask = wn & we & ws & ww
-
-        # chosen_cell: int
-        untouched_cells: list[int] = []
-        for index in range(self.width * self.height):
-            if untouched_mask & (1 << index):
-                untouched_cells.append(index)
-
-        print("u ", len(untouched_cells))
-
-        maze_cells: list[int] = []
-        first_maze_cell = untouched_cells.pop(
-            random.randrange(len(untouched_cells)))
-        maze_cells.append(first_maze_cell)
+        first_maze_cell = random.randrange(max_cells)
+        untouched_cells &= ~(1 << first_maze_cell)
 
         while untouched_cells:
-            print("u: ", len(untouched_cells))
-            # for wall in self.get_walls():
-            #     wall &= ~(1 << chosen_cell)
-            #
-            # x = chosen_cell // self.width
-            # y = chosen_cell % self.height
-            # untouched_cells.remove(chosen_cell)
-            #
-            # yield x, y, Direction.NORTH
 
-            # pick another random cell B
-            # exit?
-            current_path: list[int] = []
-            chosen_cell = untouched_cells.pop(
-                random.randrange(len(untouched_cells)))
-            while chosen_cell:
-                current_path.append(chosen_cell)
+            start_cell = pick_random_cell(untouched_cells, max_cells)
 
-                # if is_border_cell(chosen_cell)
-                picked_dir = random.choice(list(Direction))
-                while not is_move_possible(chosen_cell, self.width,
-                                           self.height,
-                                           picked_dir):
-                    # print("tututut")
-                    picked_dir = random.choice(list(Direction))
+            current_path = [start_cell]
+            current_path_mask = 1 << start_cell
 
-                new_cell = self.next_index(chosen_cell, picked_dir)
+            while True:
+                current_cell = current_path[-1]
+                if current_cell is None:
+                    break
 
-                if new_cell not in current_path:
-                    current_path.append(new_cell)
-                    self.destroy_both_walls(chosen_cell, picked_dir)
-                    x, y = self.get_coords(chosen_cell)
-                    yield x, y, picked_dir
+                next_cell = self.next_index(current_cell,
+                                            self.pick_possible_direction(current_cell))
+
+                if not untouched_cells & (1 << next_cell):
+                    self.flip_both_walls(current_cell, next_cell)
+                    yield self.get_coords_and_dir(current_cell, next_cell)
+                    while current_path:
+                        cell = current_path.pop()
+                        untouched_cells &= ~(1 << cell)
+                    break
+
+                elif current_path_mask & (1 << next_cell):
+
+                    while current_path[-1] != next_cell:
+                        removed = current_path.pop()
+                        current_path_mask &= ~(1 << removed)
+                        previous_cell = current_path[-1]
+                        if removed is not None and previous_cell is not None:
+                            self.flip_both_walls(removed, previous_cell)
+                            yield self.get_coords_and_dir(removed, previous_cell)
+
                 else:
-                    cross_cell_index = current_path.index(new_cell)
-                    while len(current_path) > cross_cell_index + 1:
-                        popped_cell = current_path.pop()
-                        previous_cell = current_path[len(current_path) - 1]
-                        x, y = self.get_coords(popped_cell)
-                        xp, yp = self.get_coords(previous_cell)
-                        dx = xp - x
-                        dy = yp - y
-                        back_dir = Direction.from_xy(dx, dy)
-                        # TODO WALL (from visited FLOOR)
-                        yield x, y, back_dir
-
-            # print("curcel", chosen_cell, "new cell", new_cell)
-
-            #      0   1   2   3   4
-            # 0  # 0   1   2   3   4
-            #                  ^
-            # 1  # 5   6   7   8   9
-            #
-            # 2  # 10  11  12  13  14
-            #
-            # 3  # 15> 16  17  18  19
-            #      ^
-            # 4  # 20  21  22  23  24
-
-            # print(chosen_cell % self.width,
-            #       chosen_cell // self.width,
-            #       picked_dir)
-
-            # take step from B in random direction towards cell C
-            # destroying walls
-
-            # choose randomly direction
-
-            # repeat steps for C as for B
-
-            # if broke back to already done corridor
-            #   - erase the loop and continue from place when it crossed
-            # if hit cell A, stop, take new cell
-
-
-# def is_border_cell(index: int, width: int, height: int) -> bool:
-#     return (is_north_border_cell(index, width)
-#             or is_south_border_cell(index, width, height)
-#             or is_east_border_cell(index, width, height)
-#             or is_west_border_cell(index, width, height))
+                    current_path.append(next_cell)
+                    current_path_mask |= (1 << next_cell)
+                    self.flip_both_walls(current_cell, next_cell)
+                    yield self.get_coords_and_dir(current_cell, next_cell)
 
 
 def is_move_possible(index: int, width, height, picked_dir: Direction) -> bool:
@@ -186,9 +144,6 @@ def is_move_possible(index: int, width, height, picked_dir: Direction) -> bool:
 
     # TODO add locked cells
 
-    # if (is_north_border_cell(index, width) and picked_dir == Direction.NORTH)
-    #     or (is_east_border_cell(index, width) and picked_dir == Direction.EAST)
-
 
 def is_north_border_cell(index: int, width: int) -> bool:
     return index < width
@@ -199,8 +154,18 @@ def is_south_border_cell(index: int, width: int, height: int) -> bool:
 
 
 def is_east_border_cell(index: int, width: int) -> bool:
-    return index % width == 0
+    return (index + 1) % width == 0
 
 
 def is_west_border_cell(index: int, width: int) -> bool:
     return (index % width) == 0
+
+
+def pick_random_cell(mask: int, max_cells: int) -> int | None:
+    if mask == 0:
+        return None
+
+    while True:
+        candidate = random.randrange(max_cells)
+        if mask & (1 << candidate):
+            return candidate
