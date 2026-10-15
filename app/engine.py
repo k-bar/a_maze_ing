@@ -86,11 +86,11 @@ class AppController:
             case EngineState.IDLE:
                 return
             case EngineState.SOLVING:
-                pass
-                # self.solve()
+                # pass
+                self.solve()
             case EngineState.SOLVED:
-                pass
-                # self.show_path()
+                # pass
+                self.show_path()
 
     def handle_action(self, action: str) -> None:
         """Abstract central of action. Backends only send event strings here"""
@@ -131,10 +131,10 @@ class AppController:
 
             if self.grid.cells[cy + dirs.dy][cx + dirs.dx] == CellState.FLOOR:
                 self.grid.register_change(cx + dirs.dx, cy + dirs.dy,
-                                      CellState.WALL)
+                                          CellState.WALL)
             else:
                 self.grid.register_change(cx + dirs.dx, cy + dirs.dy,
-                                      CellState.FLOOR)
+                                          CellState.FLOOR)
         else:
             self.state = EngineState.SOLVING
 
