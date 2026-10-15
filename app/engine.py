@@ -1,6 +1,7 @@
 import random
 from enum import Enum, auto
 
+from app.export_func import export_to_file
 from mazegen import create_stepping_generator, Maze, BaseGenerator
 from app import Config
 from app.grid import RenderGrid, CellState
@@ -168,6 +169,7 @@ class AppController:
 
             else:
                 self.state = EngineState.SOLVED
+                export_to_file(self.maze)
 
     def show_path(self) -> None:
         if self.maze is None:
