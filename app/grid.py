@@ -1,6 +1,8 @@
 from collections import deque
 from enum import Enum, auto
 
+import numpy as np
+
 from mazegen.utils import get_pattern_locked_cells
 
 
@@ -29,10 +31,11 @@ class RenderGrid:
         self.grid_height = (height * 2) + 1
         self.m_entry = m_entry
         self.m_exit = m_exit
-        self.cells: list[list[CellState]] = [
-            [CellState.FLOOR for _ in range(self.grid_width)]
-            for _ in range(self.grid_height)
-        ]
+        self.cells = np.full(
+            shape=(self.grid_height, self.grid_width),
+            fill_value=CellState.FLOOR,
+            dtype=object
+        )
         self.changed: deque[tuple[int, int, CellState]] = deque()
         self.clear()
 
@@ -58,5 +61,5 @@ class RenderGrid:
         self.register_change((ex_x * 2) + 1, (ex_y * 2) + 1, CellState.EXIT)
 
     def register_change(self, x: int, y: int, state: CellState) -> None:
-        self.cells[y][x] = state
+        self.cells[y, x] = state
         self.changed.append((x, y, state))

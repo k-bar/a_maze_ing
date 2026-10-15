@@ -130,7 +130,7 @@ class AppController:
             cx = (x * 2) + 1
             cy = (y * 2) + 1
 
-            if self.grid.cells[cy + dirs.dy][cx + dirs.dx] == CellState.FLOOR:
+            if self.grid.cells[cy + dirs.dy, cx + dirs.dx] == CellState.FLOOR:
                 self.grid.register_change(cx + dirs.dx, cy + dirs.dy,
                                           CellState.WALL)
             else:
@@ -190,13 +190,13 @@ class AppController:
                                           CellState.PATH)
             gx_en = self.maze.m_entry[0] * 2 + 1
             gy_en = self.maze.m_entry[1] * 2 + 1
-            if self.grid.cells[gy_en][gx_en] != CellState.ENTRY:
+            if self.grid.cells[gy_en, gx_en] != CellState.ENTRY:
                 self.grid.register_change(gx_en, gy_en,
                                           CellState.ENTRY)
 
             gx_ex = self.maze.m_exit[0] * 2 + 1
             gy_ex = self.maze.m_exit[1] * 2 + 1
-            if self.grid.cells[gy_ex][gx_ex] != CellState.EXIT:
+            if self.grid.cells[gy_ex, gx_ex] != CellState.EXIT:
                 self.grid.register_change(gx_ex, gy_ex,
                                           CellState.EXIT)
         self.state = EngineState.IDLE
@@ -204,6 +204,6 @@ class AppController:
     def hide_path(self) -> None:
         for y in range(self.grid.grid_height):
             for x in range(self.grid.grid_width):
-                if self.grid.cells[y][x] == CellState.PATH:
+                if self.grid.cells[y, x] == CellState.PATH:
                     self.grid.register_change(x, y,
                                               CellState.FLOOR)
