@@ -33,8 +33,8 @@ def main() -> None:
     config = read_config(sys.argv[1])
 
     if config:
-        print(config)
-        print(config.model_dump_json(indent=2))
+        # print(config)
+        # print(config.model_dump_json(indent=2))
 
         # maze = Maze(config.WIDTH,
         #             config.HEIGHT,

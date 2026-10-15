@@ -71,6 +71,7 @@ def create_stepping_generator(
 
     generator_class = _ALGORITHMS[algorithm_name]
     gen = generator_class(width, height, m_entry, m_exit, perfect, seed)
+    return gen
     if not perfect:
         from mazegen.generators.imperfect import ImperfectGenerator
         return ImperfectGenerator(base_generator=gen)

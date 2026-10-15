@@ -107,7 +107,10 @@ class WilsonGenerator(BaseGenerator):
             current_path_mask = (1 << start_cell)
 
             while True:
-                current_cell = current_path[-1]
+                try:
+                    current_cell = current_path[-1]
+                except IndexError:
+                    break
                 if current_cell is None:
                     break
 
@@ -117,6 +120,7 @@ class WilsonGenerator(BaseGenerator):
 
                 if not untouched_cells & (1 << next_cell):
                     self.flip_both_walls(current_cell, next_cell)
+                    # self.flip_both_walls(next_cell, current_cell)
                     yield self.get_coords_and_dir(current_cell, next_cell)
                     while current_path:
                         cell = current_path.pop()
@@ -126,11 +130,16 @@ class WilsonGenerator(BaseGenerator):
 
                 elif current_path_mask & (1 << next_cell):
 
-                    while current_path[-1] != next_cell:
+                    while current_path[-1] != next_cell and len(current_path) > 0:
                         removed = current_path.pop()
                         if removed:
                             current_path_mask &= ~(1 << removed)
-                            previous_cell = current_path[-1]
+                            try:
+                                previous_cell = current_path[-1]
+                            except IndexError:
+                                break
+                            print(current_path)
+                            print(previous_cell)
                             if (removed is not None
                                     and previous_cell is not None):
                                 self.flip_both_walls(removed, previous_cell)
