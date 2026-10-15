@@ -92,51 +92,41 @@ class WilsonGenerator(BaseGenerator):
 
         max_cells = self.width * self.height
         untouched_cells = (1 << max_cells) - 1
-
-        first_maze_cell = random.randrange(max_cells)
-        untouched_cells &= ~(1 << first_maze_cell)
         untouched_cells &= ~self.locked_cells_mask
+        first_maze_cell = pick_random_cell(untouched_cells, max_cells)
+        assert first_maze_cell is not None
+        untouched_cells &= ~(1 << first_maze_cell)
 
         while untouched_cells:
-
             start_cell = pick_random_cell(untouched_cells, max_cells)
-
+            assert start_cell is not None
             current_path = [start_cell]
-            if not current_path or not start_cell:
-                break
             current_path_mask = (1 << start_cell)
-
             while True:
                 current_cell = current_path[-1]
-                if current_cell is None:
-                    break
-
                 next_cell = self.next_index(current_cell,
                                             self.pick_possible_direction(
                                                 current_cell))
-
+                # part of maze:
                 if not untouched_cells & (1 << next_cell):
                     self.flip_both_walls(current_cell, next_cell)
                     yield self.get_coords_and_dir(current_cell, next_cell)
                     while current_path:
                         cell = current_path.pop()
-                        if cell:
-                            untouched_cells &= ~(1 << cell)
+                        assert cell is not None
+                        untouched_cells &= ~(1 << cell)
                     break
-
+                # backtrack if loop
                 elif current_path_mask & (1 << next_cell):
-
                     while current_path[-1] != next_cell:
-                        removed = current_path.pop()
-                        if removed:
-                            current_path_mask &= ~(1 << removed)
-                            previous_cell = current_path[-1]
-                            if (removed is not None
-                                    and previous_cell is not None):
-                                self.flip_both_walls(removed, previous_cell)
-                                yield self.get_coords_and_dir(removed,
-                                                              previous_cell)
-
+                        assert (removed := current_path.pop()) is not None
+                        current_path_mask &= ~(1 << removed)
+                        previous_cell = current_path[-1]
+                        assert previous_cell is not None
+                        self.flip_both_walls(removed, previous_cell)
+                        yield self.get_coords_and_dir(removed,
+                                                      previous_cell)
+                # normal wandering
                 else:
                     current_path.append(next_cell)
                     current_path_mask |= (1 << next_cell)
@@ -144,7 +134,6 @@ class WilsonGenerator(BaseGenerator):
                     yield self.get_coords_and_dir(current_cell, next_cell)
 
     def is_move_possible(self, cell: int, picked_dir: Direction) -> bool:
-
         match picked_dir:
             case Direction.NORTH:
                 if self.is_north_border_cell(cell):
@@ -171,8 +160,6 @@ class WilsonGenerator(BaseGenerator):
                     next_cell = cell - 1
                     return self.locked_cells_mask & (1 << next_cell) == 0
 
-    # TODO add locked cells
-
     def is_north_border_cell(self, index: int) -> bool:
         return index < self.width
 
@@ -189,7 +176,6 @@ class WilsonGenerator(BaseGenerator):
 def pick_random_cell(mask: int, max_cells: int) -> int | None:
     if mask == 0:
         return None
-
     while True:
         candidate = random.randrange(max_cells)
         if mask & (1 << candidate):
