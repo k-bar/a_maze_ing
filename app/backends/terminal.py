@@ -52,7 +52,7 @@ class TerminalBackend(GraphicBackend):
                                 state = controller.grid.cells[y][x]
                                 controller.grid.register_change(x, y, state)
 
-                time.sleep(0.04)
+                time.sleep(0.01)
         except KeyboardInterrupt:
             pass
         finally:  # Execute Around Pattern
