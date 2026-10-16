@@ -4,6 +4,9 @@ import time
 import tty
 import termios
 from typing import Any, Optional
+
+import numpy as np
+
 from app.backends.base import GraphicBackend
 from app.grid import RenderGrid, CellState
 from app.engine import AppController
@@ -28,6 +31,14 @@ class TerminalBackend(GraphicBackend):
             sys.stdout.write(content)
             sys.stdout.flush()
 
+    def change_colors(self, controller: "AppController") -> None:
+        if self.colors == palette1:
+            self.colors = palette2
+        else:
+            self.colors = palette1
+        for (y, x), state in np.ndenumerate(controller.grid.cells):
+            controller.grid.register_change(x, y, state)
+
     def start_loop(self, controller: "AppController") -> None:
         """Main loop with step by step animation"""
 
@@ -46,11 +57,7 @@ class TerminalBackend(GraphicBackend):
                     elif key.lower() == "5":
                         controller.handle_action("hide_toggle")
                     elif key.lower() == "3":
-                        self.colors = change_colors(self.colors)
-                        for y in range(controller.grid.grid_height):
-                            for x in range(controller.grid.grid_width):
-                                state = controller.grid.cells[y][x]
-                                controller.grid.register_change(x, y, state)
+                        self.change_colors(controller)
 
                 time.sleep(0.01)
         except KeyboardInterrupt:
@@ -180,10 +187,3 @@ def draw_menu(y_offset: int) -> None:
     )
     sys.stdout.write(f"\033[{y_offset};1H{menu}")
     sys.stdout.flush()
-
-
-def change_colors(palette: dict[str, str]) -> dict[str, str]:
-    if palette == palette1:
-        return palette2
-    else:
-        return palette1
