@@ -1,3 +1,4 @@
+import numpy as np
 from mlx import Mlx
 
 
@@ -15,6 +16,11 @@ class MLXImage:
         self.bits_per_pixel: int = img_info[1]
         self.size_line: int = img_info[2]
         self.endian: int = img_info[3]
+        raw_pixels = np.frombuffer(self.img_buffer, dtype=np.uint8).reshape(
+            height, self.size_line // 4, 4
+        )
+        self.pixels = raw_pixels[:, :width]
+        self.pixels.flags.writeable = True
 
     def put_pixel(self, x: int, y: int, r: int, g: int, b: int) -> None:
         """puts pixels in BGRA format directly to RAM"""

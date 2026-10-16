@@ -1,6 +1,8 @@
 import random
 from enum import Enum, auto
 
+import numpy as np
+
 from app.export_func import export_to_file
 from mazegen import create_stepping_generator, Maze, BaseGenerator
 from app import Config
@@ -130,12 +132,13 @@ class AppController:
             cx = (x * 2) + 1
             cy = (y * 2) + 1
 
-            if self.grid.cells[cy + dirs.dy, cx + dirs.dx] == CellState.FLOOR:
-                self.grid.register_change(cx + dirs.dx, cy + dirs.dy,
-                                          CellState.WALL)
+            tx, ty = cx + dirs.dx, cy + dirs.dy
+            if self.grid.cells[ty, tx] == CellState.FLOOR:
+                new_state = CellState.WALL
             else:
-                self.grid.register_change(cx + dirs.dx, cy + dirs.dy,
-                                          CellState.FLOOR)
+                new_state = CellState.FLOOR
+            self.grid.register_change(tx, ty, new_state)
+
         else:
             self.state = EngineState.SOLVING
 
@@ -202,8 +205,6 @@ class AppController:
         self.state = EngineState.IDLE
 
     def hide_path(self) -> None:
-        for y in range(self.grid.grid_height):
-            for x in range(self.grid.grid_width):
-                if self.grid.cells[y, x] == CellState.PATH:
-                    self.grid.register_change(x, y,
-                                              CellState.FLOOR)
+        path_coordinates = np.argwhere(self.grid.cells == CellState.PATH)
+        for y, x in path_coordinates:
+            self.grid.register_change(x, y, CellState.FLOOR)

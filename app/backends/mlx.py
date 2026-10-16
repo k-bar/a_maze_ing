@@ -1,4 +1,4 @@
-import copy
+import numpy as np
 
 from app.engine import AppController, EngineState
 from app.backends.base import GraphicBackend
@@ -62,9 +62,9 @@ class MlxBackend(GraphicBackend):
 
         r, g, b = color
 
-        for y in range(start_y, start_y + size_y):
-            for x in range(start_x, start_x + size_x):
-                self.image.put_pixel(x, y, r, g, b)
+        self.image.pixels[
+            start_y: start_y + size_y,
+            start_x: start_x + size_x] = [b, g, r, 255]
 
     def _draw_path_block(self, gx: int, gy: int,
                          color: tuple[int, int, int]) -> None:
@@ -83,8 +83,6 @@ class MlxBackend(GraphicBackend):
             size_y = self.block_size // 3
             size_x = self.block_size // 3
 
-            r, g, b = color
-
         elif gx % 2 == 0 and gy % 2 != 0:
             start_x = ((((gx // 2) * self.block_size)
                         + (((gx // 2) + (gx % 2)) * self.wall_size))
@@ -97,9 +95,7 @@ class MlxBackend(GraphicBackend):
             size_y = self.block_size // 3
             size_x = self.wall_size + self.block_size
 
-            r, g, b = color
-
-        elif gx % 2 != 0 and gy % 2 == 0:
+        else:
             start_x = (((gx // 2) * self.block_size)
                        + (((gx // 2) + (
                             gx % 2)) * self.wall_size)) + self.block_size // 3
@@ -111,11 +107,11 @@ class MlxBackend(GraphicBackend):
             size_y = self.wall_size + self.block_size
             size_x = self.block_size // 3
 
-            r, g, b = color
+        r, g, b = color
 
-        for y in range(start_y, start_y + size_y):
-            for x in range(start_x, start_x + size_x):
-                self.image.put_pixel(x, y, r, g, b)
+        self.image.pixels[
+            start_y: start_y + size_y,
+            start_x: start_x + size_x] = [b, g, r, 255]
 
     def render_frame(self, grid: RenderGrid) -> None:
 
@@ -162,18 +158,11 @@ class MlxBackend(GraphicBackend):
     def change_colors(self, controller: AppController) -> None:
         if controller.state != EngineState.IDLE:
             return
-        if self.palette == color_map1:
-            self.palette = color_map2
-        else:
-            self.palette = color_map1
-        grid_cells_copy = copy.deepcopy(controller.grid.cells)
-        for y in range(controller.grid.grid_height):
-            for x in range(controller.grid.grid_width):
-                cur_state = grid_cells_copy[y][x]
-                if cur_state == CellState.PATH:
-                    controller.grid.register_change(x, y, CellState.FLOOR)
-                else:
-                    controller.grid.register_change(x, y, cur_state)
+        self.palette = color_map2 if self.palette == color_map1 else color_map1
+        grid_cells_copy = controller.grid.cells.copy()
+        for (y, x), c_state in np.ndenumerate(grid_cells_copy):
+            n_state = CellState.FLOOR if c_state == CellState.PATH else c_state
+            controller.grid.register_change(x, y, n_state)
         if controller.path_visible:
             controller.show_path()
 
