@@ -56,6 +56,8 @@ class TerminalBackend(GraphicBackend):
                         controller.handle_action("regen")
                     elif key.lower() == "5":
                         controller.handle_action("hide_toggle")
+                    elif key.lower() == " ":
+                        controller.handle_action("pause")
                     elif key.lower() == "3":
                         self.change_colors(controller)
 
