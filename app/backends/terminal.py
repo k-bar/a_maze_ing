@@ -1,8 +1,11 @@
+import os
 import select
 import sys
+import threading
 import time
 import tty
 import termios
+from queue import Empty, Queue
 from typing import Any, Optional
 
 import numpy as np
@@ -10,6 +13,8 @@ import numpy as np
 from app.backends.base import GraphicBackend
 from app.grid import RenderGrid, CellState
 from app.engine import AppController
+
+input_queue: Queue[str] = Queue()
 
 
 class TerminalBackend(GraphicBackend):
@@ -46,35 +51,38 @@ class TerminalBackend(GraphicBackend):
             setup_terminal()
             draw_menu(len(controller.grid.cells) + 2)
 
-            FRAME_DURATION = 0.016
-            last_frame_time = time.time()
+            t = threading.Thread(target=input_thread_worker, daemon=True)
+            t.start()
 
             while controller.is_running:
                 controller.tick()
                 self.render_frame(grid=controller.grid)
+                try:
+                    pressed_key = input_queue.get_nowait()
+                except Empty:
+                    pressed_key = None
 
-                now = time.time()
-                elapsed = now - last_frame_time
-                time_left = max(0.0, FRAME_DURATION - elapsed)
+                if pressed_key is not None:
+                    if pressed_key == "\x03":
+                        controller.is_running = False
+                        break
 
-                last_frame_time = now
+                    key_lowered = pressed_key.lower()
 
-                key = handle_input(timeout=time_left)
-                if key:
-                    if key.lower() == "4":
+                    if key_lowered == "4":
                         controller.handle_action("quit")
-                    elif key.lower() == "1":
+                    elif key_lowered == "1":
                         controller.handle_action("regen")
-                    elif key.lower() == "5":
+                    elif key_lowered == "5":
                         controller.handle_action("hide_toggle")
-                    elif key.lower() == " ":
+                    elif key_lowered == " ":
                         controller.handle_action("pause")
-                    elif key.lower() == "3":
+                    elif key_lowered == "3":
                         self.change_colors(controller)
-                    elif key == "\x1b[C":  # right arrow
+                    elif pressed_key == '\x1b[C':
                         controller.handle_action("skip")
 
-                # time.sleep(0.01)
+                time.sleep(0.01)
         except KeyboardInterrupt:
             pass
         finally:  # Execute Around Pattern
@@ -101,7 +109,7 @@ def setup_terminal() -> None:
     _original_terminal_settings = termios.tcgetattr(fd)
 
     # keyboard cbreak mode (immediate read)
-    tty.setcbreak(fd)
+    tty.setraw(fd)
 
     # \033[?1049h   - enables alternative screen (no scrolling history)
     # \033[?25l     - hides blinking cursor
@@ -109,28 +117,36 @@ def setup_terminal() -> None:
     # \033[1;1H     - cursor on starting position 1,1
     sys.stdout.write("\033[?1049h\033[?25l\033[2J\033[1;1H")
     sys.stdout.flush()
+    termios.tcflush(fd, termios.TCIFLUSH)
 
 
 def restore_terminal() -> None:
     if _original_terminal_settings is not None:
         fd = sys.stdin.fileno()
-        termios.tcflush(fd, termios.TCIFLUSH)
-        termios.tcsetattr(fd, termios.TCSADRAIN, _original_terminal_settings)
+        # termios.tcflush(fd, termios.TCIFLUSH)
+        termios.tcsetattr(fd, termios.TCSAFLUSH, _original_terminal_settings)
         sys.stdout.write("\033[?1049l\033[?25h")
         sys.stdout.flush()
 
 
-def handle_input(timeout: float = 0.0) -> str:
+def input_thread_worker() -> None:
     fd = sys.stdin.fileno()
-    ready_to_read, _, _ = select.select([fd], [], [], timeout)
-    if ready_to_read:
-        ch = sys.stdin.read(1)
-        if ch == '\x1b':
-            more_chars, _, _ = select.select([fd], [], [], 0.02)
-            if more_chars:
-                ch += sys.stdin.read(2)
-        return ch
-    return ""
+    while True:
+        try:
+            b = os.read(fd, 1)
+            if not b:
+                break
+            ch = b.decode('utf-8', errors='ignore')
+
+            if ch == '\x1b':
+                ready_seq_, _, _ = select.select([fd], [], [], 0.02)
+                if ready_seq_:
+                    b_rest = os.read(fd, 2)
+                    ch += b_rest.decode('utf-8', errors='ingore')
+
+            input_queue.put(ch)
+        except OSError:
+            break
 
 
 palette1: dict[str, str] = {
