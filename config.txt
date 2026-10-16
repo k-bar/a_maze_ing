@@ -3,10 +3,10 @@
 #########################################
 
 ######################## mandatory:
-WIDTH=10
-HEIGHT=10
+WIDTH=25
+HEIGHT=25
 ENTRY=0,0
-EXIT=4,0
+EXIT=24,0
 OUTPUT_FILE=maze.txt
 PERFECT=True
 SEED=123

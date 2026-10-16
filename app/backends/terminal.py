@@ -45,10 +45,21 @@ class TerminalBackend(GraphicBackend):
         try:
             setup_terminal()
             draw_menu(len(controller.grid.cells) + 2)
+
+            FRAME_DURATION = 0.016
+            last_frame_time = time.time()
+
             while controller.is_running:
                 controller.tick()
                 self.render_frame(grid=controller.grid)
-                key = handle_input()
+
+                now = time.time()
+                elapsed = now - last_frame_time
+                time_left = max(0.0, FRAME_DURATION - elapsed)
+
+                last_frame_time = now
+
+                key = handle_input(timeout=time_left)
                 if key:
                     if key.lower() == "4":
                         controller.handle_action("quit")
@@ -60,8 +71,10 @@ class TerminalBackend(GraphicBackend):
                         controller.handle_action("pause")
                     elif key.lower() == "3":
                         self.change_colors(controller)
+                    elif key == "\x1b[C":  # right arrow
+                        controller.handle_action("skip")
 
-                time.sleep(0.01)
+                # time.sleep(0.01)
         except KeyboardInterrupt:
             pass
         finally:  # Execute Around Pattern
@@ -107,11 +120,16 @@ def restore_terminal() -> None:
         sys.stdout.flush()
 
 
-def handle_input() -> str:
+def handle_input(timeout: float = 0.0) -> str:
     fd = sys.stdin.fileno()
-    ready_to_read, _, _ = select.select([fd], [], [], 0.0)
+    ready_to_read, _, _ = select.select([fd], [], [], timeout)
     if ready_to_read:
-        return sys.stdin.read(1)
+        ch = sys.stdin.read(1)
+        if ch == '\x1b':
+            more_chars, _, _ = select.select([fd], [], [], 0.02)
+            if more_chars:
+                ch += sys.stdin.read(2)
+        return ch
     return ""
 
 

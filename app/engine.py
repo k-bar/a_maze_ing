@@ -123,6 +123,13 @@ class AppController:
                 self.previous_state = self.state
                 self.state = EngineState.PAUSED
 
+        elif action == "skip":
+            if self.state == EngineState.GENERATING:
+                self.generate_maze(skip=True)
+                return
+            if self.state == EngineState.SOLVING:
+                self.solve(skip=True)
+
     def start(self) -> None:
         self.backend.init_window(self.generator.width,
                                  self.generator.height,
@@ -130,10 +137,13 @@ class AppController:
         self.state = EngineState.GENERATING
         self.backend.start_loop(controller=self)
 
-    def generate_maze(self) -> None:
+    def generate_maze(self, skip: bool = False) -> None:
 
-        changed_cell = self.generator.step()
-        if changed_cell is not None:
+        while True:
+            changed_cell = self.generator.step()
+            if changed_cell is None:
+                self.state = EngineState.SOLVING
+                break
             x, y, dirs = changed_cell
             cx = (x * 2) + 1
             cy = (y * 2) + 1
@@ -145,10 +155,10 @@ class AppController:
                 new_state = CellState.FLOOR
             self.grid.register_change(tx, ty, new_state)
 
-        else:
-            self.state = EngineState.SOLVING
+            if not skip:
+                break
 
-    def solve(self) -> None:
+    def solve(self, skip: bool = False) -> None:
         if self.maze is None:
             wn, we, ws, ww = self.generator.get_walls()
             self.maze = Maze(width=self.width,
@@ -163,8 +173,12 @@ class AppController:
                              walls_w=ww)
 
         if self.maze is not None:
-            path_cell = self.maze.step()
-            if path_cell is not None:
+            while True:
+                path_cell = self.maze.step()
+                if path_cell is None:
+                    self.state = EngineState.SOLVED
+                    export_to_file(self.maze)
+                    break
                 x, y, dirs = path_cell
 
                 cx = (x * 2) + 1
@@ -176,9 +190,8 @@ class AppController:
                 self.grid.register_change(cx, cy, CellState.PATH)
                 self.grid.register_change(wx, wy, CellState.PATH)
 
-            else:
-                self.state = EngineState.SOLVED
-                export_to_file(self.maze)
+                if not skip:
+                    break
 
     def show_path(self) -> None:
         if self.maze is None:

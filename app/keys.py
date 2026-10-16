@@ -47,4 +47,5 @@ KEY_MAP = {
     KEY_3: "cycle_color",
     N_KEY_3: "cycle_color",
     SPACE: "pause",
+    KEY_RIGHT: "skip"
 }
