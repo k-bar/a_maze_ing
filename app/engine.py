@@ -31,7 +31,7 @@ class AppController:
 
         self.current_seed: int = 0
         self.is_running = True
-        # self.is_generating = True
+        self.previous_state = EngineState.IDLE
         self.path_visible = True
 
         self.maze: Maze | None = None
@@ -94,6 +94,8 @@ class AppController:
             case EngineState.SOLVED:
                 # pass
                 self.show_path()
+            case EngineState.PAUSED:
+                pass
 
     def handle_action(self, action: str) -> None:
         """Abstract central of action. Backends only send event strings here"""
@@ -114,8 +116,12 @@ class AppController:
             else:
                 self.show_path()
                 self.path_visible = True
-
-    # TODO: save to file
+        elif action == "pause":
+            if self.state == EngineState.PAUSED:
+                self.state = self.previous_state
+            else:
+                self.previous_state = self.state
+                self.state = EngineState.PAUSED
 
     def start(self) -> None:
         self.backend.init_window(self.generator.width,
