@@ -12,6 +12,7 @@ def default_config() -> Config:
         EXIT=(2, 2),
         PERFECT=True,
         ALGORITHM="KRUSKAL",
+        SOLVER="BFS",
         SEED=123
     )
 
@@ -22,6 +23,7 @@ def test_maze_should_have_full_connectivity(default_config: Config) -> None:
                                  m_entry=default_config.ENTRY,
                                  m_exit=default_config.EXIT,
                                  perfect=default_config.PERFECT,
+                                 solver=default_config.SOLVER,
                                  seed=default_config.SEED)
     generator.generate_all()
     walls_n, walls_e, walls_s, walls_w = generator.get_walls()
@@ -57,6 +59,7 @@ def test_perfect_maze_should_have_no_loops_or_cycles(
                                  m_entry=default_config.ENTRY,
                                  m_exit=default_config.EXIT,
                                  perfect=default_config.PERFECT,
+                                 solver=default_config.SOLVER,
                                  seed=default_config.SEED)
 
     generator.generate_all()

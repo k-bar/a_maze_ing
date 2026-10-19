@@ -75,8 +75,8 @@ def test_should_destroy_only_the_physical_wall_tile(
     mock_backend = MagicMock()
     controller = AppController(default_config, backend=mock_backend)
 
-    controller.generator = MagicMock()
-    controller.generator.step.return_value = (0, 0, MockDirection())
+    controller.maze = MagicMock()
+    controller.maze.step.return_value = (0, 0, MockDirection())
 
     cell_value: CellState = controller.grid.cells[1][2]
     assert cell_value == CellState.WALL

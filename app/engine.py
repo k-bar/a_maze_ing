@@ -4,7 +4,7 @@ from enum import Enum, auto
 import numpy as np
 
 from app.export_func import export_to_file
-from mazegen import create_stepping_generator, Maze, BaseGenerator
+from mazegen import create_stepping_generator, Maze
 from app import Config
 from app.grid import RenderGrid, CellState
 from app.backends.base import GraphicBackend
@@ -34,7 +34,7 @@ class AppController:
         self.previous_state = EngineState.IDLE
         self.path_visible = True
 
-        self.maze: Maze | None = None
+        # self.maze: Maze | None = None
 
         self.grid = RenderGrid(
             width=self.width,
@@ -45,9 +45,9 @@ class AppController:
 
         self.state: EngineState = EngineState.INITIALIZING
 
-        self.generator = self.create_generator()
+        self.maze = self.create_generator()
 
-    def create_generator(self) -> BaseGenerator:
+    def create_generator(self) -> Maze:
         """factory for generator and managing seed"""
         if self.initial_seed is not None:
             self.current_seed = self.initial_seed
@@ -66,6 +66,7 @@ class AppController:
             m_entry=self.config.ENTRY,
             m_exit=self.config.EXIT,
             perfect=self.config.PERFECT,
+            solver=self.config.SOLVER,
             seed=self.current_seed
         )
 
@@ -103,8 +104,7 @@ class AppController:
             self.is_running = False
 
         elif action == "regen":
-            self.generator = self.create_generator()
-            self.maze = None
+            self.maze = self.create_generator()
             self.grid.clear()
             self.state = EngineState.GENERATING
         elif action == "hide_toggle":
@@ -131,8 +131,8 @@ class AppController:
                 self.solve(skip=True)
 
     def start(self) -> None:
-        self.backend.init_window(self.generator.width,
-                                 self.generator.height,
+        self.backend.init_window(self.width,
+                                 self.height,
                                  "A-Maze-ing")
         self.state = EngineState.GENERATING
         self.backend.start_loop(controller=self)
@@ -140,7 +140,7 @@ class AppController:
     def generate_maze(self, skip: bool = False) -> None:
 
         while True:
-            changed_cell = self.generator.step()
+            changed_cell = self.maze.step()
             if changed_cell is None:
                 self.state = EngineState.SOLVING
                 break
@@ -159,22 +159,10 @@ class AppController:
                 break
 
     def solve(self, skip: bool = False) -> None:
-        if self.maze is None:
-            wn, we, ws, ww = self.generator.get_walls()
-            self.maze = Maze(width=self.width,
-                             height=self.height,
-                             m_entry=self.config.ENTRY,
-                             m_exit=self.config.EXIT,
-                             perfect=self.config.PERFECT,
-                             solver=self.config.SOLVER,
-                             walls_n=wn,
-                             walls_e=we,
-                             walls_s=ws,
-                             walls_w=ww)
 
         if self.maze is not None:
             while True:
-                path_cell = self.maze.step()
+                path_cell = self.maze.path_step()
                 if path_cell is None:
                     self.state = EngineState.SOLVED
                     export_to_file(self.maze)

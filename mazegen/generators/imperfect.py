@@ -1,19 +1,20 @@
 import random
 from typing import Generator
 
-from .. import BaseGenerator
+from ..maze_model import Maze
 from ..utils import Direction, get_pattern_locked_cells
 
 
-class ImperfectGenerator(BaseGenerator):
+class ImperfectGenerator(Maze):
 
-    def __init__(self, base_generator: BaseGenerator) -> None:
+    def __init__(self, base_generator: Maze) -> None:
         super().__init__(
             width=base_generator.width,
             height=base_generator.height,
             m_entry=base_generator.m_entry,
             m_exit=base_generator.m_exit,
             perfect=False,
+            solver=base_generator.solver,
             seed=base_generator.seed
         )
 

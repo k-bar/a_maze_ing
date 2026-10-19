@@ -1,19 +1,20 @@
 import random
 from typing import Generator
 
-from mazegen import BaseGenerator
+from ..maze_model import Maze
 from mazegen.utils import Direction, get_pattern_locked_cells
 
 
-class RecursiveBacktracker(BaseGenerator):
+class RecursiveBacktracker(Maze):
     def __init__(self,
                  width: int,
                  height: int,
                  m_entry: tuple[int, int],
                  m_exit: tuple[int, int],
                  perfect: bool,
+                 solver: str,
                  seed: int | None = None) -> None:
-        super().__init__(width, height, m_entry, m_exit, perfect, seed)
+        super().__init__(width, height, m_entry, m_exit, perfect, solver, seed)
 
         if seed is None:
             random.seed(seed)
@@ -44,7 +45,6 @@ class RecursiveBacktracker(BaseGenerator):
     def get_walls(self) -> tuple[int, int, int, int]:
         return self.walls_n, self.walls_e, self.walls_s, self.walls_w
 
-    # @staticmethod
     def pick_next_cell(self, cell: int, untouched_cells: int) -> int | None:
 
         moves = [d for d in Direction if
