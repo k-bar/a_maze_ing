@@ -31,9 +31,6 @@ class ImperfectGenerator(BaseGenerator):
         except StopIteration:
             return None
 
-    def get_walls(self) -> tuple[int, int, int, int]:
-        return self.base_generator.get_walls()
-
     def del_death_ends(self) \
             -> Generator[tuple[int, int, Direction], None, None]:
         """Remove walls from eligible dead-end cells.
