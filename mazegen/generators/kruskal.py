@@ -1,11 +1,11 @@
 import random
 from typing import Generator
 
-from mazegen import BaseGenerator
+from ..maze_model import Maze
 from mazegen.utils import Direction, get_pattern_locked_cells
 
 
-class KruskalGenerator(BaseGenerator):
+class KruskalGenerator(Maze):
     """
     Disjoint-set (Union-Find) data structure.
     Used in graph theory to find the Minimum Spanning Tree (MST)
@@ -19,6 +19,7 @@ class KruskalGenerator(BaseGenerator):
             m_entry: tuple[int, int],
             m_exit: tuple[int, int],
             perfect: bool,
+            solver: str,
             seed: int | None = None
     ) -> None:
         """
@@ -30,7 +31,7 @@ class KruskalGenerator(BaseGenerator):
                     it is the root node of the tree (corridor).
             deep: A dictionary storing the "depth" (rank) of the tree,
             """
-        super().__init__(width, height, m_entry, m_exit, perfect, seed)
+        super().__init__(width, height, m_entry, m_exit, perfect, solver, seed)
 
         if seed is None:
             random.seed(seed)

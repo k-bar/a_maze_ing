@@ -1,13 +1,13 @@
 from typing import Generator
 
-from mazegen import BaseGenerator
+from mazegen import Maze
 from mazegen.generators.imperfect import ImperfectGenerator
 from mazegen.utils import Direction
 
 
-class MockBaseGenerator(BaseGenerator):
+class MockBaseGenerator(Maze):
     def __init__(self) -> None:
-        super().__init__(3, 3, (0, 0), (2, 2), True, 42)
+        super().__init__(3, 3, (0, 0), (2, 2), True, "BFS", 42)
         total_cells = 9
         full_mask = (1 << total_cells) - 1
 

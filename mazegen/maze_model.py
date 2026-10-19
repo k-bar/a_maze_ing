@@ -1,4 +1,5 @@
-# from __future__ import annotations
+import random
+from abc import abstractmethod, ABC
 from enum import IntFlag
 
 from mazegen.utils import get_pattern_locked_cells
@@ -19,7 +20,7 @@ class Wall(IntFlag):
     ALL = 1 | 2 | 4 | 8
 
 
-class Maze:
+class Maze(ABC):
     """
     Represents the maze grid.
 
@@ -39,51 +40,138 @@ class Maze:
             m_exit: tuple[int, int],
             perfect: bool,
             solver: str,
-            walls_n: int,
-            walls_e: int,
-            walls_s: int,
-            walls_w: int,
-            # seed: int | None,
-            # output_file: str | None,
-            # algorithm: str | None,
+            seed: int | None = None,
     ) -> None:
         self.width = width
         self.height = height
         self.m_entry = m_entry
         self.m_exit = m_exit
         self.perfect = perfect
+        self.seed = seed
 
-        self.walls_n: int = walls_n
-        self.walls_e: int = walls_e
-        self.walls_s: int = walls_s
-        self.walls_w: int = walls_w
+        self.walls_n: int
+        self.walls_e: int
+        self.walls_s: int
+        self.walls_w: int
 
         self.locked_cells = get_pattern_locked_cells(self.width, self.height)
 
         self.solver: str = solver
         self.path: list[tuple[int, int]] = []
+
         if self.solver == 'DFS':
-            self._animation_iterator = self.solver_dfs()
+            self._path_animation_iterator = self.solver_dfs()
         else:
-            self._animation_iterator = self.solver_bfs()
+            self._path_animation_iterator = self.solver_bfs()
 
-    def solve(self) -> list[str]:
-        """mocked solve"""
-        # TODO IMPLEMENT
-        return ['E', 'S', 'E', 'N', 'E']
+    @abstractmethod
+    def step(self) -> tuple[int, int, Direction] | None:
+        """
+        Performs exactly one logic step of wall breaking
 
-    def save_to_file(self, filepath: str) -> None:
-        """Saves the maze to a file"""
-        # TODO IMPLEMENT
+        Returns: (x, y, local_mas) of the cell that was changed,
+        None when algorithm finished its work
+        """
         pass
 
     def get_walls(self) -> tuple[int, int, int, int]:
         return self.walls_n, self.walls_e, self.walls_s, self.walls_w
 
-    def step(self) -> tuple[int, int, Direction] | None:
+    def generate_all(self) -> None:
+        """Performs whole algorithm at once"""
+        while self.step() is not None:
+            pass
+
+    def flip_both_walls(self, cell: int, next_cell: int) -> None:
+        _, _, direction = self.get_coords_and_dir(cell, next_cell)
+        match direction:
+            case Direction.NORTH:
+                self.walls_n ^= (1 << cell)
+                self.walls_s ^= (1 << next_cell)
+            case Direction.EAST:
+                self.walls_e ^= (1 << cell)
+                self.walls_w ^= (1 << next_cell)
+            case Direction.SOUTH:
+                self.walls_s ^= (1 << cell)
+                self.walls_n ^= (1 << next_cell)
+            case Direction.WEST:
+                self.walls_w ^= (1 << cell)
+                self.walls_e ^= (1 << next_cell)
+
+    def next_index(self, index: int, direction: Direction) -> int:
+        return index + (self.width * direction.dy) + direction.dx
+
+    def pick_possible_direction(self, cell: int, forbidden: int) -> Direction:
+        picked_direction = random.choice(list(Direction))
+        while not self.is_move_possible(cell, picked_direction, forbidden):
+            picked_direction = random.choice(list(Direction))
+        return picked_direction
+
+    @staticmethod
+    def pick_random_cell(mask: int, max_cells: int) -> int | None:
+        if mask == 0:
+            return None
+        while True:
+            candidate = random.randrange(max_cells)
+            if mask & (1 << candidate):
+                return candidate
+
+    def get_coords(self, index: int) -> tuple[int, int]:
+        return index % self.width, index // self.width
+
+    def get_coords_and_dir(self, cell: int, next_cell: int) \
+            -> tuple[int, int, Direction]:
+        x, y = self.get_coords(cell)
+        x_n, y_n = self.get_coords(next_cell)
+        dx = x_n - x
+        dy = y_n - y
+        direction = Direction.from_xy(dx, dy)
+        return x, y, direction
+
+    def is_move_possible(self, cell: int, picked_dir: Direction,
+                         forbidden: int) -> bool:
+        match picked_dir:
+            case Direction.NORTH:
+                if self.is_north_border_cell(cell):
+                    return False
+                else:
+                    next_cell = cell - self.width
+                    return forbidden & (1 << next_cell) == 0
+            case Direction.EAST:
+                if self.is_east_border_cell(cell):
+                    return False
+                else:
+                    next_cell = cell + 1
+                    return forbidden & (1 << next_cell) == 0
+            case Direction.SOUTH:
+                if self.is_south_border_cell(cell):
+                    return False
+                else:
+                    next_cell = cell + self.width
+                    return forbidden & (1 << next_cell) == 0
+            case Direction.WEST:
+                if self.is_west_border_cell(cell):
+                    return False
+                else:
+                    next_cell = cell - 1
+                    return forbidden & (1 << next_cell) == 0
+
+    def is_north_border_cell(self, index: int) -> bool:
+        return index < self.width
+
+    def is_south_border_cell(self, index: int) -> bool:
+        return index >= self.width * (self.height - 1)
+
+    def is_east_border_cell(self, index: int) -> bool:
+        return (index + 1) % self.width == 0
+
+    def is_west_border_cell(self, index: int) -> bool:
+        return (index % self.width) == 0
+
+    def path_step(self) -> tuple[int, int, Direction] | None:
 
         try:
-            return next(self._animation_iterator)
+            return next(self._path_animation_iterator)
         except StopIteration:
             return None
 
