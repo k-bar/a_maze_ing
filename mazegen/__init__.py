@@ -1,13 +1,14 @@
 from typing import Type
 
 from .base import BaseGenerator
-from .generators import WilsonGenerator
+from .generators import WilsonGenerator, RecursiveBacktracker
 from .generators.kruskal import KruskalGenerator
 from .maze_model import Maze, Wall
 
 _ALGORITHMS: dict[str, Type[BaseGenerator]] = {
     "KRUSKAL": KruskalGenerator,
     "WILSON": WilsonGenerator,
+    "BACKTRACKER": RecursiveBacktracker,
 }
 
 

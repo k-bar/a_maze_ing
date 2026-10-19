@@ -24,12 +24,8 @@ class MockBaseGenerator(BaseGenerator):
         except StopIteration:
             return None
 
-    def get_walls(self) -> tuple[int, int, int, int]:
-        return self.walls_n, self.walls_e, self.walls_s, self.walls_w
-
-    def _run_mock_steps(self) -> (
-            Generator)[tuple[int, int, Direction], None, None]:
-
+    def _run_mock_steps(self) \
+            -> Generator[tuple[int, int, Direction], None, None]:
         # demolish walls between cell 0 and 3
         self.walls_s &= ~(1 << 0)
         self.walls_n &= ~(1 << 3)
@@ -50,7 +46,6 @@ def test_imperfect_generator_should_be_deterministic_and_remove_dead_ends() \
     imperfect_gen_2 = ImperfectGenerator(base_gen_2)
     imperfect_gen_2.seed = 999
 
-    print("cos", imperfect_gen_1.get_walls())
     steps_1 = []
     while (step := imperfect_gen_1.step()) is not None:
         steps_1.append(step)
