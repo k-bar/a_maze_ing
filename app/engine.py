@@ -4,10 +4,11 @@ from enum import Enum, auto
 import numpy as np
 
 from app.export_func import export_to_file
-from mazegen import create_stepping_generator, Maze
+from mazegen import create_stepping_generator, Maze, BaseGenerator
 from app import Config
 from app.grid import RenderGrid, CellState
 from app.backends.base import GraphicBackend
+from mazegen.solvers import MazeSolver
 
 
 class EngineState(Enum):
@@ -34,8 +35,6 @@ class AppController:
         self.previous_state = EngineState.IDLE
         self.path_visible = True
 
-        # self.maze: Maze | None = None
-
         self.grid = RenderGrid(
             width=self.width,
             height=self.height,
@@ -45,9 +44,13 @@ class AppController:
 
         self.state: EngineState = EngineState.INITIALIZING
 
-        self.maze = self.create_generator()
+        self.maze: Maze | None = None
+        self.generator_process: BaseGenerator | None = None
+        self.solver_process: MazeSolver | None = None
 
-    def create_generator(self) -> Maze:
+        self.init_new_run()
+
+    def init_new_run(self) -> None:
         """factory for generator and managing seed"""
         if self.initial_seed is not None:
             self.current_seed = self.initial_seed
@@ -59,16 +62,21 @@ class AppController:
                 f" with seed: {self.current_seed}"
             )
 
-        return create_stepping_generator(
+        self.generator_process = create_stepping_generator(
             algorithm_name=self.algorithm_name,
             width=self.width,
             height=self.height,
             m_entry=self.config.ENTRY,
             m_exit=self.config.EXIT,
             perfect=self.config.PERFECT,
-            solver=self.config.SOLVER,
+            # solver=self.config.SOLVER,
             seed=self.current_seed
         )
+
+        assert self.generator_process is not None
+        self.maze = self.generator_process.maze
+        assert self.maze is not None
+        self.solver_process = None
 
     # def change_algorithm_in_runtime(self, new_algorithm: str) -> None:
     #     if new_algorithm in get_available_algorithm():
@@ -104,7 +112,7 @@ class AppController:
             self.is_running = False
 
         elif action == "regen":
-            self.maze = self.create_generator()
+            self.init_new_run()
             self.grid.clear()
             self.state = EngineState.GENERATING
         elif action == "hide_toggle":
@@ -140,8 +148,13 @@ class AppController:
     def generate_maze(self, skip: bool = False) -> None:
 
         while True:
-            changed_cell = self.maze.step()
+            assert self.generator_process is not None
+            changed_cell = self.generator_process.step()
             if changed_cell is None:
+                assert self.maze is not None
+                from mazegen import create_stepping_solver
+                self.solver_process = create_stepping_solver(
+                    self.config.SOLVER, self.maze)
                 self.state = EngineState.SOLVING
                 break
             x, y, dirs = changed_cell
@@ -162,7 +175,8 @@ class AppController:
 
         if self.maze is not None:
             while True:
-                path_cell = self.maze.path_step()
+                assert self.solver_process is not None
+                path_cell = self.solver_process.step()
                 if path_cell is None:
                     self.state = EngineState.SOLVED
                     export_to_file(self.maze)

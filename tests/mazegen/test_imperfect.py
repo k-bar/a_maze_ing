@@ -1,50 +1,43 @@
 from typing import Generator
 
-from mazegen import Maze
+from mazegen import BaseGenerator, Maze
 from mazegen.generators.imperfect import ImperfectGenerator
 from mazegen.utils import Direction
 
 
-class MockBaseGenerator(Maze):
+class MockGenerator(BaseGenerator):
     def __init__(self) -> None:
-        super().__init__(3, 3, (0, 0), (2, 2), True, "BFS", 42)
-        total_cells = 9
-        full_mask = (1 << total_cells) - 1
-
-        self.walls_n = full_mask
-        self.walls_e = full_mask
-        self.walls_s = full_mask
-        self.walls_w = full_mask
-
-        self._iterator = self._run_mock_steps()
+        fake_maze = Maze(width=3, height=3, m_entry=(0, 0), m_exit=(2, 2),
+                         perfect=False, seed=42)
+        super().__init__(fake_maze)
 
     def step(self) -> tuple[int, int, Direction] | None:
         try:
-            return next(self._iterator)
+            return next(self._animation_iterator)
         except StopIteration:
             return None
 
-    def _run_mock_steps(self) \
+    def _algorithm_loop(self) \
             -> Generator[tuple[int, int, Direction], None, None]:
         # demolish walls between cell 0 and 3
-        self.walls_s &= ~(1 << 0)
-        self.walls_n &= ~(1 << 3)
+        self.maze.walls_s &= ~(1 << 0)
+        self.maze.walls_n &= ~(1 << 3)
         yield 0, 0, Direction.SOUTH
         # demolish walls between cell 3 and 6
-        self.walls_s &= ~(1 << 3)
-        self.walls_n &= ~(1 << 6)
+        self.maze.walls_s &= ~(1 << 3)
+        self.maze.walls_n &= ~(1 << 6)
         yield 0, 1, Direction.SOUTH
 
 
 def test_imperfect_generator_should_be_deterministic_and_remove_dead_ends() \
         -> None:
-    base_gen_1 = MockBaseGenerator()
+    base_gen_1 = MockGenerator()
     imperfect_gen_1 = ImperfectGenerator(base_gen_1)
-    imperfect_gen_1.seed = 999
+    imperfect_gen_1.maze.seed = 999
 
-    base_gen_2 = MockBaseGenerator()
+    base_gen_2 = MockGenerator()
     imperfect_gen_2 = ImperfectGenerator(base_gen_2)
-    imperfect_gen_2.seed = 999
+    imperfect_gen_2.maze.seed = 999
 
     steps_1 = []
     while (step := imperfect_gen_1.step()) is not None:
