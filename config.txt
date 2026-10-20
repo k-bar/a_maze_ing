@@ -4,9 +4,9 @@
 
 ######################## mandatory:
 WIDTH=15
-HEIGHT=15
+HEIGHT=25
 ENTRY=0,0
-EXIT=14,0
+EXIT=2,2
 OUTPUT_FILE=maze.txt
 PERFECT=True
 SEED=123
@@ -15,7 +15,7 @@ SEED=123
 
 
 # Algorithms: KRUSKAL, PRIM, WILSON, BACKTRACKER
-ALGORITHM=BACKTRACKER
+ALGORITHM=WILSON
 # Solvers: BFS, DFS
 SOLVER=DFS
 
@@ -24,4 +24,4 @@ ANIMATION=TRUE
 COLOR=green
 
 # Renderer modes: MLX, Terminal
-DISPLAY_MODE=MLX
+DISPLAY_MODE=Terminal

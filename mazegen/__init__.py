@@ -1,51 +1,65 @@
 from typing import Type
 
-from .generators import WilsonGenerator, RecursiveBacktracker
-from .generators.kruskal import KruskalGenerator
+from .generators import KruskalGenerator, WilsonGenerator, \
+    RecursiveBacktracker, BaseGenerator, ImperfectGenerator
 from .maze_model import Maze, Wall
+from .solvers import MazeSolver
+from .solvers.bfs import BFSSolver
+from .solvers.dfs import DFSSolver
 
-_ALGORITHMS: dict[str, Type[Maze]] = {
+_ALGORITHMS: dict[str, Type[BaseGenerator]] = {
     "KRUSKAL": KruskalGenerator,
     "WILSON": WilsonGenerator,
     "BACKTRACKER": RecursiveBacktracker,
 }
 
+_SOLVERS = {
+    "BFS": BFSSolver,
+    "DFS": DFSSolver
+}
 
-# def generate_maze(
-#         width: int,
-#         height: int,
-#         m_entry: tuple[int, int],
-#         m_exit: tuple[int, int],
-#         solver: str,
-#         perfect: bool = True,
-#         seed: int | None = None,
-#         algorithm: str = "kruskal",
-# ) -> Maze:
-#     """Public autonomous export API for .whl (without animation)"""
-#     if algorithm not in _ALGORITHMS:
-#         raise ValueError(f"Algorithm {algorithm} not available")
-#
-#     generator_class = _ALGORITHMS[algorithm]
-#     gen = generator_class(
-#         width=width,
-#         height=height,
-#         m_entry=m_entry,
-#         m_exit=m_exit,
-#         perfect=perfect,
-#         solver=solver,
-#         seed=seed
-#     )
-#     gen.generate_all()
-#
-#     # wn, we, ws, ww = gen.get_walls()
-#     return Maze(
-#         width=width,
-#         height=height,
-#         m_entry=m_entry,
-#         m_exit=m_exit,
-#         perfect=perfect,
-#         solver=solver,
-#     )
+
+def generate_maze(
+        width: int,
+        height: int,
+        m_entry: tuple[int, int],
+        m_exit: tuple[int, int],
+        algorithm: str = "BACKTRACKER",
+        perfect: bool = True,
+        seed: int | None = None,
+
+) -> Maze:
+    """Public autonomous export API for .whl (without animation)"""
+    upper_algorithm = algorithm.upper()
+
+    if upper_algorithm not in _ALGORITHMS:
+        raise ValueError(f"Algorithm {algorithm} not available")
+
+    maze = Maze(
+        width=width,
+        height=height,
+        m_entry=m_entry,
+        m_exit=m_exit,
+        perfect=perfect,
+        seed=seed
+    )
+    generator_class = _ALGORITHMS[upper_algorithm]
+    gen = generator_class(maze)
+    if not perfect:
+        gen = ImperfectGenerator(base_generator=gen)
+    gen.generate_all()
+
+    return maze
+
+
+def solve_maze(maze: Maze, algorithm: str = "BFS") -> list[tuple[int, int]]:
+    upper_solver = algorithm.upper()
+    if upper_solver not in _SOLVERS:
+        raise ValueError(f"Solver {algorithm} not available")
+    solver_class = _SOLVERS[upper_solver]
+    solver_process = solver_class(maze)
+
+    return solver_process.solve_all()
 
 
 def get_available_algorithm() -> list[str]:
@@ -60,24 +74,31 @@ def create_stepping_generator(
         m_entry: tuple[int, int],
         m_exit: tuple[int, int],
         perfect: bool,
-        solver: str,
         seed: int | None = None
-) -> Maze:
+) -> BaseGenerator:
     """Public factory for stepping generators for application engine"""
     if algorithm_name not in _ALGORITHMS:
         raise ValueError(f"Algorithm {algorithm_name} not available")
 
+    maze = Maze(width, height, m_entry, m_exit, perfect, seed)
+
     generator_class = _ALGORITHMS[algorithm_name]
-    gen = generator_class(width, height, m_entry, m_exit, perfect, solver,
-                          seed)
+    gen = generator_class(maze)
     if not perfect:
         from mazegen.generators.imperfect import ImperfectGenerator
         return ImperfectGenerator(base_generator=gen)
     return gen
 
 
-__all__ = ['Maze', 'Wall',  # "BaseGenerator",
-           # 'get_locked_pattern_coords',
+def create_stepping_solver(solver_name: str, maze: Maze) -> MazeSolver:
+    if solver_name not in _SOLVERS:
+        raise ValueError(f"Solver {solver_name} not available")
+    return _SOLVERS[solver_name](maze)
+
+
+__all__ = ['Maze', 'Wall', "BaseGenerator",
            "create_stepping_generator",
-           # "generate_maze",
+           "create_stepping_solver",
+           "generate_maze",
+           "solve_maze",
            "get_available_algorithm"]

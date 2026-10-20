@@ -1,5 +1,7 @@
 from app import Config
-from mazegen.generators import KruskalGenerator
+from mazegen import Maze, BaseGenerator
+from mazegen.generators import KruskalGenerator, RecursiveBacktracker, \
+    WilsonGenerator
 import pytest
 
 
@@ -18,15 +20,17 @@ def default_config() -> Config:
 
 
 def test_maze_should_have_full_connectivity(default_config: Config) -> None:
-    generator = KruskalGenerator(width=default_config.WIDTH,
-                                 height=default_config.HEIGHT,
-                                 m_entry=default_config.ENTRY,
-                                 m_exit=default_config.EXIT,
-                                 perfect=default_config.PERFECT,
-                                 solver=default_config.SOLVER,
-                                 seed=default_config.SEED)
+    maze_model = Maze(
+        width=default_config.WIDTH,
+        height=default_config.HEIGHT,
+        m_entry=default_config.ENTRY,
+        m_exit=default_config.EXIT,
+        perfect=default_config.PERFECT,
+        seed=default_config.SEED
+    )
+    generator = KruskalGenerator(maze_model)
     generator.generate_all()
-    walls_n, walls_e, walls_s, walls_w = generator.get_walls()
+    walls_n, walls_e, walls_s, walls_w = maze_model.get_walls()
     visited = set()
 
     queue = [(0, 0)]
@@ -52,18 +56,23 @@ def test_maze_should_have_full_connectivity(default_config: Config) -> None:
     assert len(visited) == default_config.WIDTH * default_config.HEIGHT - 18
 
 
+@pytest.mark.parametrize("generator_class",
+                         [KruskalGenerator, RecursiveBacktracker,
+                          WilsonGenerator])
 def test_perfect_maze_should_have_no_loops_or_cycles(
-        default_config: Config) -> None:
-    generator = KruskalGenerator(width=default_config.WIDTH,
-                                 height=default_config.HEIGHT,
-                                 m_entry=default_config.ENTRY,
-                                 m_exit=default_config.EXIT,
-                                 perfect=default_config.PERFECT,
-                                 solver=default_config.SOLVER,
-                                 seed=default_config.SEED)
+        default_config: Config, generator_class: type[BaseGenerator]) -> None:
+    maze_model = Maze(
+        width=default_config.WIDTH,
+        height=default_config.HEIGHT,
+        m_entry=default_config.ENTRY,
+        m_exit=default_config.EXIT,
+        perfect=default_config.PERFECT,
+        seed=default_config.SEED
+    )
+    generator = generator_class(maze_model)
 
     generator.generate_all()
-    walls_n, walls_e, walls_s, walls_w = generator.get_walls()
+    walls_n, walls_e, walls_s, walls_w = generator.maze.get_walls()
     visited = set()
 
     has_cycle = False
@@ -116,4 +125,5 @@ def test_perfect_maze_should_have_no_loops_or_cycles(
         has_cycle = True
 
     assert has_cycle is False
-    assert len(visited) == default_config.WIDTH * default_config.HEIGHT - 18
+    assert len(
+        visited) == default_config.WIDTH * default_config.HEIGHT - 18

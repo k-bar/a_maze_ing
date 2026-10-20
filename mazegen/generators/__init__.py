@@ -1,5 +1,13 @@
+from .base_generator import BaseGenerator
+from .imperfect import ImperfectGenerator
 from .kruskal import KruskalGenerator
-from .recursive_backtracker import RecursiveBacktracker
 from .wilson import WilsonGenerator
+from .recursive_backtracker import RecursiveBacktracker
 
-__all__ = ["KruskalGenerator", "WilsonGenerator", "RecursiveBacktracker"]
+__all__ = [
+    "BaseGenerator",
+    "ImperfectGenerator",
+    "KruskalGenerator",
+    "WilsonGenerator",
+    "RecursiveBacktracker",
+]

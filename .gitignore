@@ -226,3 +226,4 @@ maze.txt
 pkgs/*
 !pkgs/
 !pkgs/*.whl
+test.py
