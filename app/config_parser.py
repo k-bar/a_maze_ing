@@ -88,6 +88,31 @@ class Config(BaseModel):
         except ValueError as e:
             raise ValueError(f"Point EXIT {e}")
 
+        if self.DISPLAY_MODE == "TERMINAL":
+            cols, lines = _get_terminal_bounds()
+
+            max_w = (cols - 1) // 2
+            max_h = (lines - 1 - 2) // 2
+
+            if self.WIDTH > max_w or self.HEIGHT > max_h:
+                raise ValueError(
+                    f"Maze {self.WIDTH}x{self.HEIGHT} is too big for your console window ({cols}x{lines})! "
+                    f"Maximum available size in this window is: {max_w}x{max_h}."
+                )
+
+        elif self.DISPLAY_MODE == "MLX":
+            win_w, win_h = 1280, 720
+            hud_h = 60
+
+            max_w = (win_w - 1) // 4
+            max_h = (win_h - hud_h - 1) // 4
+
+            if self.WIDTH > max_w or self.HEIGHT > max_h:
+                raise ValueError(
+                    f"Maze {self.WIDTH}x{self.HEIGHT} is exceeding render limits for window {win_w}x{win_h}!"
+                    f"Maximum available size is {max_w}x{max_h}"
+                )
+
         return self
 
 
@@ -162,3 +187,12 @@ def read_and_parse(file: typing.IO[str]) -> Config:
         print("Configuration file is empty or has no data "
               "in the format KEY=VALUE.", file=sys.stderr)
         sys.exit(1)
+
+
+def _get_terminal_bounds():
+    import os
+    try:
+        size = os.get_terminal_size()
+        return size.columns, size.lines
+    except OSError:
+        return 80, 24
