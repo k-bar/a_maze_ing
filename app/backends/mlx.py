@@ -21,26 +21,32 @@ class MlxBackend(GraphicBackend):
         self.win_ptr = None
         # image: writable memory view of the image raw pixels plus metadata
         self.image: MLXImage | None = None
+        self.hud_image: MLXImage | None = None
         self.palette: dict[CellState, tuple[int, int, int]] = color_map1
 
         self.fixed_win_width = 1280
         self.fixed_win_height = 720
         self.hud_height = 60
+        self.maze_image_height = self.fixed_win_height - self.hud_height
 
         self.block_size = 30
         self.wall_size: int = int(self.block_size / 10)
         self.offset_x = 0
         self.offset_y = 0
 
+        self.last_hud_state: str = ""
+        self.controller: AppController | None = None
+
     def init_window(self, width: int, height: int, title: str) -> None:
 
-        self.block_size, self.wall_size, self.offset_x, self.offset_y = calculate_mlx_geometry(
-            maze_w=width,
-            maze_h=height,
-            win_w=self.fixed_win_width,
-            win_h=self.fixed_win_height,
-            hud_h=self.hud_height
-        )
+        self.block_size, self.wall_size, self.offset_x, self.offset_y = \
+            calculate_mlx_geometry(
+                maze_w=width,
+                maze_h=height,
+                win_w=self.fixed_win_width,
+                win_h=self.fixed_win_height,
+                hud_h=self.hud_height
+            )
 
         blocks_x = width
         blocks_y = height
@@ -53,8 +59,13 @@ class MlxBackend(GraphicBackend):
         self.win_ptr = self.mlx.mlx_new_window(
             self.mlx_ptr, self.fixed_win_width, self.fixed_win_height, title
         )
+        self.maze_image_height = self.fixed_win_height - self.hud_height
         self.image = MLXImage(self.mlx, self.mlx_ptr, self.fixed_win_width,
-                              self.fixed_win_height)
+                              self.maze_image_height)
+        self.hud_image = MLXImage(self.mlx, self.mlx_ptr, self.fixed_win_width,
+                                  self.hud_height)
+        assert self.hud_image is not None
+        self.hud_image.pixels[:, :] = [0, 0, 0, 255]
 
     def _draw_pixel_block(self, gx: int, gy: int,
                           color: tuple[int, int, int]) -> None:
@@ -153,13 +164,45 @@ class MlxBackend(GraphicBackend):
                 self._draw_pixel_block(x, y, color)
 
         if self.win_ptr and self.image:
+            assert self.controller is not None
+            # current_hud_snapshot = ""
+            ctrl = self.controller
+            current_hud_snapshot = (f"{ctrl.current_seed}_"
+                                    f"{ctrl.algorithm_name}_"
+                                    f"{ctrl.width}_{ctrl.height}_"
+                                    f"{ctrl.state.name}")
+
             self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.win_ptr,
                                              self.image.img_ptr, 0, 0)
 
+            if current_hud_snapshot != self.last_hud_state:
+                self.last_hud_state = current_hud_snapshot
+                hud_top = self.fixed_win_height - self.hud_height
+                assert self.hud_image is not None
+                self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.win_ptr,
+                                                 self.hud_image.img_ptr, 0,
+                                                 hud_top)
+
+                info_text = (f"SEED: {ctrl.current_seed} |"
+                             f" ALG: {ctrl.algorithm_name} | "
+                             f"SIZE: {ctrl.width}x{ctrl.height} | "
+                             f"STATE: {ctrl.state.name}")
+                self.mlx.mlx_string_put(self.mlx_ptr, self.win_ptr, 20,
+                                        self.fixed_win_height - 40, 0xAAAAAA,
+                                        info_text)
+                controls_test = ("CONTROLS: [1] Regen | [SPACE] Pause | "
+                                 "[3] Colors | [->] Skip Anim | "
+                                 "[5] Show/hide path")
+                self.mlx.mlx_string_put(self.mlx_ptr, self.win_ptr, 20,
+                                        self.fixed_win_height - 20, 0xAAAAAA,
+                                        controls_test)
+
     def start_loop(self, controller: AppController) -> None:
+        self.controller = controller
         self.mlx.mlx_hook(self.win_ptr, MLX_EVENT_DESTROY,
                           MLX_MASK_NO_MASK,
-                          lambda *args: controller.handle_action("quit"), 0)
+                          lambda *args: controller.handle_action("quit"),
+                          0)
 
         def handle_mlx_keys(keycode: int, param: None = None) -> None:
             action = KEY_MAP.get(keycode)
@@ -228,8 +271,9 @@ def get_screen_resolution(fallback: tuple[int, int] = (1280, 720)) \
     return fallback
 
 
-def calculate_mlx_geometry(maze_w=10, maze_h=10, win_w=1280, win_h=720,
-                           hud_h=60):
+def calculate_mlx_geometry(maze_w: int = 10, maze_h: int = 10,
+                           win_w: int = 1280, win_h: int = 720,
+                           hud_h: int = 60) -> tuple[int, int, int, int]:
     available_h = win_h - hud_h
 
     max_wall_w = win_w // (4 * maze_w + 1)

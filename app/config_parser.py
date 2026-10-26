@@ -96,8 +96,10 @@ class Config(BaseModel):
 
             if self.WIDTH > max_w or self.HEIGHT > max_h:
                 raise ValueError(
-                    f"Maze {self.WIDTH}x{self.HEIGHT} is too big for your console window ({cols}x{lines})! "
-                    f"Maximum available size in this window is: {max_w}x{max_h}."
+                    f"Maze {self.WIDTH}x{self.HEIGHT} is too big for your "
+                    f"console window ({cols}x{lines})! "
+                    f"Maximum available size in this window "
+                    f"is: {max_w}x{max_h}."
                 )
 
         elif self.DISPLAY_MODE == "MLX":
@@ -109,7 +111,8 @@ class Config(BaseModel):
 
             if self.WIDTH > max_w or self.HEIGHT > max_h:
                 raise ValueError(
-                    f"Maze {self.WIDTH}x{self.HEIGHT} is exceeding render limits for window {win_w}x{win_h}!"
+                    f"Maze {self.WIDTH}x{self.HEIGHT} is exceeding "
+                    f"render limits for window {win_w}x{win_h}!"
                     f"Maximum available size is {max_w}x{max_h}"
                 )
 
@@ -189,7 +192,7 @@ def read_and_parse(file: typing.IO[str]) -> Config:
         sys.exit(1)
 
 
-def _get_terminal_bounds():
+def _get_terminal_bounds() -> tuple[int, int]:
     import os
     try:
         size = os.get_terminal_size()
