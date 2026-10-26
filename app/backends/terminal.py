@@ -223,3 +223,13 @@ def draw_menu(y_offset: int) -> None:
     )
     sys.stdout.write(f"\033[{y_offset};1H{menu}")
     sys.stdout.flush()
+
+
+def get_terminal_dimensions(fallback: tuple[int, int] = (80, 24)) \
+        -> tuple[int, int]:
+    """Gets actual console size"""
+    try:
+        size = os.get_terminal_size()
+        return size.columns, size.lines
+    except OSError:
+        return fallback
