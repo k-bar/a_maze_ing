@@ -1,3 +1,6 @@
+import re
+import subprocess
+
 import numpy as np
 
 from app.engine import AppController, EngineState
@@ -10,18 +13,35 @@ from mlx import Mlx
 
 class MlxBackend(GraphicBackend):
     def __init__(self) -> None:
-        self.block_size = 30
-        self.wall_size: int = int(self.block_size / 10)
+
         self.pixel_width = 0
         self.pixel_height = 0
         self.mlx: Mlx = Mlx()
         self.mlx_ptr = self.mlx.mlx_init()
         self.win_ptr = None
+        # image: writable memory view of the image raw pixels plus metadata
         self.image: MLXImage | None = None
         self.palette: dict[CellState, tuple[int, int, int]] = color_map1
-        # image: writable memory view of the image raw pixels plus metadata
+
+        self.fixed_win_width = 1280
+        self.fixed_win_height = 720
+        self.hud_height = 60
+
+        self.block_size = 30
+        self.wall_size: int = int(self.block_size / 10)
+        self.offset_x = 0
+        self.offset_y = 0
 
     def init_window(self, width: int, height: int, title: str) -> None:
+
+        self.block_size, self.wall_size, self.offset_x, self.offset_y = calculate_mlx_geometry(
+            maze_w=width,
+            maze_h=height,
+            win_w=self.fixed_win_width,
+            win_h=self.fixed_win_height,
+            hud_h=self.hud_height
+        )
+
         blocks_x = width
         blocks_y = height
         walls_x = width + 1
@@ -31,10 +51,10 @@ class MlxBackend(GraphicBackend):
         self.pixel_height = ((blocks_y * self.block_size)
                              + (walls_y * self.wall_size))
         self.win_ptr = self.mlx.mlx_new_window(
-            self.mlx_ptr, self.pixel_width, self.pixel_height, "A MLX"
+            self.mlx_ptr, self.fixed_win_width, self.fixed_win_height, title
         )
-        self.image = MLXImage(self.mlx, self.mlx_ptr, self.pixel_width,
-                              self.pixel_height)
+        self.image = MLXImage(self.mlx, self.mlx_ptr, self.fixed_win_width,
+                              self.fixed_win_height)
 
     def _draw_pixel_block(self, gx: int, gy: int,
                           color: tuple[int, int, int]) -> None:
@@ -62,9 +82,12 @@ class MlxBackend(GraphicBackend):
 
         r, g, b = color
 
+        real_start_x = start_x + self.offset_x
+        real_start_y = start_y + self.offset_y
+
         self.image.pixels[
-            start_y: start_y + size_y,
-            start_x: start_x + size_x] = [b, g, r, 255]
+            real_start_y: real_start_y + size_y,
+            real_start_x: real_start_x + size_x] = [b, g, r, 255]
 
     def _draw_path_block(self, gx: int, gy: int,
                          color: tuple[int, int, int]) -> None:
@@ -109,9 +132,12 @@ class MlxBackend(GraphicBackend):
 
         r, g, b = color
 
+        real_start_x = start_x + self.offset_x
+        real_start_y = start_y + self.offset_y
+
         self.image.pixels[
-            start_y: start_y + size_y,
-            start_x: start_x + size_x] = [b, g, r, 255]
+            real_start_y: real_start_y + size_y,
+            real_start_x: real_start_x + size_x] = [b, g, r, 255]
 
     def render_frame(self, grid: RenderGrid) -> None:
 
@@ -184,3 +210,40 @@ color_map2 = {
     CellState.PATH: (21, 101, 192),  # blue
     CellState.LOCK: (249, 168, 37),  # gold
 }
+
+
+def get_screen_resolution(fallback: tuple[int, int] = (1280, 720)) \
+        -> tuple[int, int]:
+    try:
+        output = subprocess.check_output(
+            "xrandr 2>dev/null | grep 'current'",
+            shell=True,
+            text=True
+        )
+        match = re.search(r"current\s+(\d+)\s*x\s*(\d+)", output)
+        if match:
+            return int(match.group(1)), int(match.group(2))
+    except (subprocess.SubprocessError, FileNotFoundError, AttributeError):
+        pass
+    return fallback
+
+
+def calculate_mlx_geometry(maze_w=10, maze_h=10, win_w=1280, win_h=720,
+                           hud_h=60):
+    available_h = win_h - hud_h
+
+    max_wall_w = win_w // (4 * maze_w + 1)
+    max_wall_h = available_h // (4 * maze_h + 1)
+
+    wall_size = min(max_wall_w, max_wall_h)
+    if wall_size < 1:
+        wall_size = 1
+
+    block_size = wall_size * 3
+
+    rendered_w = wall_size * (4 * maze_w + 1)
+    rendered_h = wall_size * (4 * maze_h + 1)
+
+    offset_x = (win_w - rendered_w) // 2
+    offset_y = (available_h - rendered_h) // 2
+    return block_size, wall_size, offset_x, offset_y
