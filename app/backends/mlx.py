@@ -37,6 +37,8 @@ class MlxBackend(GraphicBackend):
         self.last_hud_state: str = ""
         self.controller: AppController | None = None
 
+        self.init_frames_counter = 0
+
     def init_window(self, width: int, height: int, title: str) -> None:
 
         self.block_size, self.wall_size, self.offset_x, self.offset_y = \
@@ -165,17 +167,20 @@ class MlxBackend(GraphicBackend):
 
         if self.win_ptr and self.image:
             assert self.controller is not None
-            # current_hud_snapshot = ""
+
+            self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.win_ptr,
+                                             self.image.img_ptr, 0, 0)
+
             ctrl = self.controller
             current_hud_snapshot = (f"{ctrl.current_seed}_"
                                     f"{ctrl.algorithm_name}_"
                                     f"{ctrl.width}_{ctrl.height}_"
                                     f"{ctrl.state.name}")
 
-            self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.win_ptr,
-                                             self.image.img_ptr, 0, 0)
-
-            if current_hud_snapshot != self.last_hud_state:
+            if (current_hud_snapshot != self.last_hud_state
+                    or self.init_frames_counter < 2):
+                if self.init_frames_counter < 5:
+                    self.init_frames_counter += 1
                 self.last_hud_state = current_hud_snapshot
                 hud_top = self.fixed_win_height - self.hud_height
                 assert self.hud_image is not None
@@ -183,16 +188,19 @@ class MlxBackend(GraphicBackend):
                                                  self.hud_image.img_ptr, 0,
                                                  hud_top)
 
-                info_text = (f"SEED: {ctrl.current_seed} |"
-                             f" ALG: {ctrl.algorithm_name} | "
-                             f"SIZE: {ctrl.width}x{ctrl.height} | "
-                             f"STATE: {ctrl.state.name}")
+                info_text = (f" SEED: {ctrl.current_seed} |"
+                             f" ALG: {ctrl.algorithm_name} |"
+                             f" SIZE: {ctrl.width}x{ctrl.height} |"
+                             f" STATE: {ctrl.state.name}")
                 self.mlx.mlx_string_put(self.mlx_ptr, self.win_ptr, 20,
-                                        self.fixed_win_height - 40, 0xAAAAAA,
+                                        self.fixed_win_height - 44, 0xAAAAAA,
                                         info_text)
-                controls_test = ("CONTROLS: [1] Regen | [SPACE] Pause | "
-                                 "[3] Colors | [->] Skip Anim | "
-                                 "[5] Show/hide path")
+                controls_test = ("CONTROLS: [1] Regen |"
+                                 " [A]lgorithm |"
+                                 " [SPACE] Pause |"
+                                 " [3] Colors |"
+                                 " [->] Skip Anim |"
+                                 " [5] Show/hide path")
                 self.mlx.mlx_string_put(self.mlx_ptr, self.win_ptr, 20,
                                         self.fixed_win_height - 20, 0xAAAAAA,
                                         controls_test)

@@ -1,3 +1,4 @@
+import io
 import os
 import select
 import sys
@@ -32,9 +33,16 @@ class TerminalBackend(GraphicBackend):
                 return
             x, y, state = changed_cell
             content = resolve_cell_content(x, y, state, self.colors)
-            move_cursor(x, y)
-            sys.stdout.write(content)
-            sys.stdout.flush()
+
+            screen_x = x // 2 * 4
+            if x % 2 != 0:
+                screen_x += 1
+            screen_y = y + 1
+
+            cell_payload = f"\033[{screen_y};{screen_x + 1}H{content}"
+            _real_output.write(cell_payload)
+
+        _real_output.flush()
 
     def change_colors(self, controller: "AppController") -> None:
         if self.colors == palette1:
@@ -47,9 +55,10 @@ class TerminalBackend(GraphicBackend):
     def start_loop(self, controller: "AppController") -> None:
         """Main loop with step by step animation"""
 
+        menu_y_position = len(controller.grid.cells) + 2
         try:
             setup_terminal()
-            draw_menu(len(controller.grid.cells) + 2)
+            draw_menu(menu_y_position, controller)
 
             t = threading.Thread(target=input_thread_worker, daemon=True)
             t.start()
@@ -68,11 +77,16 @@ class TerminalBackend(GraphicBackend):
                         break
 
                     key_lowered = pressed_key.lower()
+                    should_refresh_menu = True
 
                     if key_lowered == "4":
                         controller.handle_action("quit")
                     elif key_lowered == "1":
                         controller.handle_action("regen")
+                        self.render_frame(grid=controller.grid)
+                    elif key_lowered == "a":
+                        controller.handle_action("cycle_maze_generator")
+                        self.render_frame(grid=controller.grid)
                     elif key_lowered == "5":
                         controller.handle_action("hide_toggle")
                     elif key_lowered == " ":
@@ -81,6 +95,11 @@ class TerminalBackend(GraphicBackend):
                         self.change_colors(controller)
                     elif pressed_key == '\x1b[C':
                         controller.handle_action("skip")
+                    else:
+                        should_refresh_menu = False
+
+                    if should_refresh_menu:
+                        draw_menu(menu_y_position, controller)
 
                 time.sleep(0.01)
         except KeyboardInterrupt:
@@ -89,16 +108,10 @@ class TerminalBackend(GraphicBackend):
             restore_terminal()
 
 
-def move_cursor(x: int, y: int) -> None:
-    screen_x = x // 2 * 4
-    if x % 2 != 0:
-        screen_x += 1
-    screen_y = y + 1
-    sys.stdout.write(f"\033[{screen_y};{screen_x + 1}H")
-
-
 # global stash for terminal settings
 _original_terminal_settings: Optional[list[Any]] = None
+_real_output = sys.stdout
+_devnull_stream = io.StringIO()
 
 
 def setup_terminal() -> None:
@@ -108,16 +121,19 @@ def setup_terminal() -> None:
     # save original terminal state
     _original_terminal_settings = termios.tcgetattr(fd)
 
-    # keyboard cbreak mode (immediate read)
-    tty.setraw(fd)
-
     # \033[?1049h   - enables alternative screen (no scrolling history)
     # \033[?25l     - hides blinking cursor
     # \033[2J       - clear screen
     # \033[1;1H     - cursor on starting position 1,1
-    sys.stdout.write("\033[?1049h\033[?25l\033[2J\033[1;1H")
-    sys.stdout.flush()
+    _real_output.write("\033[?1049h\033[?25l\033[2J\033[1;1H")
+    _real_output.flush()
     termios.tcflush(fd, termios.TCIFLUSH)
+
+    # keyboard cbreak mode (immediate read)
+    tty.setraw(fd)
+
+    sys.stdout = _devnull_stream
+    sys.stderr = _devnull_stream
 
 
 def restore_terminal() -> None:
@@ -125,6 +141,10 @@ def restore_terminal() -> None:
         fd = sys.stdin.fileno()
         # termios.tcflush(fd, termios.TCIFLUSH)
         termios.tcsetattr(fd, termios.TCSAFLUSH, _original_terminal_settings)
+
+        sys.stdout = _real_output
+        sys.stderr = sys.__stderr__
+
         sys.stdout.write("\033[?1049l\033[?25h")
         sys.stdout.flush()
 
@@ -214,15 +234,23 @@ def resolve_cell_content(x: int, y: int, state: CellState,
     return _resolve_room(state, pal)
 
 
-def draw_menu(y_offset: int) -> None:
+def draw_menu(y_offset: int, ctrl: AppController) -> None:
     menu = (
-        "\n=== A-Maze-ing Menu ==="
-        "1: Regenerate maze | 2: Show/hide shortest path "
-        "| 3: Rotate colors | 4: Quit"
-        "Choice? (press key 1-4): "
+        f"\033[{y_offset};1H\033[J\r\n"
+        f"=== A-Maze-ing Menu ===\r\n"
+        f" 1: Regenerate maze |"
+        f" 2: Show/hide shortest path |"
+        f" 3: Rotate colors |"
+        f" 4: Quit\r\n"
+        f" [A]lgorithm: {ctrl.algorithm_name} |"
+        f" [S]olver: {ctrl.config.SOLVER}\r\n"
+        f" SEED: {ctrl.current_seed} |"
+        f" SIZE: {ctrl.width}x{ctrl.height} |"
+        f" STATE: {ctrl.state.name}\r\n"
+        f"\r\n Choice? (press key 1-4, A, S): \033[K"
     )
-    sys.stdout.write(f"\033[{y_offset};1H{menu}")
-    sys.stdout.flush()
+    _real_output.write(menu)
+    _real_output.flush()
 
 
 def get_terminal_dimensions(fallback: tuple[int, int] = (80, 24)) \
