@@ -1,4 +1,5 @@
 import random
+import sys
 from enum import Enum, auto
 
 import numpy as np
@@ -28,7 +29,7 @@ class AppController:
         self.width = m_config.WIDTH
         self.height = m_config.HEIGHT
         self.initial_seed: int | None = getattr(m_config, "SEED", None)
-        self.algorithm_name = m_config.ALGORITHM
+        self.algorithm_name: str = m_config.ALGORITHM
 
         self.current_seed: int = 0
         self.is_running = True
@@ -78,14 +79,22 @@ class AppController:
         assert self.maze is not None
         self.solver_process = None
 
-    # def change_algorithm_in_runtime(self, new_algorithm: str) -> None:
-    #     if new_algorithm in get_available_algorithm():
-    #         self.algorithm_name = new_algorithm
-    #         print(
-    #             f"[ENGINE] Changing algorithm class to "
-    #             f"{new_algorithm} with seed: {self.current_seed}"
-    #             f"it will be used after next regen"
-    #         )
+    def change_algorithm_in_runtime(self) -> None:
+        from mazegen import get_available_algorithm
+        available_algos = get_available_algorithm()
+        try:
+            current_idx = available_algos.index(self.algorithm_name)
+            next_idx = (current_idx + 1) % len(available_algos)
+            self.algorithm_name = available_algos[next_idx]
+        except ValueError:
+            self.algorithm_name = available_algos[0]
+
+        print(
+            f"[ENGINE] Changing algorithm class to "
+            f"{self.algorithm_name} with seed: {self.current_seed}"
+            f"it will be used after next regen",
+            file=sys.stderr
+        )
 
     def tick(self) -> None:
         """Performs exactly one logic step of application"""
@@ -137,6 +146,10 @@ class AppController:
                 return
             if self.state == EngineState.SOLVING:
                 self.solve(skip=True)
+
+        elif action == "cycle_maze_generator":
+            self.change_algorithm_in_runtime()
+            self.handle_action("regen")
 
     def start(self) -> None:
         self.backend.init_window(self.width,

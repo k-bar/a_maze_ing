@@ -21,6 +21,7 @@ KEY_W = 119
 KEY_K = 107
 KEY_P = 112
 KEY_D = 100
+KEY_A = 97
 KEY_B = 98
 
 KEY_UP = 65362
@@ -47,5 +48,6 @@ KEY_MAP = {
     KEY_3: "cycle_color",
     N_KEY_3: "cycle_color",
     SPACE: "pause",
-    KEY_RIGHT: "skip"
+    KEY_RIGHT: "skip",
+    KEY_A: "cycle_maze_generator"
 }
