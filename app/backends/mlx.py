@@ -107,41 +107,49 @@ class MlxBackend(GraphicBackend):
         if self.image is None:
             return
 
+        path_line_size = self.block_size // 3
+        if path_line_size < 1:
+            path_line_size = 1
+        # ensure that parity of path is the same as cell
+        if path_line_size > 1 and path_line_size % 2 == 0:
+            path_line_size -= 1
+
+        padding = (self.block_size - path_line_size) // 2
+
+        # room
         if gx % 2 != 0 and gy % 2 != 0:
             start_x = ((((gx // 2) * self.block_size)
-                        + (((gx // 2) + (gx % 2)) * self.wall_size))
-                       + self.block_size // 3)
+                        + (((gx // 2) + 1) * self.wall_size))
+                       + padding)
 
             start_y = ((((gy // 2) * self.block_size)
-                        + (((gy // 2) + (gy % 2)) * self.wall_size))
-                       + self.block_size // 3)
+                        + (((gy // 2) + 1) * self.wall_size))
+                       + padding)
 
-            size_y = self.block_size // 3
-            size_x = self.block_size // 3
+            size_y = path_line_size
+            size_x = path_line_size
 
+        # vertical wall
         elif gx % 2 == 0 and gy % 2 != 0:
             start_x = ((((gx // 2) * self.block_size)
-                        + (((gx // 2) + (gx % 2)) * self.wall_size))
-                       - self.block_size // 2)
+                        + ((gx // 2) * self.wall_size)) - padding)
 
             start_y = ((((gy // 2) * self.block_size)
-                        + (((gy // 2) + (gy % 2)) * self.wall_size))
-                       + self.block_size // 3)
+                        + (((gy // 2) + 1) * self.wall_size)) + padding)
 
-            size_y = self.block_size // 3
-            size_x = self.wall_size + self.block_size
+            size_y = path_line_size
+            size_x = self.wall_size + (padding * 2)
 
+        # horizontal wall
         else:
             start_x = (((gx // 2) * self.block_size)
-                       + (((gx // 2) + (
-                            gx % 2)) * self.wall_size)) + self.block_size // 3
+                       + (((gx // 2) + 1) * self.wall_size)) + padding
 
             start_y = (((gy // 2) * self.block_size)
-                       + (((gy // 2) + (
-                            gy % 2)) * self.wall_size)) - self.block_size // 2
+                       + ((gy // 2) * self.wall_size)) - padding
 
-            size_y = self.wall_size + self.block_size
-            size_x = self.block_size // 3
+            size_y = self.wall_size + (padding * 2)
+            size_x = path_line_size
 
         r, g, b = color
 
@@ -202,7 +210,7 @@ class MlxBackend(GraphicBackend):
                                  " [->] Skip Anim |"
                                  " [5] Show/hide path")
                 self.mlx.mlx_string_put(self.mlx_ptr, self.win_ptr, 20,
-                                        self.fixed_win_height - 20, 0xAAAAAA,
+                                        self.fixed_win_height - 21, 0xAAAAAA,
                                         controls_test)
 
     def start_loop(self, controller: AppController) -> None:
@@ -284,17 +292,28 @@ def calculate_mlx_geometry(maze_w: int = 10, maze_h: int = 10,
                            hud_h: int = 60) -> tuple[int, int, int, int]:
     available_h = win_h - hud_h
 
-    max_wall_w = win_w // (4 * maze_w + 1)
-    max_wall_h = available_h // (4 * maze_h + 1)
+    wall_size = 2
 
-    wall_size = min(max_wall_w, max_wall_h)
-    if wall_size < 1:
+    required_walls_w = (maze_w + 1) * wall_size
+    required_walls_h = (maze_h + 1) * wall_size
+
+    if required_walls_w > win_w or required_walls_h > available_h:
         wall_size = 1
 
-    block_size = wall_size * 3
+    remaining_w = win_w - ((maze_w + 1) * wall_size)
+    remaining_h = available_h - ((maze_h + 1) * wall_size)
 
-    rendered_w = wall_size * (4 * maze_w + 1)
-    rendered_h = wall_size * (4 * maze_h + 1)
+    max_block_w = remaining_w // maze_w
+    max_block_h = remaining_h // maze_h
+
+    block_size = min(max_block_w, max_block_h)
+    if block_size < 1:
+        block_size = 1
+    if block_size > 1 and block_size % 2 == 0:
+        block_size -= 1
+
+    rendered_w = (maze_w * block_size) + ((maze_w + 1) * wall_size)
+    rendered_h = (maze_h * block_size) + ((maze_h + 1) * wall_size)
 
     offset_x = (win_w - rendered_w) // 2
     offset_y = (available_h - rendered_h) // 2
