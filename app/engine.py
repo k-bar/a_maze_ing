@@ -28,6 +28,10 @@ class AppController:
 
         self.width = m_config.WIDTH
         self.height = m_config.HEIGHT
+
+        self.max_width: int = getattr(backend, "max_width", 300)
+        self.max_height: int = getattr(backend, "max_height", 150)
+
         self.initial_seed: int | None = getattr(m_config, "SEED", None)
         self.algorithm_name: str = m_config.ALGORITHM
 
@@ -151,6 +155,24 @@ class AppController:
             self.change_algorithm_in_runtime()
             self.handle_action("regen")
 
+        elif action in ["grow_width", "shrink_width", "grow_height",
+                        "shrink_height"]:
+            new_w = self.width
+            new_h = self.height
+
+            if action == "grow_width":
+                new_w += 1
+            elif action == "shrink_width":
+                new_w -= 1
+            elif action == "grow_height":
+                new_h += 1
+            elif action == "shrink_height":
+                new_h -= 1
+            self.validate_and_apply_dimensions(new_w, new_h)
+            # self.config.EXIT = (self.width - 1)
+            self.maze_resize()
+            self.handle_action("regen")
+
     def start(self) -> None:
         self.backend.init_window(self.width,
                                  self.height,
@@ -242,3 +264,53 @@ class AppController:
         path_coordinates = np.argwhere(self.grid.cells == CellState.PATH)
         for y, x in path_coordinates:
             self.grid.register_change(x, y, CellState.FLOOR)
+
+    def maze_resize(self) -> None:
+        print(
+            f"[ENGINE] Resize action executed. New logical size: "
+            f"{self.width}x{self.height}", file=sys.stderr)
+
+        self.backend.update_geometry(self.width, self.height)
+
+        from app.grid import RenderGrid
+        self.grid = RenderGrid(
+            width=self.width,
+            height=self.height,
+            m_entry=self.config.ENTRY,
+            m_exit=self.config.EXIT
+        )
+
+    def validate_and_apply_dimensions(self, target_width: int,
+                                      target_height: int) -> None:
+
+        current_ex, current_ey = self.config.EXIT
+        validated_ex = min(current_ex, self.width - 1)
+        validated_ey = min(current_ey, self.height - 1)
+        self.config.EXIT = (validated_ex, validated_ey)
+
+        min_size = 3
+        max_w = getattr(self, "max_width", 100)
+        max_h = getattr(self, "max_height", 100)
+        self.width = max(min_size, min(target_width, max_w))
+        self.height = max(min_size, min(target_height, max_h))
+
+        en_x, en_y = self.config.ENTRY
+        self.config.ENTRY = (min(en_x, self.width - 1),
+                             min(en_y, self.height - 1))
+
+        ex_x, ex_y = self.config.EXIT
+        self.config.EXIT = (min(ex_x, self.width - 1),
+                            min(ex_y, self.height - 1))
+
+        if self.maze is not None:
+            if (hasattr(self, "LOCKE_CELLS")
+                    and isinstance(self.maze.locked_cells, list)):
+                validate_locks = []
+                for lx, ly in self.maze.locked_cells:
+                    validate_locks.append((min(lx, self.width - 1),
+                                           min(ly, self.height - 1)))
+                self.maze.locked_cells = validate_locks
+
+        print(
+            f"[ENGINE] Validated dimensions applied:"
+            f" {self.width}x{self.height}")

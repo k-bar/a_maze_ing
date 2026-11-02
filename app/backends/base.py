@@ -19,3 +19,6 @@ class GraphicBackend(ABC):
     @abstractmethod
     def start_loop(self, controller: "AppController") -> None:
         pass
+
+    def update_geometry(self, width: int, height: int) -> None:
+        pass

@@ -58,6 +58,11 @@ class MlxBackend(GraphicBackend):
                             + (walls_x * self.wall_size))
         self.pixel_height = ((blocks_y * self.block_size)
                              + (walls_y * self.wall_size))
+
+        available_h = self.fixed_win_height - self.hud_height
+        self.max_width = (self.fixed_win_width - 1) // 4
+        self.max_height = (available_h - 1) // 4
+
         self.win_ptr = self.mlx.mlx_new_window(
             self.mlx_ptr, self.fixed_win_width, self.fixed_win_height, title
         )
@@ -250,6 +255,18 @@ class MlxBackend(GraphicBackend):
             controller.grid.register_change(x, y, n_state)
         if controller.path_visible:
             controller.show_path()
+
+    def update_geometry(self, width: int, height: int) -> None:
+        self.block_size, self.wall_size, self.offset_x, self.offset_y = \
+            calculate_mlx_geometry(
+                maze_w=width,
+                maze_h=height,
+                win_w=self.fixed_win_width,
+                win_h=self.fixed_win_height,
+                hud_h=self.hud_height
+            )
+        if self.image is not None:
+            self.image.pixels[:, :] = [0, 0, 0, 255]
 
 
 color_map1 = {

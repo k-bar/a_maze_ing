@@ -52,19 +52,18 @@ class Config(BaseModel):
             return None
         return value
 
+    @field_validator("DISPLAY_MODE", mode="before")
+    @classmethod
+    def force_uppercase_mode(cls, value: str) -> str:
+        if isinstance(value, str):
+            return value.strip().upper()
+        return value
+
     @model_validator(mode='after')
     def validate_config(self) -> 'Config':
         """
-        Validates the configuration parameters post-initialization.
-
         Ensures that the ENTRY and EXIT coordinates are within the
         boundaries defined by WIDTH and HEIGHT.
-
-        Returns:
-            Config: The validated Config instance.
-
-        Raises:
-            ValueError: If the entry or exit points are out of bounds.
         """
 
         def entry_exit(point: tuple[int, int], height: int,
@@ -91,8 +90,8 @@ class Config(BaseModel):
         if self.DISPLAY_MODE == "TERMINAL":
             cols, lines = _get_terminal_bounds()
 
-            max_w = (cols - 1) // 2
-            max_h = (lines - 1 - 2) // 2
+            max_w = (cols - 1) // 4
+            max_h = (lines - 1 - 6) // 2
 
             if self.WIDTH > max_w or self.HEIGHT > max_h:
                 raise ValueError(
@@ -194,8 +193,17 @@ def read_and_parse(file: typing.IO[str]) -> Config:
 
 def _get_terminal_bounds() -> tuple[int, int]:
     import os
+    import sys
+    for fd in (sys.stderr, sys.stdin, sys.stdout):
+        try:
+            if fd and hasattr(fd, "fileno"):
+                size = os.get_terminal_size()
+                return size.columns, size.lines
+        except OSError:
+            continue
     try:
-        size = os.get_terminal_size()
-        return size.columns, size.lines
-    except OSError:
+        with open('/dev/tty', 'r') as tty:
+            size = os.get_terminal_size(tty.fileno())
+            return size.columns, size.lines
+    except (OSError, PermissionError):
         return 80, 24
