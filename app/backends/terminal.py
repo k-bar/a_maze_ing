@@ -21,11 +21,19 @@ input_queue: Queue[str] = Queue()
 class TerminalBackend(GraphicBackend):
     def __init__(self) -> None:
         self.colors: dict[str, str] = palette1
+        self._last_grid_w: int = 0
+        self._last_grid_h: int = 0
 
     def init_window(self, width: int, height: int, title: str) -> None:
         pass
 
     def render_frame(self, grid: RenderGrid) -> None:
+
+        if grid.width != self._last_grid_w or grid.height != self._last_grid_h:
+            self._last_grid_w = grid.width
+            self._last_grid_h = grid.height
+            _real_output.write("\033[2J\033[1;1H")
+            _real_output.flush()
 
         while grid.changed:
             changed_cell = grid.changed.popleft()
@@ -55,9 +63,15 @@ class TerminalBackend(GraphicBackend):
     def start_loop(self, controller: "AppController") -> None:
         """Main loop with step by step animation"""
 
+        cols, lines = get_terminal_dimensions()
+        controller.max_width = (cols - 1) // 4 - 1
+        controller.max_height = (lines - 1 - 7) // 2
+
         menu_y_position = len(controller.grid.cells) + 2
         try:
             setup_terminal()
+            controller.tick()
+            self.render_frame(grid=controller.grid)
             draw_menu(menu_y_position, controller)
 
             t = threading.Thread(target=input_thread_worker, daemon=True)
@@ -93,19 +107,41 @@ class TerminalBackend(GraphicBackend):
                         controller.handle_action("pause")
                     elif key_lowered == "3":
                         self.change_colors(controller)
-                    elif pressed_key == '\x1b[C':
+                    elif pressed_key == '\r':
                         controller.handle_action("skip")
-                    else:
-                        should_refresh_menu = False
+                    elif pressed_key in ['\x1b[A', '\x1b[B', '\x1b[C',
+                                         '\x1b[D']:
+                        action_name = ""
+                        match pressed_key:
+                            case '\x1b[A':
+                                action_name = "shrink_height"
+                            case '\x1b[B':
+                                action_name = "grow_height"
+                            case '\x1b[C':
+                                action_name = "grow_width"
+                            case '\x1b[D':
+                                action_name = "shrink_width"
+                        controller.handle_action(action_name)
 
-                    if should_refresh_menu:
-                        draw_menu(menu_y_position, controller)
+                        menu_y_position = len(controller.grid.cells) + 2
+                        self.render_frame(grid=controller.grid)
+
+                else:
+                    should_refresh_menu = False
+
+                if should_refresh_menu:
+                    draw_menu(menu_y_position, controller)
 
                 time.sleep(0.01)
+
         except KeyboardInterrupt:
             pass
+
         finally:  # Execute Around Pattern
             restore_terminal()
+
+    def update_geometry(self, width: int, height: int) -> None:
+        pass
 
 
 # global stash for terminal settings
@@ -235,19 +271,40 @@ def resolve_cell_content(x: int, y: int, state: CellState,
 
 
 def draw_menu(y_offset: int, ctrl: AppController) -> None:
+    # f"\033[{y_offset};1H\033[J\033[2K=== A-Maze-ing Menu ==="
+    # f"\033[{y_offset};\033[2K 1: Regenerate maze |"
+
+    is_narrow = (ctrl.width < 12)
+    if is_narrow:
+        line1 = " 1:Regen | 2:Path | 3:Color | 4:Quit"
+        line2 = (f"[A]lgorithm: {ctrl.algorithm_name} |"
+                 f" [S]olver: {ctrl.config.SOLVER}")
+        line3 = (f" SEED: {ctrl.current_seed} |"
+                 f" SIZE: {ctrl.width}x{ctrl.height} | "
+                 f" STATE: {ctrl.state.name}")
+
+    else:
+        line1 = (" 1: Regenerate maze |"
+                 " 2: Show/hide shortest path |"
+                 " 3: Rotate colors |"
+                 " 4: Quit")
+        line2 = (f" [A]lgorithm: {ctrl.algorithm_name} |"
+                 f" [S]olver: {ctrl.config.SOLVER}")
+        line3 = (f" SEED: {ctrl.current_seed} |"
+                 f" SIZE: {ctrl.width}x{ctrl.height} |"
+                 f" STATE: {ctrl.state.name}")
+
+    # \033[?7l - hardware command Linux: disable autowrap (hard cut right edge)
+    # \033[?7h - revert
+
     menu = (
-        f"\033[{y_offset};1H\033[J\r\n"
-        f"=== A-Maze-ing Menu ===\r\n"
-        f" 1: Regenerate maze |"
-        f" 2: Show/hide shortest path |"
-        f" 3: Rotate colors |"
-        f" 4: Quit\r\n"
-        f" [A]lgorithm: {ctrl.algorithm_name} |"
-        f" [S]olver: {ctrl.config.SOLVER}\r\n"
-        f" SEED: {ctrl.current_seed} |"
-        f" SIZE: {ctrl.width}x{ctrl.height} |"
-        f" STATE: {ctrl.state.name}\r\n"
-        f"\r\n Choice? (press key 1-4, A, S): \033[K"
+        f"\033[?7l"
+        f"\033[{y_offset};1H\033[J\033[2K===Menu==="
+        f"\033[{y_offset + 1};1H\033[J\033[2K{line1}"
+        f"\033[{y_offset + 2};1H\033[J\033[2K{line2}"
+        f"\033[{y_offset + 3};1H\033[J\033[2K{line3}"
+        f"\033[{y_offset + 4};1H\033[J\033[2K Choice? (1-4, A, S): \033[K"
+        f"\033[?7h"
     )
     _real_output.write(menu)
     _real_output.flush()

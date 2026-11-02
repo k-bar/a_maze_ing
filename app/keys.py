@@ -48,6 +48,11 @@ KEY_MAP = {
     KEY_3: "cycle_color",
     N_KEY_3: "cycle_color",
     SPACE: "pause",
-    KEY_RIGHT: "skip",
-    KEY_A: "cycle_maze_generator"
+    KEY_ENTER: "skip",
+    KEY_A: "cycle_maze_generator",
+
+    KEY_LEFT: "shrink_width",
+    KEY_RIGHT: "grow_width",
+    KEY_UP: "grow_height",
+    KEY_DOWN: "shrink_height"
 }
