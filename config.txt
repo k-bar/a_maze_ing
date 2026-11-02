@@ -3,8 +3,8 @@
 #########################################
 
 ######################## mandatory:
-WIDTH=20
-HEIGHT=5
+WIDTH=150
+HEIGHT=150
 ENTRY=0,0
 EXIT=19,4
 OUTPUT_FILE=maze.txt
@@ -24,4 +24,4 @@ ANIMATION=TRUE
 COLOR=green
 
 # Renderer modes: MLX, Terminal
-DISPLAY_MODE=Terminal
+DISPLAY_MODE=MLX
