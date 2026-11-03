@@ -3,7 +3,8 @@ import subprocess
 
 import numpy as np
 
-from app.engine import AppController, EngineState
+from app.backends.palette import MazePalette, PRESETS
+from app.engine import AppController
 from app.backends.base import GraphicBackend
 from app.backends.mlx_image import MLXImage
 from app.grid import RenderGrid, CellState
@@ -22,7 +23,8 @@ class MlxBackend(GraphicBackend):
         # image: writable memory view of the image raw pixels plus metadata
         self.image: MLXImage | None = None
         self.hud_image: MLXImage | None = None
-        self.palette: dict[CellState, tuple[int, int, int]] = color_map1
+        self.palette: MazePalette = PRESETS[0]
+        self.preset_mode = 0
 
         self.fixed_win_width = 1280
         self.fixed_win_height = 720
@@ -167,15 +169,15 @@ class MlxBackend(GraphicBackend):
 
     def render_frame(self, grid: RenderGrid) -> None:
 
-        color_map = self.palette
+        current_palette = self.palette
         while grid.changed:
             x, y, state = grid.changed.popleft()
             if state == CellState.PATH:
-                color = color_map.get(state, color_map[CellState.WALL])
+                color = current_palette.get_rgb(state)
                 self._draw_path_block(x, y, color)
             else:
 
-                color = color_map.get(state, color_map[CellState.WALL])
+                color = current_palette.get_rgb(state)
                 self._draw_pixel_block(x, y, color)
 
         if self.win_ptr and self.image:
@@ -292,15 +294,27 @@ class MlxBackend(GraphicBackend):
         self.mlx.mlx_loop(self.mlx_ptr)
 
     def change_colors(self, controller: AppController) -> None:
-        if controller.state != EngineState.IDLE:
+
+        old_palette = self.palette
+        self.preset_mode = (self.preset_mode + 1) % 5
+        if self.preset_mode < len(PRESETS):
+            self.palette = PRESETS[self.preset_mode]
+        else:
+            self.palette = MazePalette.generate_random_harmonized()
+
+        if self.image is None:
             return
-        self.palette = color_map2 if self.palette == color_map1 else color_map1
-        grid_cells_copy = controller.grid.cells.copy()
-        for (y, x), c_state in np.ndenumerate(grid_cells_copy):
-            n_state = CellState.FLOOR if c_state == CellState.PATH else c_state
-            controller.grid.register_change(x, y, n_state)
-        if controller.path_visible:
-            controller.show_path()
+
+        current_pixels = self.image.pixels
+        for state in CellState:
+            old_rgb = old_palette.get_rgb(state)
+            new_rgb = self.palette.get_rgb(state)
+            if old_rgb == new_rgb:
+                continue
+            old_bgr = [old_rgb[2], old_rgb[1], old_rgb[0], 255]
+            new_bgr = [new_rgb[2], new_rgb[1], new_rgb[0], 255]
+            mask = np.all(current_pixels == old_bgr, axis=-1)
+            current_pixels[mask] = new_bgr
 
     def update_geometry(self, width: int, height: int) -> None:
         self.block_size, self.wall_size, self.offset_x, self.offset_y = \
@@ -313,25 +327,6 @@ class MlxBackend(GraphicBackend):
             )
         if self.image is not None:
             self.image.pixels[:, :] = [0, 0, 0, 255]
-
-
-color_map1 = {
-    CellState.WALL: (128, 81, 37),  # Brown
-    CellState.FLOOR: (30, 30, 30),  # Black
-    CellState.ENTRY: (0, 255, 0),  # Green
-    CellState.EXIT: (255, 0, 0),  # Red
-    CellState.PATH: (0, 255, 255),  # Cyan
-    CellState.LOCK: (222, 217, 213)
-}
-
-color_map2 = {
-    CellState.WALL: (38, 50, 56),  # graphite
-    CellState.FLOOR: (240, 233, 221),  # light
-    CellState.ENTRY: (0, 137, 123),  # ocean
-    CellState.EXIT: (230, 74, 25),  # orange
-    CellState.PATH: (21, 101, 192),  # blue
-    CellState.LOCK: (249, 168, 37),  # gold
-}
 
 
 def get_screen_resolution(fallback: tuple[int, int] = (1280, 720)) \
