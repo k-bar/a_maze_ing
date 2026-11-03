@@ -1,8 +1,6 @@
 import random
 import sys
-from binascii import a2b_base64
 from enum import Enum, auto
-from os import pread
 
 import numpy as np
 
@@ -63,6 +61,9 @@ class AppController:
         self.maze: Maze | None = None
         self.generator_process: BaseGenerator | None = None
         self.solver_process: MazeSolver | None = None
+
+        self.is_entering_seed = False
+        self.seed_input_buffer = ""
 
         self.init_new_run()
 
@@ -153,15 +154,42 @@ class AppController:
 
     def handle_action(self, action: str) -> None:
         """Abstract central of action. Backends only send event strings here"""
+
+        if self.is_entering_seed:
+            if action == "enter_action":
+                if self.seed_input_buffer:
+                    try:
+                        self.initial_seed = int(self.seed_input_buffer)
+                        assert self.initial_seed is not None
+                        self.current_seed = self.initial_seed
+                    except ValueError:
+                        pass
+                self.is_entering_seed = False
+                self.handle_action("regen")
+                return
+            elif action == "seed_backspace":
+                self.seed_input_buffer = self.seed_input_buffer[:-1]
+                return
+            elif action.startswith("digit_"):
+                digit = action.split("_")[-1]
+                if len(self.seed_input_buffer) < 6:
+                    self.seed_input_buffer += digit
+                return
+            elif action == "pause":
+                self.is_entering_seed = False
+                return
+            else:
+                return
+
         match action:
-            case "quit":
+            case "quit" | "digit_4":
                 self.is_running = False
 
-            case "regen":
+            case "regen" | "digit_1":
                 self.init_new_run()
                 self.grid.clear()
                 self.state = EngineState.GENERATING
-            case "hide_toggle":
+            case "hide_toggle" | "digit_5":
                 if self.state != EngineState.IDLE:
                     return
                 if self.path_visible:
@@ -176,6 +204,16 @@ class AppController:
                 else:
                     self.previous_state = self.state
                     self.state = EngineState.PAUSED
+
+            case "activate_seed_input":
+                self.is_entering_seed = True
+                self.seed_input_buffer = ""
+
+            case "randomize_seed":
+                self.initial_seed = None
+                self.init_new_run()
+                self.grid.clear()
+                self.state = EngineState.GENERATING
 
             case "skip":
                 if self.state == EngineState.PAUSED:
@@ -213,7 +251,8 @@ class AppController:
                     case ArrowMode.EXIT:
                         self.arrow_mode = ArrowMode.SIZE
                 print(
-                    f"[ENGINE] Arrow keys mode switched to: {self.arrow_mode.name}")
+                    f"[ENGINE] Arrow keys mode switched to: "
+                    f"{self.arrow_mode.name}")
 
             case "move_right" | "move_left" | "move_down" \
                  | "move_up":
@@ -392,14 +431,16 @@ class AppController:
             f" {self.width}x{self.height}")
 
     def _move_live_point(self, point_type: str, dx: int, dy: int) -> None:
-        current_x, current_y = self.config.ENTRY if point_type == "ENTRY" else self.config.EXIT
+        current_x, current_y = self.config.ENTRY \
+            if point_type == "ENTRY" else self.config.EXIT
         target_x = current_x + dx
         target_y = current_y + dy
 
         if not (0 <= target_x < self.width and 0 <= target_y < self.height):
             return
 
-        other_x, other_y = self.config.EXIT if point_type == "EXIT" else self.config.ENTRY
+        other_x, other_y = self.config.EXIT \
+            if point_type == "EXIT" else self.config.ENTRY
         if (target_x, target_y) == (other_x, other_y):
             return
 
@@ -435,24 +476,54 @@ class AppController:
             self.state = EngineState.SOLVING
 
     def get_hud_info_text(self) -> str:
-        mode_val = getattr(self, "arrow_mode", ArrowMode.SIZE)
-        if isinstance(mode_val, ArrowMode):
-            mode_name = mode_val.name
+
+        seed_display = f"{self.seed_input_buffer}_" \
+            if self.is_entering_seed else str(self.current_seed)
+
+        part_seed = f"<SEED: {seed_display:<7}>" \
+            if self.is_entering_seed else f"SEED: {seed_display:<7}"
+
+        part_algo = f"[A]LG: {self.algorithm_name:<11}"
+        part_solv = f"[S]OLV: {self.solver_name:<4}"
+
+        mode_name = self.arrow_mode.name
+
+        part_size = (f"<SIZE: {self.width:<3}x{self.height:<3}>"
+                     if mode_name == "SIZE" and not self.is_entering_seed
+                     else f"<SIZE: {self.width:<3}x{self.height:<3}>")
+
+        if self.is_entering_seed:
+            part_edit = f"<EDIT: [{mode_name:>5}]>"
         else:
-            mode_name = "SIZE"
-        return (
-            f"SEED: {self.current_seed:<7} | "
-            f"ALG: {self.algorithm_name:<11} | "
-            f"SOLV: {self.solver_name:<4} | "
-            f"SIZE: {self.width:<3}x{self.height:<3} | "
-            f"EDIT [ {mode_name:<5}] "
-            f"STATE: {self.state.name:<10}"
-        )
+            part_edit = f"<EDIT: [{mode_name:>5}]>" \
+                if mode_name in ("ENTRY", "EXIT") \
+                else f"EDIT: [{mode_name:>5}]"
 
-    @staticmethod
-    def get_hud_controls_text(is_narrow: bool = False) -> str:
+        return (f"{part_seed} | {part_algo} | {part_solv} | {part_size} |"
+                f" {part_edit} | STATE: {self.state.name:<10}")
 
+    def get_hud_controls_text(self, is_narrow: bool = False) -> str:
         if is_narrow:
-            return "1:Regen | SPACE:Pause | 3:Color | 5:Path | TAB:Mode"
-        return ("CONTROLS: [1] Regen | [A]lgo | [S]olver | [SPACE] Pause |"
-                " [3] Colors | [5] Path | [TAB] Mode")
+            return ("ENTER:Confirm | BACKSPACE:Delete | SPACE:Cancel"
+                    if self.is_entering_seed
+                    else "1:Regen | K:Seed | TAB:Mode | 4:Quit")
+
+        if self.is_entering_seed:
+            return ("SEED INPUT MODE: [0-9] Type Digits | [BACKSPACE] Delete |"
+                    " [ENTER] Confirm & Regen | [SPACE] Cancel")
+
+        base_start = "CONTROLS: [1] Regen | [K]ey Seed | [R]and"
+        base_end = "[3] Colors | [TAB] Mode | [4] Quit"
+
+        match self.state:
+            case EngineState.GENERATING:
+                core = " [SPACE] Pause  | [ENTER] Step | [END] Skip |"
+            case EngineState.SOLVING:
+                core = " [SPACE] Pause  | [ENTER] Step | [END] Skip |"
+            case EngineState.IDLE | EngineState.SOLVED:
+                core = f" [5] {'Hide' if self.path_visible else 'Show'} Path |"
+            case EngineState.PAUSED:
+                core = " [SPACE] Resume | [ENTER] Step | [END] Skip |"
+            case _:
+                core = ""
+        return f"{base_start} | {core} {base_end}"

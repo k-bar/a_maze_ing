@@ -186,8 +186,11 @@ class MlxBackend(GraphicBackend):
 
             ctrl = self.controller
             current_hud_snapshot = (f"{ctrl.current_seed}_"
+                                    f"{ctrl.is_entering_seed}_"
+                                    f"{ctrl.seed_input_buffer}_"
                                     f"{ctrl.algorithm_name}_"
                                     f"{ctrl.solver_name}_"
+                                    f"{ctrl.arrow_mode.name}_"
                                     f"{ctrl.width}_{ctrl.height}_"
                                     f"{ctrl.state.name}")
 
@@ -202,14 +205,62 @@ class MlxBackend(GraphicBackend):
                                                  self.hud_image.img_ptr, 0,
                                                  hud_top)
 
-                info_text = ctrl.get_hud_info_text()
+                color_default = 0xAAAAAA
+                color_seed = 0xFF5555
+                color_edit = 0xFFCC00
+
+                mode_name = ctrl.arrow_mode.name
+                seed_txt = f"SEED: {ctrl.seed_input_buffer}_" \
+                    if ctrl.is_entering_seed else f"SEED: {ctrl.current_seed}"
+
+                # Column 1: SEED (X = 20)
+                c_seed = color_seed if ctrl.is_entering_seed else color_default
                 self.mlx.mlx_string_put(self.mlx_ptr, self.win_ptr, 20,
-                                        self.fixed_win_height - 44, 0xAAAAAA,
-                                        info_text)
-                controls_test = ctrl.get_hud_controls_text(is_narrow=False)
+                                        self.fixed_win_height - 44, c_seed,
+                                        seed_txt)
+
+                # Column 2: ALGORITHM (X = 180)
+                algo_txt = f"ALG: {ctrl.algorithm_name}"
+                self.mlx.mlx_string_put(self.mlx_ptr, self.win_ptr, 180,
+                                        self.fixed_win_height - 44,
+                                        color_default, algo_txt)
+
+                # Column 3: SOLVER (X = 380)
+                solv_txt = f"SOLV: {ctrl.solver_name}"
+                self.mlx.mlx_string_put(self.mlx_ptr, self.win_ptr, 380,
+                                        self.fixed_win_height - 44,
+                                        color_default, solv_txt)
+
+                # Column 4: SIZE (X = 530)
+                c_size = color_edit if (
+                        mode_name == "SIZE" and not ctrl.is_entering_seed) \
+                    else color_default
+                size_txt = f"SIZE: {ctrl.width}x{ctrl.height}"
+                self.mlx.mlx_string_put(self.mlx_ptr, self.win_ptr, 530,
+                                        self.fixed_win_height - 44, c_size,
+                                        size_txt)
+
+                # Column 5: EDIT MODE (X = 690)
+                c_edit = color_edit if (mode_name in ["ENTRY", "EXIT"]
+                                        and not ctrl.is_entering_seed) \
+                    else color_default
+                edit_txt = f"EDIT: [{mode_name}]"
+                self.mlx.mlx_string_put(self.mlx_ptr, self.win_ptr, 690,
+                                        self.fixed_win_height - 44, c_edit,
+                                        edit_txt)
+
+                # Column 6: ENGINE STATE (X = 860)
+                state_txt = f"STATE: {ctrl.state.name}"
+                self.mlx.mlx_string_put(self.mlx_ptr, self.win_ptr, 860,
+                                        self.fixed_win_height - 44,
+                                        color_default, state_txt)
+
+                controls_text = ctrl.get_hud_controls_text(is_narrow=False)
+                controls_color = color_seed \
+                    if ctrl.is_entering_seed else color_default
                 self.mlx.mlx_string_put(self.mlx_ptr, self.win_ptr, 20,
-                                        self.fixed_win_height - 21, 0xAAAAAA,
-                                        controls_test)
+                                        self.fixed_win_height - 21,
+                                        controls_color, controls_text)
 
     def start_loop(self, controller: AppController) -> None:
         self.controller = controller
@@ -219,13 +270,14 @@ class MlxBackend(GraphicBackend):
                           0)
 
         def handle_mlx_keys(keycode: int, param: None = None) -> None:
-            print("klawisz to", keycode)
             action = KEY_MAP.get(keycode)
             if action == "cycle_color":
                 self.change_colors(controller)
                 return
             if action:
                 controller.handle_action(action)
+                if controller.is_entering_seed or action == "regen":
+                    self.render_frame(controller.grid)
 
         self.mlx.mlx_key_hook(self.win_ptr, handle_mlx_keys, None)
 
