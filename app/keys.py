@@ -34,6 +34,7 @@ SPACE = 32
 KEY_ENTER = 65293
 KEY_ESC = 65307
 KEY_TAB = 65289
+KEY_END = 65367
 
 # Event for closing windows by cross
 MLX_EVENT_DESTROY = 17
@@ -50,7 +51,8 @@ KEY_MAP = {
     KEY_3: "cycle_color",
     N_KEY_3: "cycle_color",
     SPACE: "pause",
-    KEY_ENTER: "skip",
+    KEY_END: "skip",
+    KEY_ENTER: "enter_action",
     KEY_A: "cycle_maze_generator",
     KEY_S: "cycle_solver",
 
