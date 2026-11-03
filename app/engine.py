@@ -419,3 +419,20 @@ class AppController:
             self.solver_process = create_stepping_solver(self.config.SOLVER,
                                                          self.maze)
             self.state = EngineState.SOLVING
+
+    def get_hud_info_text(self) -> str:
+        return (
+            f"SEED: {self.current_seed:<7} | "
+            f"ALG: {self.algorithm_name:<11} | "
+            f"SOLV: {self.solver_name:<4} | "
+            f"SIZE: {self.width:<4}x{self.height:<4} | "
+            f"STATE: {self.state.name:<10}"
+        )
+
+    @staticmethod
+    def get_hud_controls_text(is_narrow: bool = False) -> str:
+
+        if is_narrow:
+            return "1:Regen | SPACE:Pause | 3:Color | 5:Path | TAB:Mode"
+        return ("CONTROLS: [1] Regen | [A]lgo | [S]olver | [SPACE] Pause |"
+                " [3] Colors | [5] Path | [TAB] Mode")

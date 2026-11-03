@@ -104,7 +104,6 @@ class TerminalBackend(GraphicBackend):
                         self.render_frame(grid=controller.grid)
                     elif key_lowered == "s":
                         controller.handle_action("cycle_solver")
-                        # self.render_frame(grid=controller.grid)
                     elif key_lowered == "5":
                         controller.handle_action("hide_toggle")
                     elif key_lowered == " ":
@@ -277,39 +276,22 @@ def resolve_cell_content(x: int, y: int, state: CellState,
 
 
 def draw_menu(y_offset: int, ctrl: AppController) -> None:
-    # f"\033[{y_offset};1H\033[J\033[2K=== A-Maze-ing Menu ==="
-    # f"\033[{y_offset};\033[2K 1: Regenerate maze |"
 
     is_narrow = (ctrl.width < 12)
-    if is_narrow:
-        line1 = " 1:Regen | 2:Path | 3:Color | 4:Quit"
-        line2 = (f"[A]lgorithm: {ctrl.algorithm_name} |"
-                 f" [S]olver: {ctrl.config.SOLVER}")
-        line3 = (f" SEED: {ctrl.current_seed} |"
-                 f" SIZE: {ctrl.width}x{ctrl.height} | "
-                 f" STATE: {ctrl.state.name}")
+    line_controls = ctrl.get_hud_controls_text(is_narrow=is_narrow)
+    line_info = ctrl.get_hud_info_text()
 
-    else:
-        line1 = (" 1: Regenerate maze |"
-                 " 2: Show/hide shortest path |"
-                 " 3: Rotate colors |"
-                 " 4: Quit")
-        line2 = (f" [A]lgorithm: {ctrl.algorithm_name} |"
-                 f" [S]olver: {ctrl.solver_name}")
-        line3 = (f" SEED: {ctrl.current_seed} |"
-                 f" SIZE: {ctrl.width}x{ctrl.height} |"
-                 f" STATE: {ctrl.state.name}")
-
-    # \033[?7l - hardware command Linux: disable autowrap (hard cut right edge)
-    # \033[?7h - revert
+    # \033[?7l - Disable line wrapping
+    # \033[?7h - Enable line wrapping
+    # \033[J   - ED (Erase in Display): Clear screen from cursor to end
+    # \033[2K  - EL (Erase in Line): Clear entire current line
 
     menu = (
         f"\033[?7l"
         f"\033[{y_offset};1H\033[J\033[2K===Menu==="
-        f"\033[{y_offset + 1};1H\033[J\033[2K{line1}"
-        f"\033[{y_offset + 2};1H\033[J\033[2K{line2}"
-        f"\033[{y_offset + 3};1H\033[J\033[2K{line3}"
-        f"\033[{y_offset + 4};1H\033[J\033[2K Choice? (1-4, A, S): \033[K"
+        f"\033[{y_offset + 1};1H\033[J\033[2K{line_controls}"
+        f"\033[{y_offset + 2};1H\033[J\033[2K{line_info}"
+        f"\033[{y_offset + 4};1H\033[J\033[2K Choice? (press key): \033[K"
         f"\033[?7h"
     )
     _real_output.write(menu)
