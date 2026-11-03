@@ -9,8 +9,8 @@ class Wall(IntFlag):
     """Bitwise flags representing the walls of a single maze cell."""
     N = auto()  # 1 = 0001
     E = auto()  # 2 = 0010
-    S = auto()  # 3 = 0100
-    W = auto()  # 4 = 1000
+    S = auto()  # 4 = 0100
+    W = auto()  # 8 = 1000
 
     ALL = N | E | S | W
 

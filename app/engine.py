@@ -21,6 +21,12 @@ class EngineState(Enum):
     PAUSED = auto()
 
 
+class ArrowMode(Enum):
+    SIZE = auto()
+    ENTRY = auto()
+    EXIT = auto()
+
+
 class AppController:
     def __init__(self, m_config: Config, backend: GraphicBackend, ) -> None:
         self.config = m_config
@@ -48,6 +54,8 @@ class AppController:
         )
 
         self.state: EngineState = EngineState.INITIALIZING
+
+        self.arrow_mode: ArrowMode = ArrowMode.SIZE
 
         self.maze: Maze | None = None
         self.generator_process: BaseGenerator | None = None
@@ -121,57 +129,85 @@ class AppController:
 
     def handle_action(self, action: str) -> None:
         """Abstract central of action. Backends only send event strings here"""
-        if action == "quit":
-            self.is_running = False
+        match action:
+            case "quit":
+                self.is_running = False
 
-        elif action == "regen":
-            self.init_new_run()
-            self.grid.clear()
-            self.state = EngineState.GENERATING
-        elif action == "hide_toggle":
-            if self.state != EngineState.IDLE:
-                return
-            if self.path_visible:
-                self.hide_path()
-                self.path_visible = False
-            else:
-                self.show_path()
-                self.path_visible = True
-        elif action == "pause":
-            if self.state == EngineState.PAUSED:
-                self.state = self.previous_state
-            else:
-                self.previous_state = self.state
-                self.state = EngineState.PAUSED
+            case "regen":
+                self.init_new_run()
+                self.grid.clear()
+                self.state = EngineState.GENERATING
+            case "hide_toggle":
+                if self.state != EngineState.IDLE:
+                    return
+                if self.path_visible:
+                    self.hide_path()
+                    self.path_visible = False
+                else:
+                    self.show_path()
+                    self.path_visible = True
+            case "pause":
+                if self.state == EngineState.PAUSED:
+                    self.state = self.previous_state
+                else:
+                    self.previous_state = self.state
+                    self.state = EngineState.PAUSED
 
-        elif action == "skip":
-            if self.state == EngineState.GENERATING:
-                self.generate_maze(skip=True)
-                return
-            if self.state == EngineState.SOLVING:
-                self.solve(skip=True)
+            case "skip":
+                if self.state == EngineState.GENERATING:
+                    self.generate_maze(skip=True)
+                    return
+                if self.state == EngineState.SOLVING:
+                    self.solve(skip=True)
 
-        elif action == "cycle_maze_generator":
-            self.change_algorithm_in_runtime()
-            self.handle_action("regen")
+            case "cycle_maze_generator":
+                self.change_algorithm_in_runtime()
+                self.handle_action("regen")
 
-        elif action in ["grow_width", "shrink_width", "grow_height",
-                        "shrink_height"]:
-            new_w = self.width
-            new_h = self.height
+            case "toggle_arrow_mode":
+                match self.arrow_mode:
+                    case ArrowMode.SIZE:
+                        self.arrow_mode = ArrowMode.ENTRY
+                    case ArrowMode.ENTRY:
+                        self.arrow_mode = ArrowMode.EXIT
+                    case ArrowMode.EXIT:
+                        self.arrow_mode = ArrowMode.SIZE
+                print(
+                    f"[ENGINE] Arrow keys mode switched to: {self.arrow_mode.name}")
 
-            if action == "grow_width":
-                new_w += 1
-            elif action == "shrink_width":
-                new_w -= 1
-            elif action == "grow_height":
-                new_h += 1
-            elif action == "shrink_height":
-                new_h -= 1
-            self.validate_and_apply_dimensions(new_w, new_h)
-            # self.config.EXIT = (self.width - 1)
-            self.maze_resize()
-            self.handle_action("regen")
+            case "move_right" | "move_left" | "move_down" \
+                 | "move_up":
+                match self.arrow_mode:
+                    case ArrowMode.SIZE:
+                        new_w = self.width
+                        new_h = self.height
+
+                        if action == "move_right":
+                            new_w += 1
+                        elif action == "move_left":
+                            new_w -= 1
+                        elif action == "move_down":
+                            new_h += 1
+                        elif action == "move_up":
+                            new_h -= 1
+                        self.validate_and_apply_dimensions(new_w, new_h)
+                        self.maze_resize()
+                        self.handle_action("regen")
+                    case ArrowMode.ENTRY | ArrowMode.EXIT:
+                        dx, dy = 0, 0
+                        if action == "move_up":
+                            dy = -1
+                        elif action == "move_down":
+                            dy = 1
+                        elif action == "move_right":
+                            dx = 1
+                        elif action == "move_left":
+                            dx = -1
+
+                        if self.arrow_mode == ArrowMode.ENTRY:
+                            self._move_live_point("ENTRY", dx, dy)
+                        else:
+                            self._move_live_point("EXIT", dx, dy)
 
     def start(self) -> None:
         self.backend.init_window(self.width,
@@ -314,3 +350,46 @@ class AppController:
         print(
             f"[ENGINE] Validated dimensions applied:"
             f" {self.width}x{self.height}")
+
+    def _move_live_point(self, point_type: str, dx: int, dy: int) -> None:
+        current_x, current_y = self.config.ENTRY if point_type == "ENTRY" else self.config.EXIT
+        target_x = current_x + dx
+        target_y = current_y + dy
+
+        if not (0 <= target_x < self.width and 0 <= target_y < self.height):
+            return
+
+        other_x, other_y = self.config.EXIT if point_type == "EXIT" else self.config.ENTRY
+        if (target_x, target_y) == (other_x, other_y):
+            return
+
+        assert self.maze is not None
+        if (target_x, target_y) in self.maze.locked_cells:
+            return
+
+        if point_type == "ENTRY":
+            self.grid.register_change(current_x * 2 + 1, current_y * 2 + 1,
+                                      CellState.FLOOR)
+            self.config.ENTRY = (target_x, target_y)
+            self.grid.register_change(target_x * 2 + 1, target_y * 2 + 1,
+                                      CellState.ENTRY)
+
+        else:
+            self.grid.register_change(current_x * 2 + 1, current_y * 2 + 1,
+                                      CellState.FLOOR)
+            self.config.EXIT = (target_x, target_y)
+            self.grid.register_change(target_x * 2 + 1, target_y * 2 + 1,
+                                      CellState.EXIT)
+
+        if self.state in [EngineState.IDLE, EngineState.SOLVING,
+                          EngineState.SOLVED]:
+            self.hide_path()
+            from mazegen import create_stepping_solver
+            assert self.maze is not None
+
+            self.maze.m_entry = self.config.ENTRY
+            self.maze.m_exit = self.config.EXIT
+
+            self.solver_process = create_stepping_solver(self.config.SOLVER,
+                                                         self.maze)
+            self.state = EngineState.SOLVING
