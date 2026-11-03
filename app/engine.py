@@ -1,5 +1,6 @@
 import random
 import sys
+from binascii import a2b_base64
 from enum import Enum, auto
 
 import numpy as np
@@ -40,6 +41,7 @@ class AppController:
 
         self.initial_seed: int | None = getattr(m_config, "SEED", None)
         self.algorithm_name: str = m_config.ALGORITHM
+        self.solver_name: str = m_config.SOLVER
 
         self.current_seed: int = 0
         self.is_running = True
@@ -108,6 +110,27 @@ class AppController:
             file=sys.stderr
         )
 
+    def change_solver_in_runtime(self) -> None:
+        from mazegen import get_available_solvers, create_stepping_solver
+        available_solvers = get_available_solvers()
+        try:
+            current_idx = available_solvers.index(self.solver_name)
+            next_idx = (current_idx + 1) % len(available_solvers)
+            self.solver_name = available_solvers[next_idx]
+        except ValueError:
+            self.solver_name = available_solvers[0]
+
+        print(f"[ENGINE] Changing solver class to {self.solver_name}")
+
+        if self.state in [EngineState.IDLE, EngineState.SOLVING,
+                          EngineState.SOLVED]:
+            self.hide_path()
+            assert self.maze is not None
+
+            self.solver_process = create_stepping_solver(self.solver_name,
+                                                         self.maze)
+            self.state = EngineState.SOLVING
+
     def tick(self) -> None:
         """Performs exactly one logic step of application"""
         if self.grid.changed:
@@ -163,6 +186,9 @@ class AppController:
             case "cycle_maze_generator":
                 self.change_algorithm_in_runtime()
                 self.handle_action("regen")
+
+            case "cycle_solver":
+                self.change_solver_in_runtime()
 
             case "toggle_arrow_mode":
                 match self.arrow_mode:

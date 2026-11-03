@@ -102,6 +102,9 @@ class TerminalBackend(GraphicBackend):
                     elif key_lowered == "a":
                         controller.handle_action("cycle_maze_generator")
                         self.render_frame(grid=controller.grid)
+                    elif key_lowered == "s":
+                        controller.handle_action("cycle_solver")
+                        # self.render_frame(grid=controller.grid)
                     elif key_lowered == "5":
                         controller.handle_action("hide_toggle")
                     elif key_lowered == " ":
@@ -292,7 +295,7 @@ def draw_menu(y_offset: int, ctrl: AppController) -> None:
                  " 3: Rotate colors |"
                  " 4: Quit")
         line2 = (f" [A]lgorithm: {ctrl.algorithm_name} |"
-                 f" [S]olver: {ctrl.config.SOLVER}")
+                 f" [S]olver: {ctrl.solver_name}")
         line3 = (f" SEED: {ctrl.current_seed} |"
                  f" SIZE: {ctrl.width}x{ctrl.height} |"
                  f" STATE: {ctrl.state.name}")

@@ -67,6 +67,10 @@ def get_available_algorithm() -> list[str]:
     return list(_ALGORITHMS.keys())
 
 
+def get_available_solvers() -> list[str]:
+    return list(_SOLVERS.keys())
+
+
 def create_stepping_generator(
         algorithm_name: str,
         width: int,
@@ -101,4 +105,5 @@ __all__ = ['Maze', 'Wall', "BaseGenerator",
            "create_stepping_solver",
            "generate_maze",
            "solve_maze",
-           "get_available_algorithm"]
+           "get_available_algorithm",
+           "get_available_solvers"]
