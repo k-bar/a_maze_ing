@@ -24,7 +24,6 @@ class TerminalBackend(GraphicBackend):
         self._last_grid_w: int = 0
         self._last_grid_h: int = 0
         self.controller: AppController | None = None
-        self.controller: AppController | None = None
         self.palette: MazePalette = PRESETS[0]
         self.preset_mode = 0
 
@@ -320,6 +319,57 @@ def rgb_to_ansi(r: int, g: int, b: int, is_bg: bool = False) -> str:
     return f"\033[{ansi_base + 7}m"
 
 
+def supports_utf8() -> bool:
+    try:
+        return sys.stdout.encoding.lower() in ("utf-8", "utf8", "cp65001")
+    except AttributeError:
+        return False
+
+
+# def resolve_cell_content(x: int, y: int, state: CellState,
+#                          palette: MazePalette) -> str:
+#     is_x_even = (x % 2 == 0)
+#     is_y_even = (y % 2 == 0)
+#
+#     rgb = palette.get_rgb(state)
+#     reset = "\033[0m"
+#
+#     bg_ansi = rgb_to_ansi(rgb[0], rgb[1], rgb[2], is_bg=True)
+#     text_color = "\033[30m" if (rgb[0] + rgb[1] + rgb[
+#         2]) // 3 > 128 else "\033[37m"
+#     cell_style = f"{bg_ansi}{text_color}"
+#
+#     if is_x_even and is_y_even:
+#         # wall corners
+#         wall_rgb = palette.get_rgb(CellState.WALL)
+#         return f"{rgb_to_ansi(*wall_rgb, is_bg=True)}+{reset}"
+#
+#     if is_x_even and not is_y_even:
+#         # vertical walls / paths
+#         if state == CellState.WALL:
+#             return f"{cell_style}|{reset}"
+#         return f"{cell_style} {reset}"
+#
+#     if not is_x_even and is_y_even:
+#         # horizontal walls / paths
+#         if state == CellState.WALL:
+#             return f"{cell_style}---{reset}"
+#         return f"{cell_style}   {reset}"
+#
+#     # room
+#     char = "   "
+#     if state == CellState.ENTRY:
+#         char = " S "
+#     if state == CellState.EXIT:
+#         char = " E "
+#     if state == CellState.LOCK:
+#         char = "[$]"
+#     if state == CellState.PATH:
+#         char = " • "
+#
+#     return f"{cell_style}{char}{reset}"
+
+
 def resolve_cell_content(x: int, y: int, state: CellState,
                          palette: MazePalette) -> str:
     is_x_even = (x % 2 == 0)
@@ -328,40 +378,45 @@ def resolve_cell_content(x: int, y: int, state: CellState,
     rgb = palette.get_rgb(state)
     reset = "\033[0m"
 
-    bg_ansi = rgb_to_ansi(rgb[0], rgb[1], rgb[2], is_bg=True)
+    bg_ansi = rgb_to_ansi(*rgb, is_bg=True)
+
     text_color = "\033[30m" if (rgb[0] + rgb[1] + rgb[
         2]) // 3 > 128 else "\033[37m"
     cell_style = f"{bg_ansi}{text_color}"
 
-    if is_x_even and is_y_even:
-        # wall corners
-        wall_rgb = palette.get_rgb(CellState.WALL)
-        return f"{rgb_to_ansi(*wall_rgb, is_bg=True)}+{reset}"
+    has_utf8 = supports_utf8()
 
-    if is_x_even and not is_y_even:
-        # vertical walls / paths
-        if state == CellState.WALL:
-            return f"{cell_style}|{reset}"
+    # wall corners and walls
+    if state == CellState.WALL:
+        wall_rgb = palette.get_rgb(CellState.WALL)
+        wall_bg = rgb_to_ansi(*wall_rgb, is_bg=True)
+        # width: vertical: 1, horizontal: 3
+        return f"{wall_bg} {reset}" if is_x_even else f"{wall_bg}   {reset}"
+
+    # passages and rooms
+    if is_x_even:
+        # vertical passage
         return f"{cell_style} {reset}"
 
-    if not is_x_even and is_y_even:
-        # horizontal walls / paths
-        if state == CellState.WALL:
-            return f"{cell_style}---{reset}"
+    if not is_y_even:
+        # room
+        if state == CellState.ENTRY:
+            return f"{cell_style} S {reset}"
+        if state == CellState.EXIT:
+            return f"{cell_style} E {reset}"
+        if state == CellState.LOCK:
+            return f"{cell_style}[$]{reset}"
+        if state == CellState.PATH:
+            # Fallback dot path
+            dot = " • " if has_utf8 else " o "
+            return f"{cell_style}{dot}{reset}"
         return f"{cell_style}   {reset}"
 
-    # room
-    char = "   "
-    if state == CellState.ENTRY:
-        char = " S "
-    if state == CellState.EXIT:
-        char = " E "
-    if state == CellState.LOCK:
-        char = "[$]"
+    # passage 3 width
     if state == CellState.PATH:
-        char = " • "
-
-    return f"{cell_style}{char}{reset}"
+        dot = " • " if has_utf8 else " o "
+        return f"{cell_style}{dot}{reset}"
+    return f"{cell_style}   {reset}"
 
 
 def draw_menu(y_offset: int, ctrl: AppController) -> None:

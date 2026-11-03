@@ -273,7 +273,7 @@ class MlxBackend(GraphicBackend):
 
         def handle_mlx_keys(keycode: int, param: None = None) -> None:
             action = KEY_MAP.get(keycode)
-            if action == "cycle_color":
+            if action == "cycle_color" or action == "digit_3":
                 self.change_colors(controller)
                 return
             if action:
