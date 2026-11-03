@@ -20,7 +20,7 @@ def test_resize_forces_instant_generating_state() -> None:
 
     ctrl.state = EngineState.IDLE
     ctrl.init_new_run()
-    ctrl.handle_action("grow_width")
+    ctrl.handle_action("move_right")
     assert ctrl.width == 11
     assert ctrl.state == EngineState.GENERATING
     assert ctrl.width == 11

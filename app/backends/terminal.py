@@ -10,7 +10,6 @@ from queue import Empty, Queue
 from typing import Any, Optional
 
 import numpy as np
-from mypy.messages import collect_all_named_types
 
 from app.backends.base import GraphicBackend
 from app.grid import RenderGrid, CellState
@@ -24,6 +23,7 @@ class TerminalBackend(GraphicBackend):
         self.colors: dict[str, str] = palette1
         self._last_grid_w: int = 0
         self._last_grid_h: int = 0
+        self.controller: AppController | None = None
 
     def init_window(self, width: int, height: int, title: str) -> None:
         pass
@@ -35,6 +35,10 @@ class TerminalBackend(GraphicBackend):
             self._last_grid_h = grid.height
             _real_output.write("\033[2J\033[1;1H")
             _real_output.flush()
+
+            menu_y_position = len(grid.cells) + 2
+            assert self.controller is not None
+            draw_menu(menu_y_position, self.controller)
 
         while grid.changed:
             changed_cell = grid.changed.popleft()
@@ -64,6 +68,7 @@ class TerminalBackend(GraphicBackend):
     def start_loop(self, controller: "AppController") -> None:
         """Main loop with step by step animation"""
 
+        self.controller = controller
         cols, lines = get_terminal_dimensions()
         controller.max_width = (cols - 1) // 4 - 1
         controller.max_height = (lines - 1 - 7) // 2
@@ -93,52 +98,69 @@ class TerminalBackend(GraphicBackend):
 
                     key_lowered = pressed_key.lower()
                     should_refresh_menu = True
-
-                    if key_lowered == "4":
-                        controller.handle_action("quit")
-                    elif key_lowered == "1":
-                        controller.handle_action("regen")
-                        self.render_frame(grid=controller.grid)
-                    elif key_lowered == "a":
-                        controller.handle_action("cycle_maze_generator")
-                        self.render_frame(grid=controller.grid)
-                    elif key_lowered == "s":
-                        controller.handle_action("cycle_solver")
-                    elif key_lowered == "5":
-                        controller.handle_action("hide_toggle")
-                    elif key_lowered == " ":
-                        controller.handle_action("pause")
-                    elif key_lowered == "3":
-                        self.change_colors(controller)
-                    elif pressed_key in ["\x1b[4~", "\x1b[F", "\x1b[OF"]:
-                        controller.handle_action("skip")
-                    elif pressed_key == '\r' or pressed_key == '\n':
-                        controller.handle_action("enter_action")
-                        # TODO render?
-                    elif pressed_key == '\t':
-                        controller.handle_action("toggle_arrow_mode")
-                    elif pressed_key in ['\x1b[A', '\x1b[B', '\x1b[C',
-                                         '\x1b[D']:
-                        action_name = ""
+                    if controller.is_entering_seed:
                         match pressed_key:
-                            case '\x1b[A':
-                                action_name = "move_up"
-                            case '\x1b[B':
-                                action_name = "move_down"
-                            case '\x1b[C':
-                                action_name = "move_right"
-                            case '\x1b[D':
-                                action_name = "move_left"
-                        controller.handle_action(action_name)
+                            case "\x7f" | "\x08":
+                                controller.handle_action("seed_backspace")
+                            case "\r" | "\n":
+                                controller.handle_action("enter_action")
+                            case " ":
+                                controller.handle_action("pause")
+                            case _ if pressed_key.isdigit():
+                                controller.handle_action(
+                                    f"digit_{pressed_key}")
+                            case _:
+                                should_refresh_menu = False
 
+                    else:
+                        if key_lowered == "4":
+                            controller.handle_action("quit")
+                        elif key_lowered == "1":
+                            controller.handle_action("regen")
+                            self.render_frame(grid=controller.grid)
+                        elif key_lowered == "a":
+                            controller.handle_action("cycle_maze_generator")
+                            self.render_frame(grid=controller.grid)
+                        elif key_lowered == "s":
+                            controller.handle_action("cycle_solver")
+                        elif key_lowered == "5":
+                            controller.handle_action("hide_toggle")
+                        elif key_lowered == " ":
+                            controller.handle_action("pause")
+                        elif key_lowered == "k":
+                            controller.handle_action("activate_seed_input")
+                        elif key_lowered == "r":
+                            controller.handle_action("randomize_seed")
+
+                        elif key_lowered == "3":
+                            self.change_colors(controller)
+                        elif pressed_key in ["\x1b[4~", "\x1b[F", "\x1b[OF"]:
+                            controller.handle_action("skip")
+                        elif pressed_key == '\r' or pressed_key == '\n':
+                            controller.handle_action("enter_action")
+                            # TODO render?
+                        elif pressed_key == '\t':
+                            controller.handle_action("toggle_arrow_mode")
+                        elif pressed_key in ['\x1b[A', '\x1b[B', '\x1b[C',
+                                             '\x1b[D']:
+                            action_name = ""
+                            match pressed_key:
+                                case '\x1b[A':
+                                    action_name = "move_up"
+                                case '\x1b[B':
+                                    action_name = "move_down"
+                                case '\x1b[C':
+                                    action_name = "move_right"
+                                case '\x1b[D':
+                                    action_name = "move_left"
+                            controller.handle_action(action_name)
+                        else:
+                            should_refresh_menu = False
+
+                    if should_refresh_menu:
                         menu_y_position = len(controller.grid.cells) + 2
+                        draw_menu(menu_y_position, controller)
                         self.render_frame(grid=controller.grid)
-
-                else:
-                    should_refresh_menu = False
-
-                if should_refresh_menu:
-                    draw_menu(menu_y_position, controller)
 
                 time.sleep(0.01)
 
@@ -279,10 +301,21 @@ def resolve_cell_content(x: int, y: int, state: CellState,
 
 
 def draw_menu(y_offset: int, ctrl: AppController) -> None:
-
     is_narrow = (ctrl.width < 12)
     line_controls = ctrl.get_hud_controls_text(is_narrow=is_narrow)
-    line_info = ctrl.get_hud_info_text()
+    raw_info = ctrl.get_hud_info_text()
+
+    reset = "\033[0m"
+    color_edit = "\033[1;33m"
+    color_seed = "\033[1;31m"
+
+    if getattr(ctrl, "is_entering_seed", False):
+        info_colored = raw_info.replace("<", color_seed).replace(">", reset)
+        line_controls = f"\033[1;31m{line_controls}{reset}"
+    else:
+        info_colored = raw_info.replace("<", color_edit).replace(">", reset)
+
+    color_header = "\033[1:34m"
 
     # \033[?7l - Disable line wrapping
     # \033[?7h - Enable line wrapping
@@ -291,9 +324,9 @@ def draw_menu(y_offset: int, ctrl: AppController) -> None:
 
     menu = (
         f"\033[?7l"
-        f"\033[{y_offset};1H\033[J\033[2K===Menu==="
+        f"\033[{y_offset};1H\033[J\033[2K{color_header}===Menu==={reset}"
         f"\033[{y_offset + 1};1H\033[J\033[2K{line_controls}"
-        f"\033[{y_offset + 2};1H\033[J\033[2K{line_info}"
+        f"\033[{y_offset + 2};1H\033[J\033[2K{info_colored}"
         f"\033[{y_offset + 4};1H\033[J\033[2K Choice? (press key): \033[K"
         f"\033[?7h"
     )

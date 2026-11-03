@@ -1,11 +1,17 @@
 """keyboard codes config for MiniLibX dedicated for Linux platform (X11)"""
 
+KEY_0 = 48
 KEY_1 = 49
 KEY_2 = 50
 KEY_3 = 51
 KEY_4 = 52
 KEY_5 = 53
+KEY_6 = 54
+KEY_7 = 55
+KEY_8 = 56
+KEY_9 = 57
 
+N_KEY_0 = 65435
 N_KEY_1 = 65436
 N_KEY_2 = 65433
 N_KEY_3 = 65435
@@ -30,8 +36,10 @@ KEY_DOWN = 65364
 KEY_LEFT = 65361
 KEY_RIGHT = 65363
 
+BACKSPACE = 65288
 SPACE = 32
 KEY_ENTER = 65293
+KEY_N_ENTER = 65421
 KEY_ESC = 65307
 KEY_TAB = 65289
 KEY_END = 65367
@@ -41,20 +49,37 @@ MLX_EVENT_DESTROY = 17
 MLX_MASK_NO_MASK = 0
 
 KEY_MAP = {
-    KEY_1: "regen",
-    N_KEY_1: "regen",
-    KEY_4: "quit",
-    N_KEY_4: "quit",
+    KEY_0: "digit_0",
+    KEY_1: "digit_1",
+    KEY_2: "digit_2",
+    KEY_3: "digit_3",
+    KEY_4: "digit_4",
+    KEY_5: "digit_5",
+    KEY_6: "digit_6",
+    KEY_7: "digit_7",
+    KEY_8: "digit_8",
+    KEY_9: "digit_9",
+
+    N_KEY_0: "digit_0",
+    N_KEY_1: "digit_1",
+    N_KEY_2: "digit_2",
+    N_KEY_3: "digit_3",
+    N_KEY_4: "digit_4",
+    N_KEY_5: "digit_5",
+    N_KEY_6: "digit_6",
+    N_KEY_7: "digit_7",
+    N_KEY_8: "digit_8",
+    N_KEY_9: "digit_9",
+
     KEY_ESC: "quit",
-    KEY_5: "hide_toggle",
-    N_KEY_5: "hide_toggle",
-    KEY_3: "cycle_color",
-    N_KEY_3: "cycle_color",
     SPACE: "pause",
     KEY_END: "skip",
     KEY_ENTER: "enter_action",
+    KEY_N_ENTER: "enter_action",
     KEY_A: "cycle_maze_generator",
     KEY_S: "cycle_solver",
+    KEY_K: "activate_seed_input",
+    KEY_R: "randomize_seed",
 
     KEY_TAB: "toggle_arrow_mode",
 
