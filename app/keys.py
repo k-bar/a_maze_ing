@@ -17,6 +17,7 @@ N_KEY_8 = 65431
 N_KEY_9 = 65434
 
 KEY_R = 114
+KEY_S = 115
 KEY_W = 119
 KEY_K = 107
 KEY_P = 112
@@ -51,6 +52,7 @@ KEY_MAP = {
     SPACE: "pause",
     KEY_ENTER: "skip",
     KEY_A: "cycle_maze_generator",
+    KEY_S: "cycle_solver",
 
     KEY_TAB: "toggle_arrow_mode",
 
