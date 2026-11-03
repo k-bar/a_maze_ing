@@ -10,6 +10,7 @@ from queue import Empty, Queue
 from typing import Any, Optional
 
 import numpy as np
+from mypy.messages import collect_all_named_types
 
 from app.backends.base import GraphicBackend
 from app.grid import RenderGrid, CellState
@@ -109,18 +110,20 @@ class TerminalBackend(GraphicBackend):
                         self.change_colors(controller)
                     elif pressed_key == '\r':
                         controller.handle_action("skip")
+                    elif pressed_key == '\t':
+                        controller.handle_action("toggle_arrow_mode")
                     elif pressed_key in ['\x1b[A', '\x1b[B', '\x1b[C',
                                          '\x1b[D']:
                         action_name = ""
                         match pressed_key:
                             case '\x1b[A':
-                                action_name = "shrink_height"
+                                action_name = "move_up"
                             case '\x1b[B':
-                                action_name = "grow_height"
+                                action_name = "move_down"
                             case '\x1b[C':
-                                action_name = "grow_width"
+                                action_name = "move_right"
                             case '\x1b[D':
-                                action_name = "shrink_width"
+                                action_name = "move_left"
                         controller.handle_action(action_name)
 
                         menu_y_position = len(controller.grid.cells) + 2
