@@ -187,6 +187,7 @@ class MlxBackend(GraphicBackend):
             ctrl = self.controller
             current_hud_snapshot = (f"{ctrl.current_seed}_"
                                     f"{ctrl.algorithm_name}_"
+                                    f"{ctrl.solver_name}_"
                                     f"{ctrl.width}_{ctrl.height}_"
                                     f"{ctrl.state.name}")
 
@@ -201,19 +202,11 @@ class MlxBackend(GraphicBackend):
                                                  self.hud_image.img_ptr, 0,
                                                  hud_top)
 
-                info_text = (f" SEED: {ctrl.current_seed} |"
-                             f" ALG: {ctrl.algorithm_name} |"
-                             f" SIZE: {ctrl.width}x{ctrl.height} |"
-                             f" STATE: {ctrl.state.name}")
+                info_text = ctrl.get_hud_info_text()
                 self.mlx.mlx_string_put(self.mlx_ptr, self.win_ptr, 20,
                                         self.fixed_win_height - 44, 0xAAAAAA,
                                         info_text)
-                controls_test = ("CONTROLS: [1] Regen |"
-                                 " [A]lgorithm |"
-                                 " [SPACE] Pause |"
-                                 " [3] Colors |"
-                                 " [->] Skip Anim |"
-                                 " [5] Show/hide path")
+                controls_test = ctrl.get_hud_controls_text(is_narrow=False)
                 self.mlx.mlx_string_put(self.mlx_ptr, self.win_ptr, 20,
                                         self.fixed_win_height - 21, 0xAAAAAA,
                                         controls_test)
