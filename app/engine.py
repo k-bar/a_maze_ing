@@ -2,6 +2,7 @@ import random
 import sys
 from binascii import a2b_base64
 from enum import Enum, auto
+from os import pread
 
 import numpy as np
 
@@ -177,11 +178,24 @@ class AppController:
                     self.state = EngineState.PAUSED
 
             case "skip":
+                if self.state == EngineState.PAUSED:
+                    self.state = self.previous_state
                 if self.state == EngineState.GENERATING:
                     self.generate_maze(skip=True)
                     return
                 if self.state == EngineState.SOLVING:
                     self.solve(skip=True)
+
+            case "enter_action":
+                if self.state in [EngineState.GENERATING, EngineState.SOLVING]:
+                    self.previous_state = self.state
+                    self.state = EngineState.PAUSED
+                    self.tick()
+                elif self.state == EngineState.PAUSED:
+                    self.state = self.previous_state
+                    self.tick()
+                    self.previous_state = self.state
+                    self.state = EngineState.PAUSED
 
             case "cycle_maze_generator":
                 self.change_algorithm_in_runtime()
@@ -421,11 +435,17 @@ class AppController:
             self.state = EngineState.SOLVING
 
     def get_hud_info_text(self) -> str:
+        mode_val = getattr(self, "arrow_mode", ArrowMode.SIZE)
+        if isinstance(mode_val, ArrowMode):
+            mode_name = mode_val.name
+        else:
+            mode_name = "SIZE"
         return (
             f"SEED: {self.current_seed:<7} | "
             f"ALG: {self.algorithm_name:<11} | "
             f"SOLV: {self.solver_name:<4} | "
-            f"SIZE: {self.width:<4}x{self.height:<4} | "
+            f"SIZE: {self.width:<3}x{self.height:<3} | "
+            f"EDIT [ {mode_name:<5}] "
             f"STATE: {self.state.name:<10}"
         )
 

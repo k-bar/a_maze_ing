@@ -219,6 +219,7 @@ class MlxBackend(GraphicBackend):
                           0)
 
         def handle_mlx_keys(keycode: int, param: None = None) -> None:
+            print("klawisz to", keycode)
             action = KEY_MAP.get(keycode)
             if action == "cycle_color":
                 self.change_colors(controller)

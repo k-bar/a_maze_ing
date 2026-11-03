@@ -110,8 +110,11 @@ class TerminalBackend(GraphicBackend):
                         controller.handle_action("pause")
                     elif key_lowered == "3":
                         self.change_colors(controller)
-                    elif pressed_key == '\r':
+                    elif pressed_key in ["\x1b[4~", "\x1b[F", "\x1b[OF"]:
                         controller.handle_action("skip")
+                    elif pressed_key == '\r' or pressed_key == '\n':
+                        controller.handle_action("enter_action")
+                        # TODO render?
                     elif pressed_key == '\t':
                         controller.handle_action("toggle_arrow_mode")
                     elif pressed_key in ['\x1b[A', '\x1b[B', '\x1b[C',

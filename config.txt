@@ -24,4 +24,4 @@ ANIMATION=TRUE
 COLOR=green
 
 # Renderer modes: MLX, Terminal
-DISPLAY_MODE=MLX
+DISPLAY_MODE=Terminal
