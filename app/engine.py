@@ -1,6 +1,7 @@
 import random
 import sys
 from enum import Enum, auto
+from typing import TypedDict
 
 import numpy as np
 
@@ -182,14 +183,14 @@ class AppController:
                 return
 
         match action:
-            case "quit" | "digit_4":
+            case "quit":
                 self.is_running = False
 
-            case "regen" | "digit_1":
+            case "regen":
                 self.init_new_run()
                 self.grid.clear()
                 self.state = EngineState.GENERATING
-            case "hide_toggle" | "digit_5":
+            case "hide_toggle":
                 if self.state != EngineState.IDLE:
                     return
                 if self.path_visible:
@@ -210,7 +211,7 @@ class AppController:
                 self.seed_input_buffer = ""
 
             case "randomize_seed":
-                self.initial_seed = None
+                self.initial_seed = random.randint(1, 999999)
                 self.init_new_run()
                 self.grid.clear()
                 self.state = EngineState.GENERATING
@@ -241,6 +242,19 @@ class AppController:
 
             case "cycle_solver":
                 self.change_solver_in_runtime()
+
+            case "toggle_perfect":
+                self.config.PERFECT = not self.config.PERFECT
+                if self.maze:
+                    self.maze.perfect = self.config.PERFECT
+                if not self.config.PERFECT and self.generator_process:
+                    from mazegen.generators.imperfect import ImperfectGenerator
+                    if not isinstance(self.generator_process,
+                                      ImperfectGenerator):
+                        self.generator_process = ImperfectGenerator(
+                            base_generator=self.generator_process)
+                print(f"[ENGINE] Maze perfect property flipped in runtime to:"
+                      f" {self.config.PERFECT}")
 
             case "toggle_arrow_mode":
                 match self.arrow_mode:
@@ -475,32 +489,67 @@ class AppController:
                                                          self.maze)
             self.state = EngineState.SOLVING
 
-    def get_hud_info_text(self) -> str:
+    class HudBlock(TypedDict):
+        label: str
+        value: str
+        width_spec: int
+        is_highlighted: bool
+        is_seed: bool
 
+    def get_unified_hud_blocks(self) -> list[HudBlock]:
+
+        perf_suffix = "P" if self.config.PERFECT else "I"
         seed_display = f"{self.seed_input_buffer}_" \
             if self.is_entering_seed else str(self.current_seed)
-
-        part_seed = f"<SEED: {seed_display:<7}>" \
-            if self.is_entering_seed else f"SEED: {seed_display:<7}"
-
-        part_algo = f"[A]LG: {self.algorithm_name:<11}"
-        part_solv = f"[S]OLV: {self.solver_name:<4}"
-
         mode_name = self.arrow_mode.name
 
-        part_size = (f"<SIZE: {self.width:<3}x{self.height:<3}>"
-                     if mode_name == "SIZE" and not self.is_entering_seed
-                     else f"<SIZE: {self.width:<3}x{self.height:<3}>")
-
-        if self.is_entering_seed:
-            part_edit = f"<EDIT: [{mode_name:>5}]>"
-        else:
-            part_edit = f"<EDIT: [{mode_name:>5}]>" \
-                if mode_name in ("ENTRY", "EXIT") \
-                else f"EDIT: [{mode_name:>5}]"
-
-        return (f"{part_seed} | {part_algo} | {part_solv} | {part_size} |"
-                f" {part_edit} | STATE: {self.state.name:<10}")
+        return [
+            {
+                "label": "SEED",
+                "value": seed_display,
+                "width_spec": 13,
+                "is_highlighted": self.is_entering_seed,
+                "is_seed": True
+            },
+            {
+                "label": "[A]LG",
+                "value": f"{self.algorithm_name}({perf_suffix})",
+                "width_spec": 16,
+                "is_highlighted": False,
+                "is_seed": False
+            },
+            {
+                "label": "[S]OLV",
+                "value": self.solver_name,
+                "width_spec": 11,
+                "is_highlighted": False,
+                "is_seed": False
+            },
+            {
+                "label": "SIZE",
+                "value": f"{self.width}x{self.height}",
+                "width_spec": 12,
+                "is_highlighted": (
+                        mode_name == "SIZE" and not self.is_entering_seed),
+                "is_seed": False
+            },
+            {
+                "label": "EDIT",
+                "value": f"[{mode_name}]",
+                "width_spec": 15,
+                "is_highlighted": (
+                        mode_name in ("ENTRY", "EXIT")
+                        and not self.is_entering_seed),
+                "is_seed": False
+            },
+            {
+                "label": "STATE",
+                "value": self.state.name,
+                "width_spec": 17,
+                "is_highlighted": False,
+                "is_seed": False
+            }
+        ]
 
     def get_hud_controls_text(self, is_narrow: bool = False) -> str:
         if is_narrow:
@@ -512,8 +561,8 @@ class AppController:
             return ("SEED INPUT MODE: [0-9] Type Digits | [BACKSPACE] Delete |"
                     " [ENTER] Confirm & Regen | [SPACE] Cancel")
 
-        base_start = "CONTROLS: [1] Regen | [K]ey Seed | [R]and"
-        base_end = "[3] Colors | [TAB] Mode | [4] Quit"
+        base_start = "CONTROLS: [R]egen | [K]ey Seed | Ra[N]d seed"
+        base_end = "[C]olors | [TAB] Mode | [Q]uit"
 
         match self.state:
             case EngineState.GENERATING:
@@ -521,7 +570,7 @@ class AppController:
             case EngineState.SOLVING:
                 core = " [SPACE] Pause  | [ENTER] Step | [END] Skip |"
             case EngineState.IDLE | EngineState.SOLVED:
-                core = f" [5] {'Hide' if self.path_visible else 'Show'} Path |"
+                core = f" [H] {'Hide' if self.path_visible else 'Show'} Path |"
             case EngineState.PAUSED:
                 core = " [SPACE] Resume | [ENTER] Step | [END] Skip |"
             case _:

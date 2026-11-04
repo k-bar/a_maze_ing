@@ -211,51 +211,23 @@ class MlxBackend(GraphicBackend):
                 color_seed = 0xFF5555
                 color_edit = 0xFFCC00
 
-                mode_name = ctrl.arrow_mode.name
-                seed_txt = f"SEED: {ctrl.seed_input_buffer}_" \
-                    if ctrl.is_entering_seed else f"SEED: {ctrl.current_seed}"
+                hud_blocks = ctrl.get_unified_hud_blocks()
 
-                # Column 1: SEED (X = 20)
-                c_seed = color_seed if ctrl.is_entering_seed else color_default
-                self.mlx.mlx_string_put(self.mlx_ptr, self.win_ptr, 20,
-                                        self.fixed_win_height - 44, c_seed,
-                                        seed_txt)
+                x_positions = [20, 150, 380, 530, 690, 860]
 
-                # Column 2: ALGORITHM (X = 180)
-                algo_txt = f"ALG: {ctrl.algorithm_name}"
-                self.mlx.mlx_string_put(self.mlx_ptr, self.win_ptr, 180,
-                                        self.fixed_win_height - 44,
-                                        color_default, algo_txt)
+                for i, block in enumerate(hud_blocks):
+                    if i >= len(x_positions):
+                        break
 
-                # Column 3: SOLVER (X = 380)
-                solv_txt = f"SOLV: {ctrl.solver_name}"
-                self.mlx.mlx_string_put(self.mlx_ptr, self.win_ptr, 380,
-                                        self.fixed_win_height - 44,
-                                        color_default, solv_txt)
+                    color = (color_seed if block["is_seed"] else color_edit) \
+                        if block["is_highlighted"] else color_default
 
-                # Column 4: SIZE (X = 530)
-                c_size = color_edit if (
-                        mode_name == "SIZE" and not ctrl.is_entering_seed) \
-                    else color_default
-                size_txt = f"SIZE: {ctrl.width}x{ctrl.height}"
-                self.mlx.mlx_string_put(self.mlx_ptr, self.win_ptr, 530,
-                                        self.fixed_win_height - 44, c_size,
-                                        size_txt)
+                    full_text = f"{block['label']}: {block['value']}"
 
-                # Column 5: EDIT MODE (X = 690)
-                c_edit = color_edit if (mode_name in ["ENTRY", "EXIT"]
-                                        and not ctrl.is_entering_seed) \
-                    else color_default
-                edit_txt = f"EDIT: [{mode_name}]"
-                self.mlx.mlx_string_put(self.mlx_ptr, self.win_ptr, 690,
-                                        self.fixed_win_height - 44, c_edit,
-                                        edit_txt)
-
-                # Column 6: ENGINE STATE (X = 860)
-                state_txt = f"STATE: {ctrl.state.name}"
-                self.mlx.mlx_string_put(self.mlx_ptr, self.win_ptr, 860,
-                                        self.fixed_win_height - 44,
-                                        color_default, state_txt)
+                    self.mlx.mlx_string_put(self.mlx_ptr, self.win_ptr,
+                                            x_positions[i],
+                                            self.fixed_win_height - 44, color,
+                                            full_text)
 
                 controls_text = ctrl.get_hud_controls_text(is_narrow=False)
                 controls_color = color_seed \
@@ -273,12 +245,13 @@ class MlxBackend(GraphicBackend):
 
         def handle_mlx_keys(keycode: int, param: None = None) -> None:
             action = KEY_MAP.get(keycode)
-            if action == "cycle_color" or action == "digit_3":
+            if action == "cycle_palette":
                 self.change_colors(controller)
                 return
             if action:
                 controller.handle_action(action)
-                if controller.is_entering_seed or action == "regen":
+                if controller.is_entering_seed or action in (
+                        "regen", "seed_backspace"):
                     self.render_frame(controller.grid)
 
         self.mlx.mlx_key_hook(self.win_ptr, handle_mlx_keys, None)
