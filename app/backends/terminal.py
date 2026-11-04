@@ -138,6 +138,10 @@ class TerminalBackend(GraphicBackend):
                         elif key_lowered == "p":
                             controller.handle_action("toggle_perfect")
                             self.render_frame(grid=controller.grid)
+                        elif key_lowered in ("+", "="):
+                            controller.handle_action("speed_up")
+                        elif key_lowered == "-":
+                            controller.handle_action("speed_down")
 
                         elif key_lowered == "c":
                             self.change_colors(controller)
