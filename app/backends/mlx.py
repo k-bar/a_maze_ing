@@ -2,9 +2,10 @@ import re
 import subprocess
 
 import numpy as np
+from PIL import Image, ImageDraw, ImageFont
 
 from app.backends.palette import MazePalette, PRESETS
-from app.engine import AppController
+from app.engine import AppController, EngineState
 from app.backends.base import GraphicBackend
 from app.backends.mlx_image import MLXImage
 from app.grid import RenderGrid, CellState
@@ -40,6 +41,7 @@ class MlxBackend(GraphicBackend):
         self.controller: AppController | None = None
 
         self.init_frames_counter = 0
+        self.hud_delay_counter = 0
 
     def init_window(self, width: int, height: int, title: str) -> None:
 
@@ -49,7 +51,7 @@ class MlxBackend(GraphicBackend):
                 maze_h=height,
                 win_w=self.fixed_win_width,
                 win_h=self.fixed_win_height,
-                hud_h=self.hud_height
+                hud_h=self.hud_height + 20
             )
 
         blocks_x = width
@@ -73,8 +75,8 @@ class MlxBackend(GraphicBackend):
                               self.maze_image_height)
         self.hud_image = MLXImage(self.mlx, self.mlx_ptr, self.fixed_win_width,
                                   self.hud_height)
-        assert self.hud_image is not None
-        self.hud_image.pixels[:, :] = [0, 0, 0, 255]
+        assert self.image is not None
+        self.image.pixels[:, :] = [0, 0, 0, 255]
 
     def _draw_pixel_block(self, gx: int, gy: int,
                           color: tuple[int, int, int]) -> None:
@@ -199,43 +201,76 @@ class MlxBackend(GraphicBackend):
 
             if (current_hud_snapshot != self.last_hud_state
                     or self.init_frames_counter < 2):
+
                 if self.init_frames_counter < 5:
                     self.init_frames_counter += 1
                 self.last_hud_state = current_hud_snapshot
+
+                pil_img = Image.new("RGBA",
+                                    (self.fixed_win_width, self.hud_height),
+                                    (0, 0, 0, 255))
+                draw = ImageDraw.Draw(pil_img)
+
+                try:
+                    font = ImageFont.truetype(
+                        "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+                        14)
+                except IOError:
+                    font = ImageFont.load_default()
+
                 hud_top = self.fixed_win_height - self.hud_height
+
                 assert self.hud_image is not None
+                self.hud_image.pixels[hud_top:, :] = [0, 0, 0, 255]
                 self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.win_ptr,
                                                  self.hud_image.img_ptr, 0,
                                                  hud_top)
 
-                color_default = 0xAAAAAA
-                color_seed = 0xFF5555
-                color_edit = 0xFFCC00
-
                 hud_blocks = ctrl.get_unified_hud_blocks()
-
                 x_positions = [20, 150, 380, 530, 690, 860, 1100]
+
+                color_default = (170, 170, 170, 255)  # Grey
+                color_seed = (255, 85, 85, 255)  # Red
+                color_edit = (255, 204, 0, 255)  # Gold
 
                 for i, block in enumerate(hud_blocks):
                     if i >= len(x_positions):
                         break
 
-                    color = (color_seed if block["is_seed"] else color_edit) \
+                    color = (
+                        color_seed if block["is_seed"] else color_edit) \
                         if block["is_highlighted"] else color_default
 
                     full_text = f"{block['label']}: {block['value']}"
-
-                    self.mlx.mlx_string_put(self.mlx_ptr, self.win_ptr,
-                                            x_positions[i],
-                                            self.fixed_win_height - 44, color,
-                                            full_text)
+                    draw.text((x_positions[i], 10), full_text, fill=color,
+                              font=font)
 
                 controls_text = ctrl.get_hud_controls_text(is_narrow=False)
-                controls_color = color_seed \
+                c_color = color_seed \
                     if ctrl.is_entering_seed else color_default
-                self.mlx.mlx_string_put(self.mlx_ptr, self.win_ptr, 20,
-                                        self.fixed_win_height - 21,
-                                        controls_color, controls_text)
+                draw.text((20, 32), controls_text, fill=c_color, font=font)
+
+                np_img = np.array(pil_img)
+
+                bgra_img = np_img.copy()
+                bgra_img[:, :, 0] = np_img[:, :, 2]  # B <- R
+                bgra_img[:, :, 2] = np_img[:, :, 0]  # R <- B
+
+
+                assert self.hud_image is not None
+                self.hud_image.pixels[:, :] = bgra_img
+
+
+                hud_top = self.fixed_win_height - self.hud_height
+                self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.win_ptr,
+                                                 self.hud_image.img_ptr, 0,
+                                                 hud_top)
+            else:
+                hud_top = self.fixed_win_height - self.hud_height
+                assert self.hud_image is not None
+                self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.win_ptr,
+                                                 self.hud_image.img_ptr, 0,
+                                                 hud_top)
 
     def start_loop(self, controller: AppController) -> None:
         self.controller = controller
@@ -297,10 +332,17 @@ class MlxBackend(GraphicBackend):
                 maze_h=height,
                 win_w=self.fixed_win_width,
                 win_h=self.fixed_win_height,
-                hud_h=self.hud_height
+                hud_h=self.hud_height + 20
             )
         if self.image is not None:
             self.image.pixels[:, :] = [0, 0, 0, 255]
+        if self.hud_image is not None:
+            self.hud_image.pixels[:, :] = [0, 0, 0, 255]
+        # if self.win_ptr:
+        #     self.mlx.mlx_clear_window(self.mlx_ptr, self.win_ptr)
+
+        self.last_hud_state = ""
+        self.hud_delay_counter = 2
 
 
 def get_screen_resolution(fallback: tuple[int, int] = (1280, 720)) \
@@ -322,7 +364,8 @@ def get_screen_resolution(fallback: tuple[int, int] = (1280, 720)) \
 def calculate_mlx_geometry(maze_w: int = 10, maze_h: int = 10,
                            win_w: int = 1280, win_h: int = 720,
                            hud_h: int = 60) -> tuple[int, int, int, int]:
-    available_h = win_h - hud_h
+    safety_margin = 10
+    available_h = win_h - hud_h - safety_margin
 
     wall_size = 2
 
