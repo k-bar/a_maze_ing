@@ -19,13 +19,13 @@ class ImperfectGenerator(BaseGenerator):
         exactly three walls, removes a randomly selected wall to an eligible
         neighboring cell, if one exists. The maze grid is modified in place.
         Random choices are initialized using the maze seed.
-
-        Args:
-            maze: Maze whose dead ends should be opened.
         """
 
         while (base_step := self.base_generator.step()) is not None:
             yield base_step
+
+        if self.maze.perfect:
+            return
 
         if self.maze.seed is not None:
             random.seed(self.maze.seed)

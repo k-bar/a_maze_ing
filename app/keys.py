@@ -30,6 +30,12 @@ KEY_P = 112
 KEY_D = 100
 KEY_A = 97
 KEY_B = 98
+KEY_C = 99
+
+KEY_H = 104
+KEY_N = 110
+
+KEY_Q = 113
 
 KEY_UP = 65362
 KEY_DOWN = 65364
@@ -72,14 +78,21 @@ KEY_MAP = {
     N_KEY_9: "digit_9",
 
     KEY_ESC: "quit",
+    KEY_Q: "quit",
     SPACE: "pause",
     KEY_END: "skip",
     KEY_ENTER: "enter_action",
     KEY_N_ENTER: "enter_action",
+    BACKSPACE: "seed_backspace",
     KEY_A: "cycle_maze_generator",
     KEY_S: "cycle_solver",
     KEY_K: "activate_seed_input",
-    KEY_R: "randomize_seed",
+    KEY_H: "hide_toggle",
+    KEY_P: "toggle_perfect",
+    KEY_R: "regen",
+    KEY_N: "randomize_seed",
+
+    KEY_C: "cycle_palette",
 
     KEY_TAB: "toggle_arrow_mode",
 

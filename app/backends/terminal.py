@@ -117,9 +117,9 @@ class TerminalBackend(GraphicBackend):
                                 should_refresh_menu = False
 
                     else:
-                        if key_lowered == "4":
+                        if key_lowered == "q":
                             controller.handle_action("quit")
-                        elif key_lowered == "1":
+                        elif key_lowered == "r":
                             controller.handle_action("regen")
                             self.render_frame(grid=controller.grid)
                         elif key_lowered == "a":
@@ -127,16 +127,19 @@ class TerminalBackend(GraphicBackend):
                             self.render_frame(grid=controller.grid)
                         elif key_lowered == "s":
                             controller.handle_action("cycle_solver")
-                        elif key_lowered == "5":
+                        elif key_lowered == "h":
                             controller.handle_action("hide_toggle")
                         elif key_lowered == " ":
                             controller.handle_action("pause")
                         elif key_lowered == "k":
                             controller.handle_action("activate_seed_input")
-                        elif key_lowered == "r":
+                        elif key_lowered == "n":
                             controller.handle_action("randomize_seed")
+                        elif key_lowered == "p":
+                            controller.handle_action("toggle_perfect")
+                            self.render_frame(grid=controller.grid)
 
-                        elif key_lowered == "3":
+                        elif key_lowered == "c":
                             self.change_colors(controller)
                         elif pressed_key in ["\x1b[4~", "\x1b[F", "\x1b[OF"]:
                             controller.handle_action("skip")
@@ -422,13 +425,26 @@ def resolve_cell_content(x: int, y: int, state: CellState,
 def draw_menu(y_offset: int, ctrl: AppController) -> None:
     is_narrow = (ctrl.width < 12)
     line_controls = ctrl.get_hud_controls_text(is_narrow=is_narrow)
-    raw_info = ctrl.get_hud_info_text()
+
+    hud_blocks = ctrl.get_unified_hud_blocks()
+    formatted_parts = []
+
+    for b in hud_blocks:
+        raw_text = f"{b['label']}: {b['value']}"
+        spec = b['width_spec']
+
+        if b['is_highlighted']:
+            formatted_parts.append(f"<{raw_text:<{spec - 2}}>")
+        else:
+            formatted_parts.append(f"<{raw_text:<{spec}}>")
+
+    raw_info = " | ".join(formatted_parts)
 
     reset = "\033[0m"
     color_edit = "\033[1;33m"
     color_seed = "\033[1;31m"
 
-    if getattr(ctrl, "is_entering_seed", False):
+    if ctrl.is_entering_seed:
         info_colored = raw_info.replace("<", color_seed).replace(">", reset)
         line_controls = f"\033[1;31m{line_controls}{reset}"
     else:
