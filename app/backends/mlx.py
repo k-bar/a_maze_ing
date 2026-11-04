@@ -194,7 +194,8 @@ class MlxBackend(GraphicBackend):
                                     f"{ctrl.solver_name}_"
                                     f"{ctrl.arrow_mode.name}_"
                                     f"{ctrl.width}_{ctrl.height}_"
-                                    f"{ctrl.state.name}")
+                                    f"{ctrl.state.name}"
+                                    f"{ctrl.steps_per_tick}")
 
             if (current_hud_snapshot != self.last_hud_state
                     or self.init_frames_counter < 2):
@@ -213,7 +214,7 @@ class MlxBackend(GraphicBackend):
 
                 hud_blocks = ctrl.get_unified_hud_blocks()
 
-                x_positions = [20, 150, 380, 530, 690, 860]
+                x_positions = [20, 150, 380, 530, 690, 860, 1100]
 
                 for i, block in enumerate(hud_blocks):
                     if i >= len(x_positions):

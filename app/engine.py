@@ -65,6 +65,7 @@ class AppController:
 
         self.is_entering_seed = False
         self.seed_input_buffer = ""
+        self.steps_per_tick = 1
 
         self.init_new_run()
 
@@ -138,17 +139,20 @@ class AppController:
         """Performs exactly one logic step of application"""
         if self.grid.changed:
             return
-
         match self.state:
             case EngineState.GENERATING:
-                self.generate_maze()
+                for _ in range(self.steps_per_tick):
+                    self.generate_maze()
+                    if self.state != EngineState.GENERATING:
+                        break
             case EngineState.IDLE:
                 return
             case EngineState.SOLVING:
-                # pass
-                self.solve()
+                for _ in range(self.steps_per_tick):
+                    self.solve()
+                    if self.state != EngineState.SOLVING:
+                        break
             case EngineState.SOLVED:
-                # pass
                 self.show_path()
             case EngineState.PAUSED:
                 pass
@@ -205,6 +209,24 @@ class AppController:
                 else:
                     self.previous_state = self.state
                     self.state = EngineState.PAUSED
+
+            case "speed_up":
+                if self.steps_per_tick < 5:
+                    self.steps_per_tick += 1
+                else:
+                    self.steps_per_tick = min(100, self.steps_per_tick + 5)
+                print(
+                    f"[ENGINE] Animation speed increased to:"
+                    f" {self.steps_per_tick} steps/tick")
+
+            case "speed_down":
+                if self.steps_per_tick <= 5:
+                    self.steps_per_tick = max(1, self.steps_per_tick - 1)
+                else:
+                    self.steps_per_tick -= 5
+                print(
+                    f"[ENGINE] Animation speed decreased to:"
+                    f" {self.steps_per_tick} steps/tick")
 
             case "activate_seed_input":
                 self.is_entering_seed = True
@@ -546,6 +568,13 @@ class AppController:
                 "label": "STATE",
                 "value": self.state.name,
                 "width_spec": 17,
+                "is_highlighted": False,
+                "is_seed": False
+            },
+            {
+                "label": "SPEED",
+                "value": f"{self.steps_per_tick}x",
+                "width_spec": 10,
                 "is_highlighted": False,
                 "is_seed": False
             }
