@@ -5,7 +5,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 from app.backends.palette import MazePalette, PRESETS
-from app.engine import AppController, EngineState
+from app.engine import AppController
 from app.backends.base import GraphicBackend
 from app.backends.mlx_image import MLXImage
 from app.grid import RenderGrid, CellState
@@ -41,7 +41,8 @@ class MlxBackend(GraphicBackend):
         self.controller: AppController | None = None
 
         self.init_frames_counter = 0
-        self.hud_delay_counter = 0
+        self.keys_pressed: dict[int, bool] = {}
+        self.key_repeat_cooldown = 0
 
     def init_window(self, width: int, height: int, title: str) -> None:
 
@@ -256,10 +257,8 @@ class MlxBackend(GraphicBackend):
                 bgra_img[:, :, 0] = np_img[:, :, 2]  # B <- R
                 bgra_img[:, :, 2] = np_img[:, :, 0]  # R <- B
 
-
                 assert self.hud_image is not None
                 self.hud_image.pixels[:, :] = bgra_img
-
 
                 hud_top = self.fixed_win_height - self.hud_height
                 self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.win_ptr,
@@ -279,21 +278,50 @@ class MlxBackend(GraphicBackend):
                           lambda *args: controller.handle_action("quit"),
                           0)
 
-        def handle_mlx_keys(keycode: int, param: None = None) -> None:
+        def handle_press(keycode: int, param: None = None) -> None:
+
+            self.keys_pressed[keycode] = True
+
             action = KEY_MAP.get(keycode)
             if action == "cycle_palette":
                 self.change_colors(controller)
                 return
             if action:
-                controller.handle_action(action)
-                if controller.is_entering_seed or action in (
-                        "regen", "seed_backspace"):
+                is_repeatable = (
+                        action.startswith("move_") or
+                        action.startswith("digit_") or
+                        action.startswith("seed_digit_") or
+                        action == "seed_backspace"
+                )
+                if not is_repeatable:
+                    controller.handle_action(action)
                     self.render_frame(controller.grid)
 
-        self.mlx.mlx_key_hook(self.win_ptr, handle_mlx_keys, None)
+        def handle_release(keycode: int, param: None = None) -> None:
+
+            if keycode in self.keys_pressed:
+                self.keys_pressed[keycode] = False
+
+        self.mlx.mlx_hook(self.win_ptr, 2, 1, handle_press, None)
+        self.mlx.mlx_hook(self.win_ptr, 3, 2, handle_release, None)
 
         def loop_tick(param: None = None) -> None:
             if controller.is_running:
+                if self.key_repeat_cooldown <= 0:
+                    for k_code, is_pressed in self.keys_pressed.items():
+                        if is_pressed:
+                            act = KEY_MAP.get(k_code)
+                            if act and (
+                                    act.startswith("move_")
+                                    or act.startswith("seed_digit_")
+                                    or act.startswith("digit_")
+                                    or act == "seed_backspace"):
+                                controller.handle_action(act)
+                                self.render_frame(controller.grid)
+
+                    self.key_repeat_cooldown = 5
+                else:
+                    self.key_repeat_cooldown -= 1
                 controller.tick()
                 self.render_frame(controller.grid)
             else:
@@ -338,11 +366,8 @@ class MlxBackend(GraphicBackend):
             self.image.pixels[:, :] = [0, 0, 0, 255]
         if self.hud_image is not None:
             self.hud_image.pixels[:, :] = [0, 0, 0, 255]
-        # if self.win_ptr:
-        #     self.mlx.mlx_clear_window(self.mlx_ptr, self.win_ptr)
 
         self.last_hud_state = ""
-        self.hud_delay_counter = 2
 
 
 def get_screen_resolution(fallback: tuple[int, int] = (1280, 720)) \
