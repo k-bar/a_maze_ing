@@ -2,26 +2,30 @@
 ### Configuration for maze generation ###
 #########################################
 
-######################## mandatory:
-WIDTH=52
+WIDTH=50
 HEIGHT=24
 ENTRY=0,0
-EXIT=51,23
+EXIT=49,23
 OUTPUT_FILE=maze.txt
 PERFECT=False
 SEED=123
 
-######################## for bonus:
-
-
 # Algorithms: KRUSKAL, PRIM, WILSON, BACKTRACKER
 ALGORITHM=BACKTRACKER
+
 # Solvers: BFS, DFS
 SOLVER=DFS
 
-ANIMATION=TRUE
-
-COLOR=green
-
 # Renderer modes: MLX, Terminal
 DISPLAY_MODE=MLX
+
+# WINDOW_WIDTH=800
+# WINDOW_HEIGHT= 600
+
+
+# for 1920x1080
+# max is 431x227
+# int(1920 * 0.9) = 1728
+# int(1080 * 0.9) = 972 - hud (60) = 912
+# max_w = (1728 - ) / 4 = 1727 / 4 = 431
+# max_h = (912 - 1) / 4 = 911 / 4 = 224

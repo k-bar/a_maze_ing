@@ -191,8 +191,13 @@ class AppController:
                 self.is_running = False
 
             case "regen":
+                self.grid = RenderGrid(
+                    width=self.width,
+                    height=self.height,
+                    m_entry=self.config.ENTRY,
+                    m_exit=self.config.EXIT
+                )
                 self.init_new_run()
-                self.grid.clear()
                 self.state = EngineState.GENERATING
             case "hide_toggle":
                 if self.state != EngineState.IDLE:
@@ -234,8 +239,13 @@ class AppController:
 
             case "randomize_seed":
                 self.initial_seed = random.randint(1, 999999)
+                self.grid = RenderGrid(
+                    width=self.width,
+                    height=self.height,
+                    m_entry=self.config.ENTRY,
+                    m_exit=self.config.EXIT
+                )
                 self.init_new_run()
-                self.grid.clear()
                 self.state = EngineState.GENERATING
 
             case "skip":
@@ -325,6 +335,8 @@ class AppController:
                             self._move_live_point("EXIT", dx, dy)
 
     def start(self) -> None:
+
+        self.backend.controller = self
         self.backend.init_window(self.width,
                                  self.height,
                                  "A-Maze-ing")
@@ -338,9 +350,11 @@ class AppController:
             changed_cell = self.generator_process.step()
             if changed_cell is None:
                 assert self.maze is not None
+                self.maze.m_entry = self.config.ENTRY
+                self.maze.m_exit = self.config.EXIT
                 from mazegen import create_stepping_solver
                 self.solver_process = create_stepping_solver(
-                    self.config.SOLVER, self.maze)
+                    self.solver_name, self.maze)
                 self.state = EngineState.SOLVING
                 break
             x, y, dirs = changed_cell
@@ -353,6 +367,12 @@ class AppController:
             else:
                 new_state = CellState.FLOOR
             self.grid.register_change(tx, ty, new_state)
+            self.grid.register_change(self.config.ENTRY[0] * 2 + 1,
+                                      self.config.ENTRY[1] * 2 + 1,
+                                      CellState.ENTRY)
+            self.grid.register_change(self.config.EXIT[0] * 2 + 1,
+                                      self.config.EXIT[1] * 2 + 1,
+                                      CellState.EXIT)
 
             if not skip:
                 break
@@ -377,6 +397,13 @@ class AppController:
 
                 self.grid.register_change(cx, cy, CellState.PATH)
                 self.grid.register_change(wx, wy, CellState.PATH)
+
+                self.grid.register_change(self.config.ENTRY[0] * 2 + 1,
+                                          self.config.ENTRY[1] * 2 + 1,
+                                          CellState.ENTRY)
+                self.grid.register_change(self.config.EXIT[0] * 2 + 1,
+                                          self.config.EXIT[1] * 2 + 1,
+                                          CellState.EXIT)
 
                 if not skip:
                     break

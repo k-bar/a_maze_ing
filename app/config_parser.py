@@ -1,3 +1,5 @@
+import re
+import subprocess
 import sys
 from typing import Literal, Any
 from mazegen.utils import get_pattern_locked_cells
@@ -44,6 +46,9 @@ class Config(BaseModel):
     ANIMATION: bool = Field(default=True)
     COLOR: str = Field(default="green", min_length=1, max_length=80)
     DISPLAY_MODE: str = Field(default="MLX", min_length=1, max_length=80)
+
+    WINDOW_WIDTH: int | None = Field(default=None, ge=640, le=7680)
+    WINDOW_HEIGHT: int | None = Field(default=None, ge=480, le=4320)
 
     @field_validator("SEED", mode="before")
     @classmethod
@@ -103,6 +108,14 @@ class Config(BaseModel):
 
         elif self.DISPLAY_MODE == "MLX":
             win_w, win_h = 1280, 720
+
+            if self.WINDOW_WIDTH and self.WINDOW_HEIGHT:
+                win_w, win_h = self.WINDOW_WIDTH, self.WINDOW_HEIGHT
+            else:
+                scr_w, scr_h = _get_screen_resolution_fallback()
+                win_w = int(scr_w * 0.9)
+                win_h = int(scr_h * 0.9)
+
             hud_h = 60
 
             max_w = (win_w - 1) // 4
@@ -111,7 +124,7 @@ class Config(BaseModel):
             if self.WIDTH > max_w or self.HEIGHT > max_h:
                 raise ValueError(
                     f"Maze {self.WIDTH}x{self.HEIGHT} is exceeding "
-                    f"render limits for window {win_w}x{win_h}!"
+                    f"render limits for dynamic window {win_w}x{win_h}!"
                     f"Maximum available size is {max_w}x{max_h}"
                 )
 
@@ -173,6 +186,13 @@ def read_and_parse(file: typing.IO[str]) -> Config:
                     print(f"ENTRY/EXIT are invalid! \n {e}", file=sys.stderr)
                     sys.exit(1)
 
+            if key in ["WINDOW_WIDTH", "WINDOW_HEIGHT"]:
+                try:
+                    config_data[key] = int(val)
+                    continue
+                except ValueError:
+                    pass
+
             config_data[key] = val
 
     if config_data:
@@ -207,3 +227,17 @@ def _get_terminal_bounds() -> tuple[int, int]:
             return size.columns, size.lines
     except (OSError, PermissionError):
         return 80, 24
+
+
+def _get_screen_resolution_fallback() -> tuple[int, int]:
+    try:
+        output = subprocess.check_output("xrandr 2>/dev/null |"
+                                         " grep 'current'",
+                                         shell=True, text=True)
+        match = re.search(r"current\s+(\d+)\s*x\s*(\d+)", output)
+        if match:
+            return int(match.group(1)), int(match.group(2))
+
+    except (subprocess.SubprocessError, FileNotFoundError):
+        pass
+    return 1280, 720

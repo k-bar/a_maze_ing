@@ -15,6 +15,7 @@ from mlx import Mlx
 
 class MlxBackend(GraphicBackend):
     def __init__(self) -> None:
+        super().__init__()
 
         self.pixel_width = 0
         self.pixel_height = 0
@@ -46,32 +47,39 @@ class MlxBackend(GraphicBackend):
 
     def init_window(self, width: int, height: int, title: str) -> None:
 
+        assert self.controller is not None
+        cfg = self.controller.config
+
+        if cfg.WINDOW_WIDTH and cfg.WINDOW_HEIGHT:
+            self.fixed_win_width = cfg.WINDOW_WIDTH
+            self.fixed_win_height = cfg.WINDOW_HEIGHT
+        else:
+            scr_w, scr_h = get_screen_resolution(fallback=(1280, 720))
+            if scr_w > 1280 and scr_h > 720:
+                self.fixed_win_width = int(scr_w * 0.9)
+                self.fixed_win_height = int(scr_h * 0.9)
+            else:
+                self.fixed_win_width = 1280
+                self.fixed_win_height = 720
+
+        self.maze_image_height = self.fixed_win_height - self.hud_height
+
         self.block_size, self.wall_size, self.offset_x, self.offset_y = \
             calculate_mlx_geometry(
                 maze_w=width,
                 maze_h=height,
                 win_w=self.fixed_win_width,
                 win_h=self.fixed_win_height,
-                hud_h=self.hud_height + 20
+                hud_h=self.hud_height
             )
 
-        blocks_x = width
-        blocks_y = height
-        walls_x = width + 1
-        walls_y = height + 1
-        self.pixel_width = ((blocks_x * self.block_size)
-                            + (walls_x * self.wall_size))
-        self.pixel_height = ((blocks_y * self.block_size)
-                             + (walls_y * self.wall_size))
-
         available_h = self.fixed_win_height - self.hud_height
-        self.max_width = (self.fixed_win_width - 1) // 4
-        self.max_height = (available_h - 1) // 4
+        self.controller.max_width = (self.fixed_win_width - 1) // 4
+        self.controller.max_height = (available_h - 1) // 4
 
         self.win_ptr = self.mlx.mlx_new_window(
             self.mlx_ptr, self.fixed_win_width, self.fixed_win_height, title
         )
-        self.maze_image_height = self.fixed_win_height - self.hud_height
         self.image = MLXImage(self.mlx, self.mlx_ptr, self.fixed_win_width,
                               self.maze_image_height)
         self.hud_image = MLXImage(self.mlx, self.mlx_ptr, self.fixed_win_width,
@@ -228,7 +236,16 @@ class MlxBackend(GraphicBackend):
                                                  hud_top)
 
                 hud_blocks = ctrl.get_unified_hud_blocks()
-                x_positions = [20, 150, 380, 530, 690, 860, 1100]
+
+                usable_width = self.fixed_win_width - 80
+                num_blocks = len(hud_blocks)
+
+                step_x = usable_width // (
+                        num_blocks - 1) if num_blocks > 1 else 150
+                x_positions = [20 + (i * step_x) for i in range(num_blocks)]
+
+                if len(x_positions) > 6:
+                    x_positions[6] = self.fixed_win_width - 140
 
                 color_default = (170, 170, 170, 255)  # Grey
                 color_seed = (255, 85, 85, 255)  # Red
@@ -287,15 +304,16 @@ class MlxBackend(GraphicBackend):
                 self.change_colors(controller)
                 return
             if action:
+                controller.handle_action(action)
+                self.render_frame(controller.grid)
                 is_repeatable = (
                         action.startswith("move_") or
                         action.startswith("digit_") or
                         action.startswith("seed_digit_") or
                         action == "seed_backspace"
                 )
-                if not is_repeatable:
-                    controller.handle_action(action)
-                    self.render_frame(controller.grid)
+                if is_repeatable:
+                    self.key_repeat_cooldown = 15
 
         def handle_release(keycode: int, param: None = None) -> None:
 
@@ -319,7 +337,7 @@ class MlxBackend(GraphicBackend):
                                 controller.handle_action(act)
                                 self.render_frame(controller.grid)
 
-                    self.key_repeat_cooldown = 5
+                    self.key_repeat_cooldown = 4
                 else:
                     self.key_repeat_cooldown -= 1
                 controller.tick()
@@ -360,7 +378,7 @@ class MlxBackend(GraphicBackend):
                 maze_h=height,
                 win_w=self.fixed_win_width,
                 win_h=self.fixed_win_height,
-                hud_h=self.hud_height + 20
+                hud_h=self.hud_height
             )
         if self.image is not None:
             self.image.pixels[:, :] = [0, 0, 0, 255]
@@ -374,7 +392,7 @@ def get_screen_resolution(fallback: tuple[int, int] = (1280, 720)) \
         -> tuple[int, int]:
     try:
         output = subprocess.check_output(
-            "xrandr 2>dev/null | grep 'current'",
+            "xrandr 2>/dev/null | grep 'current'",
             shell=True,
             text=True
         )
@@ -389,8 +407,7 @@ def get_screen_resolution(fallback: tuple[int, int] = (1280, 720)) \
 def calculate_mlx_geometry(maze_w: int = 10, maze_h: int = 10,
                            win_w: int = 1280, win_h: int = 720,
                            hud_h: int = 60) -> tuple[int, int, int, int]:
-    safety_margin = 10
-    available_h = win_h - hud_h - safety_margin
+    available_h = win_h - hud_h
 
     wall_size = 2
 
