@@ -45,53 +45,56 @@ class ImperfectGenerator(BaseGenerator):
                     wn, we, ws, ww = self.maze.get_walls()
 
                     if wall_count == 3:
-                        candidates = []
-                        if ((wn & cell_pos)
-                                and y > 0
-                                and (x, y - 1) not in (
-                                        self.maze.locked_cells | visited)):
-                            candidates.append((x, y - 1))
-                        if ((we & cell_pos)
-                                and x < self.maze.width - 1
-                                and (x + 1, y) not in (self.maze.locked_cells
-                                                       | visited)):
-                            candidates.append((x + 1, y))
-                        if ((ws & cell_pos)
-                                and y < self.maze.height - 1
-                                and (x, y + 1) not in (self.maze.locked_cells
-                                                       | visited)):
-                            candidates.append((x, y + 1))
-                        if ((ww & cell_pos)
-                                and x > 0
-                                and (x - 1, y) not in (
-                                        self.maze.locked_cells | visited)):
-                            candidates.append((x - 1, y))
+                        blind_ends: list[tuple[int, int]] = []
+                        blind_ends.append((x, y))
 
-                        if candidates:
-                            nx, ny = random.choice(candidates)
+        candidates = []
+        if ((wn & cell_pos)
+                and y > 0
+                and (x, y - 1) not in (
+                        self.maze.locked_cells | visited)):
+            candidates.append((x, y - 1))
+        if ((we & cell_pos)
+                and x < self.maze.width - 1
+                and (x + 1, y) not in (self.maze.locked_cells
+                                       | visited)):
+            candidates.append((x + 1, y))
+        if ((ws & cell_pos)
+                and y < self.maze.height - 1
+                and (x, y + 1) not in (self.maze.locked_cells
+                                       | visited)):
+            candidates.append((x, y + 1))
+        if ((ww & cell_pos)
+                and x > 0
+                and (x - 1, y) not in (
+                        self.maze.locked_cells | visited)):
+            candidates.append((x - 1, y))
 
-                            cell_a = cell_pos
-                            cell_b = 1 << (
-                                    (ny * self.maze.width) + nx)
+        if candidates:
+            nx, ny = random.choice(candidates)
 
-                            visited.add((x, y))
+            cell_a = cell_pos
+            cell_b = 1 << (
+                    (ny * self.maze.width) + nx)
 
-                            dx = nx - x
-                            dy = ny - y
+            visited.add((x, y))
 
-                            if dx > 0:
-                                self.maze.walls_e &= ~cell_a
-                                self.maze.walls_w &= ~cell_b
-                                yield x, y, Direction.EAST
-                            elif dx < 0:
-                                self.maze.walls_w &= ~cell_a
-                                self.maze.walls_e &= ~cell_b
-                                yield x, y, Direction.WEST
-                            elif dy > 0:
-                                self.maze.walls_s &= ~cell_a
-                                self.maze.walls_n &= ~cell_b
-                                yield x, y, Direction.SOUTH
-                            elif dy < 0:
-                                self.maze.walls_n &= ~cell_a
-                                self.maze.walls_s &= ~cell_b
-                                yield x, y, Direction.NORTH
+            dx = nx - x
+            dy = ny - y
+
+            if dx > 0:
+                self.maze.walls_e &= ~cell_a
+                self.maze.walls_w &= ~cell_b
+                yield x, y, Direction.EAST
+            elif dx < 0:
+                self.maze.walls_w &= ~cell_a
+                self.maze.walls_e &= ~cell_b
+                yield x, y, Direction.WEST
+            elif dy > 0:
+                self.maze.walls_s &= ~cell_a
+                self.maze.walls_n &= ~cell_b
+                yield x, y, Direction.SOUTH
+            elif dy < 0:
+                self.maze.walls_n &= ~cell_a
+                self.maze.walls_s &= ~cell_b
+                yield x, y, Direction.NORTH
