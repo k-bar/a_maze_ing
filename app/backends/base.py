@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from app.grid import RenderGrid
 
@@ -8,6 +8,10 @@ if TYPE_CHECKING:
 
 
 class GraphicBackend(ABC):
+
+    def __init__(self) -> None:
+        self.controller: Optional["AppController"] = None
+
     @abstractmethod
     def init_window(self, width: int, height: int, title: str) -> None:
         pass

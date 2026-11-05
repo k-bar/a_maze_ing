@@ -71,4 +71,31 @@ def test_pydantic_rejects_huge_maze_for_mlx() -> None:
         Config.model_validate(bad_mlx_data)
         pytest.fail("ERROR: Pydantic should throw ValidationError for MLX!")
     except ValidationError as e:
-        assert "is exceeding render limits for window" in str(e)
+        assert "is exceeding render limits for dynamic window" in str(e)
+
+
+def test_pydantic_accepts_custom_window_dimensions_from_config() -> None:
+    custom_data = {
+        "WIDTH": 10,
+        "HEIGHT": 10,
+        "DISPLAY_MODE": "MLX",
+        "WINDOW_WIDTH": 1920,
+        "WINDOW_HEIGHT": 1080
+    }
+    config = Config.model_validate(custom_data)
+    assert config.WINDOW_WIDTH == 1920
+    assert config.WINDOW_HEIGHT == 1080
+
+
+def test_pydantic_applies_boundaries_based_on_custom_window_size() -> None:
+    over_limit_data = {
+        "WIDTH": 300,
+        "HEIGHT": 10,
+        "DISPLAY_MODE": "MLX",
+        "WINDOW_WIDTH": 800,
+        "WINDOW_HEIGHT": 600
+    }
+    with pytest.raises(ValidationError) as exc_info:
+        Config.model_validate(over_limit_data)
+    assert "is exceeding render limits for dynamic window" in str(
+        exc_info.value)
