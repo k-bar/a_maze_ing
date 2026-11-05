@@ -427,15 +427,11 @@ class AppController:
                                           CellState.PATH)
             gx_en = self.maze.m_entry[0] * 2 + 1
             gy_en = self.maze.m_entry[1] * 2 + 1
-            if self.grid.cells[gy_en, gx_en] != CellState.ENTRY:
-                self.grid.register_change(gx_en, gy_en,
-                                          CellState.ENTRY)
+            self.grid.register_change(gx_en, gy_en, CellState.ENTRY)
 
             gx_ex = self.maze.m_exit[0] * 2 + 1
             gy_ex = self.maze.m_exit[1] * 2 + 1
-            if self.grid.cells[gy_ex, gx_ex] != CellState.EXIT:
-                self.grid.register_change(gx_ex, gy_ex,
-                                          CellState.EXIT)
+            self.grid.register_change(gx_ex, gy_ex, CellState.EXIT)
         self.state = EngineState.IDLE
 
     def hide_path(self) -> None:
