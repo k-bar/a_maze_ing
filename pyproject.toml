@@ -14,9 +14,7 @@ authors = [
     { name = "kdzwigal", email = "kdzwigal@student.42warsaw.pl" },
     { name = "kbartosz", email = "kbartosz@student.42warsaw.pl" }
 ]
-dependencies = [
-    "pillow>=13.0.0",
-]
+dependencies = []
 
 # flat layout configuration
 [tool.uv.build-backend]
@@ -34,6 +32,7 @@ ignore_missing_imports = true
 app = [
     "mlx",
     "numpy>=2.5.4",
+    "pillow>=13.0.0",
     "pydantic>=2.13.5",
 ]
 test = [
