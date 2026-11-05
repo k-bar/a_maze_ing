@@ -20,6 +20,7 @@ class EngineState(Enum):
     SOLVING = auto()
     SOLVED = auto()
     PAUSED = auto()
+    MANUAL_PLAY = auto()
 
 
 class ArrowMode(Enum):
@@ -66,7 +67,7 @@ class AppController:
         self.is_entering_seed = False
         self.seed_input_buffer = ""
         self.steps_per_tick = 1
-
+        self.manual_path_history: list[tuple[int, int]] = []
         self.init_new_run()
 
     def init_new_run(self) -> None:
@@ -116,7 +117,7 @@ class AppController:
 
     def change_solver_in_runtime(self) -> None:
         from mazegen import get_available_solvers, create_stepping_solver
-        available_solvers = get_available_solvers()
+        available_solvers = get_available_solvers() + ["MANUAL"]
         try:
             current_idx = available_solvers.index(self.solver_name)
             next_idx = (current_idx + 1) % len(available_solvers)
@@ -126,14 +127,24 @@ class AppController:
 
         print(f"[ENGINE] Changing solver class to {self.solver_name}")
 
+        if self.manual_path_history:
+            for lx, ly in self.manual_path_history:
+                self.grid.register_change(lx * 2 + 1, ly * 2 + 1,
+                                          CellState.FLOOR)
+            self.manual_path_history.clear()
+
         if self.state in [EngineState.IDLE, EngineState.SOLVING,
-                          EngineState.SOLVED]:
+                          EngineState.SOLVED, EngineState.MANUAL_PLAY]:
             self.hide_path()
+            self.manual_path_history.clear()
             assert self.maze is not None
 
-            self.solver_process = create_stepping_solver(self.solver_name,
-                                                         self.maze)
-            self.state = EngineState.SOLVING
+            if self.solver_name == "MANUAL":
+                self.state = EngineState.MANUAL_PLAY
+            else:
+                self.solver_process = create_stepping_solver(self.solver_name,
+                                                             self.maze)
+                self.state = EngineState.SOLVING
 
     def tick(self) -> None:
         """Performs exactly one logic step of application"""
@@ -289,6 +300,8 @@ class AppController:
                       f" {self.config.PERFECT}")
 
             case "toggle_arrow_mode":
+                if self.state == EngineState.MANUAL_PLAY:
+                    return
                 match self.arrow_mode:
                     case ArrowMode.SIZE:
                         self.arrow_mode = ArrowMode.ENTRY
@@ -302,6 +315,18 @@ class AppController:
 
             case "move_right" | "move_left" | "move_down" \
                  | "move_up":
+                if self.state == EngineState.MANUAL_PLAY:
+                    dx, dy = 0, 0
+                    if action == "move_up":
+                        dy = -1
+                    elif action == "move_down":
+                        dy = 1
+                    elif action == "move_right":
+                        dx = 1
+                    elif action == "move_left":
+                        dx = -1
+                    self._move_player_manual(dx, dy)
+                    return
                 match self.arrow_mode:
                     case ArrowMode.SIZE:
                         new_w = self.width
@@ -352,10 +377,15 @@ class AppController:
                 assert self.maze is not None
                 self.maze.m_entry = self.config.ENTRY
                 self.maze.m_exit = self.config.EXIT
-                from mazegen import create_stepping_solver
-                self.solver_process = create_stepping_solver(
-                    self.solver_name, self.maze)
-                self.state = EngineState.SOLVING
+
+                if self.solver_name == "MANUAL":
+                    self.manual_path_history.clear()
+                    self.state = EngineState.MANUAL_PLAY
+                else:
+                    from mazegen import create_stepping_solver
+                    self.solver_process = create_stepping_solver(
+                        self.solver_name, self.maze)
+                    self.state = EngineState.SOLVING
                 break
             x, y, dirs = changed_cell
             cx = (x * 2) + 1
@@ -548,6 +578,8 @@ class AppController:
             if self.is_entering_seed else str(self.current_seed)
         mode_name = self.arrow_mode.name
 
+        display_mode_value = "[GAME]" if self.state == EngineState.MANUAL_PLAY else f"[{mode_name}]"
+
         return [
             {
                 "label": "SEED",
@@ -580,11 +612,12 @@ class AppController:
             },
             {
                 "label": "EDIT",
-                "value": f"[{mode_name}]",
+                "value": display_mode_value,
                 "width_spec": 15,
                 "is_highlighted": (
                         mode_name in ("ENTRY", "EXIT")
-                        and not self.is_entering_seed),
+                        and not self.is_entering_seed
+                        and self.state != EngineState.MANUAL_PLAY),
                 "is_seed": False
             },
             {
@@ -610,21 +643,86 @@ class AppController:
                     else "1:Regen | K:Seed | TAB:Mode | 4:Quit")
 
         if self.is_entering_seed:
-            return ("SEED INPUT MODE: [0-9] Type Digits | [BACKSPACE] Delete |"
-                    " [ENTER] Confirm & Regen | [SPACE] Cancel")
+            return (
+                "SEED INPUT MODE: [0-9] Type Digits | [BACKSPACE] Delete |"
+                " [ENTER] Confirm & Regen | [SPACE] Cancel")
 
         base_start = "CONTROLS: [R]egen | [K]ey Seed | Ra[N]d seed"
         base_end = "[C]olors | [TAB] Mode | [Q]uit"
 
         match self.state:
-            case EngineState.GENERATING:
-                core = " [SPACE] Pause  | [ENTER] Step | [END] Skip |"
-            case EngineState.SOLVING:
+            case EngineState.GENERATING | EngineState.SOLVING:
                 core = " [SPACE] Pause  | [ENTER] Step | [END] Skip |"
             case EngineState.IDLE | EngineState.SOLVED:
                 core = f" [H] {'Hide' if self.path_visible else 'Show'} Path |"
             case EngineState.PAUSED:
                 core = " [SPACE] Resume | [ENTER] Step | [END] Skip |"
+            case EngineState.MANUAL_PLAY:
+                core = "GAME MODE: Use [Arrows] to explore or undo path |"
             case _:
                 core = ""
         return f"{base_start} | {core} {base_end}"
+
+    def _move_player_manual(self, dx: int, dy: int) -> None:
+        if self.state != EngineState.MANUAL_PLAY or not self.maze:
+            return
+
+        current_x, current_y = self.manual_path_history[
+            -1] if self.manual_path_history else self.config.ENTRY
+
+        target_x = current_x + dx
+        target_y = current_y + dy
+
+        # border barrier
+        if not (
+                0 <= target_x < self.width and 0 <= target_y < self.height):
+            return
+
+        # locke barrier
+        if (target_x, target_y) in self.maze.locked_cells:
+            return
+
+        # calculate grid coords
+        curr_gx, curr_gy = current_x * 2 + 1, current_y * 2 + 1
+        target_gx, target_gy = target_x * 2 + 1, target_y * 2 + 1
+        wall_gx, wall_gy = curr_gx + dx, curr_gy + dy
+
+        # wall barrier
+        if self.grid.cells[wall_gy, wall_gx] == CellState.WALL:
+            return
+
+        # backtrack (withdrawal)
+        if len(self.manual_path_history) >= 2 and (target_x, target_y) == \
+                self.manual_path_history[-2]:
+            self.grid.register_change(curr_gx, curr_gy, CellState.FLOOR)
+            self.grid.register_change(wall_gx, wall_gy, CellState.FLOOR)
+
+            self.manual_path_history.pop()
+            return
+
+        # block to enter on already visited
+        if (target_x, target_y) in self.manual_path_history or (target_x,
+                                                                target_y) == self.config.ENTRY:
+            return
+
+        # start as first step if history empty
+        if not self.manual_path_history:
+            self.manual_path_history.append(self.config.ENTRY)
+
+        # draw path
+        self.grid.register_change(curr_gx, curr_gy, CellState.PATH)
+        self.grid.register_change(wall_gx, wall_gy, CellState.PATH)
+        self.grid.register_change(target_gx, target_gy, CellState.PATH)
+
+        # repaint entry and exit
+        self.grid.register_change(self.config.ENTRY[0] * 2 + 1,
+                                  self.config.ENTRY[1] * 2 + 1,
+                                  CellState.ENTRY)
+
+        self.manual_path_history.append((target_x, target_y))
+
+        # SOLVED
+        if (target_x, target_y) == self.config.EXIT:
+            self.grid.register_change(target_gx, target_gy, CellState.EXIT)
+            self.state = EngineState.SOLVED
+            print("[GAME] VICTORY! Maze solved manually by player!")
