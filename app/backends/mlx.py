@@ -299,7 +299,6 @@ class MlxBackend(GraphicBackend):
 
             if self.keys_pressed.get(keycode, False):
                 return
-
             self.keys_pressed[keycode] = True
 
             action = KEY_MAP.get(keycode)
@@ -307,6 +306,7 @@ class MlxBackend(GraphicBackend):
                 self.change_colors(controller)
                 return
             if action:
+                # Modyfikuje liczby w RAM (Narzut obliczeniowy = 0%)
                 controller.handle_action(action)
 
                 is_repeatable = (
@@ -315,26 +315,34 @@ class MlxBackend(GraphicBackend):
                         action.startswith("seed_digit_") or
                         action == "seed_backspace"
                 )
-                is_size_resize = (action in ("move_up", "move_down",
-                                             "move_left",
-                                             "move_right")
-                                  and controller.arrow_mode.name == "SIZE"
-                                  and controller.state.name != "MANUAL_PLAY")
-                if not is_size_resize:
-                    self.render_frame(controller.grid)
+                is_size_resize = (
+                            action in ("move_up", "move_down", "move_left",
+                                       "move_right")
+                            and controller.arrow_mode.name == "SIZE"
+                            and controller.state.name != "MANUAL_PLAY")
+
+                # Zawsze odświeżamy ramkę – w trakcie trwania resize loop_tick i tak płynnie
+                # wyrenderuje uaktualnione na żywo liczby wielkości na pasku HUD Pillow!
+                self.render_frame(controller.grid)
                 if is_repeatable:
                     self.key_repeat_cooldown = 15
 
         def handle_release(keycode: int, param: None = None) -> None:
-
             if keycode in self.keys_pressed and self.keys_pressed[keycode]:
                 action = KEY_MAP.get(keycode)
+
+                # Zdejmujemy flagę fizycznego wciśnięcia klawisza
                 self.keys_pressed[keycode] = False
 
                 if action in ("move_up", "move_down", "move_left",
                               "move_right"):
                     if (controller.arrow_mode.name == "SIZE"
                             and controller.state.name != "MANUAL_PLAY"):
+                        # -----------------------------------------------------------------
+                        # PANCERNY JEDNORAZOWY RESIZE PO ZDJĘCIU PALCA (Lazy Allocation):
+                        # Użytkownik przestał resizować. Dopiero teraz twardo alokujemy
+                        # nową przestrzeń RenderGrid i odpalamy regenerację ścian!
+                        # -----------------------------------------------------------------
                         controller.maze_resize()
                         controller.handle_action("regen")
                         self.render_frame(controller.grid)

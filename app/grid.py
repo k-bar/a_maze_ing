@@ -42,23 +42,29 @@ class RenderGrid:
     def clear(self) -> None:
         self.changed.clear()
 
-        for y in range(self.grid_height):
-            for x in range(self.grid_width):
-                self.register_change(x, y, CellState.WALL)
+        self.cells[:, :] = CellState.WALL
 
-        for x in range(self.width):
-            for y in range(self.height):
-                self.register_change((x * 2) + 1, (y * 2) + 1, CellState.FLOOR)
+        self.cells[1::2, 1::2] = CellState.FLOOR
 
         for cx, cy in get_pattern_locked_cells(self.width, self.height):
             fx, fy = (cx * 2) + 1, (cy * 2) + 1
-            self.register_change(fx, fy, CellState.LOCK)
+            if 0 <= fx < self.grid_width and 0 <= fy < self.grid_height:
+                self.cells[fy, fx] = CellState.LOCK
 
         en_x, en_y = self.m_entry
-        self.register_change((en_x * 2) + 1, (en_y * 2) + 1, CellState.ENTRY)
+        self.cells[(en_y * 2) + 1, (en_x * 2) + 1] = CellState.ENTRY
 
         ex_x, ex_y = self.m_exit
-        self.register_change((ex_x * 2) + 1, (ex_y * 2) + 1, CellState.EXIT)
+        self.cells[(ex_y * 2) + 1, (ex_x * 2) + 1] = CellState.EXIT
+
+        yy, xx = np.mgrid[0:self.grid_height, 0:self.grid_width]
+
+        flat_x = xx.ravel()
+        flat_y = yy.ravel()
+        flat_states = self.cells.ravel()
+
+        # Przekazujemy kompletną, idealną i zsynchronizowaną mapę klocków na ekran
+        self.changed.extend(zip(flat_x, flat_y, flat_states))
 
     def register_change(self, x: int, y: int, state: CellState) -> None:
         self.cells[y, x] = state

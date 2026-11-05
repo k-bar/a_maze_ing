@@ -357,7 +357,19 @@ class AppController:
                                 and clamped_h == self.height):
                             return
                         self.validate_and_apply_dimensions(new_w, new_h)
-                        # self.maze_resize()
+                        if getattr(self.config, "DISPLAY_MODE",
+                                   "MLX") == "MLX":
+                            self.state = EngineState.IDLE
+                            self.generator_process = None
+                            self.solver_process = None
+
+                        self.validate_and_apply_dimensions(new_w, new_h)
+
+                        # ZABEZPIECZENIE TERMINALA: W konsoli TUI od razu wykonujemy pełny skok
+                        if getattr(self.config, "DISPLAY_MODE",
+                                   "MLX") == "TERMINAL":
+                            self.maze_resize()
+                            self.handle_action("regen")
 
                     case ArrowMode.ENTRY | ArrowMode.EXIT:
                         dx, dy = 0, 0
