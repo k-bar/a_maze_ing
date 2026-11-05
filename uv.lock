@@ -254,14 +254,12 @@ wheels = [
 name = "mazegen"
 version = "0.1.0"
 source = { editable = "." }
-dependencies = [
-    { name = "pillow" },
-]
 
 [package.dev-dependencies]
 app = [
     { name = "mlx" },
     { name = "numpy" },
+    { name = "pillow" },
     { name = "pydantic" },
 ]
 dev = [
@@ -269,6 +267,7 @@ dev = [
     { name = "mlx" },
     { name = "mypy" },
     { name = "numpy" },
+    { name = "pillow" },
     { name = "pydantic" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -279,12 +278,12 @@ test = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pillow", specifier = ">=13.0.0" }]
 
 [package.metadata.requires-dev]
 app = [
     { name = "mlx", path = "pkgs/mlx-2.2-py3-none-any.whl" },
     { name = "numpy", specifier = ">=2.5.4" },
+    { name = "pillow", specifier = ">=13.0.0" },
     { name = "pydantic", specifier = ">=2.13.5" },
 ]
 dev = [
@@ -292,6 +291,7 @@ dev = [
     { name = "mlx", path = "pkgs/mlx-2.2-py3-none-any.whl" },
     { name = "mypy", specifier = ">=2.3.1" },
     { name = "numpy", specifier = ">=2.5.4" },
+    { name = "pillow", specifier = ">=13.0.0" },
     { name = "pydantic", specifier = ">=2.13.5" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-cov", specifier = ">=7.1.0" },
