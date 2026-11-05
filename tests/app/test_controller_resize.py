@@ -27,7 +27,9 @@ def idle_controller() -> AppController:
 def test_resize_grows_width_in_idle(idle_controller: AppController) -> None:
     idle_controller.handle_action("move_right")
     assert idle_controller.width == 11
-    assert idle_controller.state == EngineState.GENERATING
+    assert idle_controller.state == EngineState.IDLE
+    idle_controller.handle_action("regen")
+    assert getattr(idle_controller, "state") == EngineState.GENERATING
 
 
 def test_resize_blocked_during_generation(
@@ -35,3 +37,30 @@ def test_resize_blocked_during_generation(
     idle_controller.state = EngineState.GENERATING
     idle_controller.handle_action("move_right")
     assert idle_controller.width == 11
+    idle_controller.handle_action("regen")
+    assert idle_controller.state == EngineState.GENERATING
+
+
+def test_resize_during_pause_maintains_paused_state() -> None:
+    cfg = Config(WIDTH=10, HEIGHT=10, DISPLAY_MODE="MOCK")
+    ctrl = AppController(cfg, MockBackend())
+
+    ctrl.state = EngineState.PAUSED
+    ctrl.previous_state = EngineState.IDLE
+
+    ctrl.handle_action("move_right")
+    assert ctrl.width == 11
+    assert ctrl.state == EngineState.PAUSED
+
+    ctrl.handle_action("regen")
+    assert ctrl.state == EngineState.PAUSED
+
+
+def test_resize_at_maximum_limit_does_not_change_state_or_allocate(
+        idle_controller: AppController) -> None:
+    idle_controller.max_width = 15
+    idle_controller.width = 15
+
+    idle_controller.handle_action("move_right")
+
+    assert idle_controller.width == 15

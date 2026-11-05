@@ -202,6 +202,7 @@ class AppController:
                 self.is_running = False
 
             case "regen":
+                was_paused = (self.state == EngineState.PAUSED)
                 self.grid = RenderGrid(
                     width=self.width,
                     height=self.height,
@@ -209,7 +210,12 @@ class AppController:
                     m_exit=self.config.EXIT
                 )
                 self.init_new_run()
-                self.state = EngineState.GENERATING
+                if was_paused:
+                    self.generate_maze(skip=True)
+                    self.state = EngineState.PAUSED
+                    self.previous_state = EngineState.IDLE
+                else:
+                    self.state = EngineState.GENERATING
             case "hide_toggle":
                 if self.state != EngineState.IDLE:
                     return
@@ -340,9 +346,19 @@ class AppController:
                             new_h += 1
                         elif action == "move_up":
                             new_h -= 1
+                        min_size = 3
+                        max_w = getattr(self, "max_width", 100)
+                        max_h = getattr(self, "max_height", 100)
+
+                        clamped_w = max(min_size, min(new_w, max_w))
+                        clamped_h = max(min_size, min(new_h, max_h))
+
+                        if (clamped_w == self.width
+                                and clamped_h == self.height):
+                            return
                         self.validate_and_apply_dimensions(new_w, new_h)
-                        self.maze_resize()
-                        self.handle_action("regen")
+                        # self.maze_resize()
+
                     case ArrowMode.ENTRY | ArrowMode.EXIT:
                         dx, dy = 0, 0
                         if action == "move_up":
@@ -455,13 +471,14 @@ class AppController:
                 self.grid.register_change(x * 2 + 1 + px,
                                           y * 2 + 1 + py,
                                           CellState.PATH)
-            gx_en = self.maze.m_entry[0] * 2 + 1
-            gy_en = self.maze.m_entry[1] * 2 + 1
-            self.grid.register_change(gx_en, gy_en, CellState.ENTRY)
+        gx_en = self.maze.m_entry[0] * 2 + 1
+        gy_en = self.maze.m_entry[1] * 2 + 1
+        self.grid.register_change(gx_en, gy_en, CellState.ENTRY)
 
-            gx_ex = self.maze.m_exit[0] * 2 + 1
-            gy_ex = self.maze.m_exit[1] * 2 + 1
-            self.grid.register_change(gx_ex, gy_ex, CellState.EXIT)
+        gx_ex = self.maze.m_exit[0] * 2 + 1
+        gy_ex = self.maze.m_exit[1] * 2 + 1
+        self.grid.register_change(gx_ex, gy_ex, CellState.EXIT)
+
         self.state = EngineState.IDLE
 
     def hide_path(self) -> None:
@@ -476,21 +493,34 @@ class AppController:
 
         self.backend.update_geometry(self.width, self.height)
 
-        from app.grid import RenderGrid
-        self.grid = RenderGrid(
-            width=self.width,
-            height=self.height,
-            m_entry=self.config.ENTRY,
-            m_exit=self.config.EXIT
-        )
+        self.generator_process = None
+        self.solver_process = None
+        self.manual_path_history.clear()
+
+        if getattr(self.config, "DISPLAY_MODE", "MLX") == "TERMINAL":
+
+            from app.grid import RenderGrid
+            self.grid = RenderGrid(
+                width=self.width,
+                height=self.height,
+                m_entry=self.config.ENTRY,
+                m_exit=self.config.EXIT
+            )
+            self.init_new_run()
+            self.state = EngineState.GENERATING
+        else:
+            self.state = EngineState.IDLE
+
+            from app.grid import RenderGrid
+            self.grid = RenderGrid(
+                width=self.width,
+                height=self.height,
+                m_entry=self.config.ENTRY,
+                m_exit=self.config.EXIT
+            )
 
     def validate_and_apply_dimensions(self, target_width: int,
                                       target_height: int) -> None:
-
-        current_ex, current_ey = self.config.EXIT
-        validated_ex = min(current_ex, self.width - 1)
-        validated_ey = min(current_ey, self.height - 1)
-        self.config.EXIT = (validated_ex, validated_ey)
 
         min_size = 3
         max_w = getattr(self, "max_width", 100)
@@ -498,26 +528,52 @@ class AppController:
         self.width = max(min_size, min(target_width, max_w))
         self.height = max(min_size, min(target_height, max_h))
 
-        en_x, en_y = self.config.ENTRY
-        self.config.ENTRY = (min(en_x, self.width - 1),
-                             min(en_y, self.height - 1))
+        from mazegen.utils import get_pattern_locked_cells
+        locked_set = set(get_pattern_locked_cells(self.width,
+                                                  self.height))
 
-        ex_x, ex_y = self.config.EXIT
-        self.config.EXIT = (min(ex_x, self.width - 1),
-                            min(ex_y, self.height - 1))
+        def _find_safe_pushed_position(start_x: int, start_y: int,
+                                       is_entry: bool) -> tuple[int, int]:
+            # border cut
+            cx = min(start_x, self.width - 1)
+            cy = min(start_y, self.height - 1)
+
+            # clean position
+            if (cx, cy) not in locked_set:
+                return cx, cy
+
+            # push first left then up
+            for radius in range(1, max(self.width, self.height)):
+                for dx, dy in [(-radius, 0), (0, -radius), (radius, 0),
+                               (0, radius)]:
+                    tx = cx + dx
+                    ty = cy + dy
+                    if 0 <= tx < self.width and 0 <= ty < self.height:
+                        if (tx, ty) not in locked_set:
+                            # ensure ENTRY and EXIT not at the same place
+                            other_point = self.config.EXIT if is_entry \
+                                else self.config.ENTRY
+                            if (tx, ty) != other_point:
+                                return tx, ty
+
+            # safety fallback
+            return (0, 0) if is_entry else (self.width - 1, self.height - 1)
+
+        self.config.ENTRY = _find_safe_pushed_position(self.config.ENTRY[0],
+                                                       self.config.ENTRY[1],
+                                                       is_entry=True)
+        self.config.EXIT = _find_safe_pushed_position(self.config.EXIT[0],
+                                                      self.config.EXIT[1],
+                                                      is_entry=False)
 
         if self.maze is not None:
-            if (hasattr(self, "LOCKE_CELLS")
-                    and isinstance(self.maze.locked_cells, list)):
-                validate_locks = []
-                for lx, ly in self.maze.locked_cells:
-                    validate_locks.append((min(lx, self.width - 1),
-                                           min(ly, self.height - 1)))
-                self.maze.locked_cells = validate_locks
+            self.maze.locked_cells = set(locked_set)
 
         print(
-            f"[ENGINE] Validated dimensions applied:"
-            f" {self.width}x{self.height}")
+            f"[ENGINE] Validated dimensions applied: "
+            f"{self.width}x{self.height} |"
+            f" ENTRY: {self.config.ENTRY} |"
+            f" EXIT: {self.config.EXIT}")
 
     def _move_live_point(self, point_type: str, dx: int, dy: int) -> None:
         current_x, current_y = self.config.ENTRY \
@@ -578,7 +634,9 @@ class AppController:
             if self.is_entering_seed else str(self.current_seed)
         mode_name = self.arrow_mode.name
 
-        display_mode_value = "[GAME]" if self.state == EngineState.MANUAL_PLAY else f"[{mode_name}]"
+        display_mode_value = "[GAME]" \
+            if self.state == EngineState.MANUAL_PLAY \
+            else f"[{mode_name}]"
 
         return [
             {
@@ -701,8 +759,8 @@ class AppController:
             return
 
         # block to enter on already visited
-        if (target_x, target_y) in self.manual_path_history or (target_x,
-                                                                target_y) == self.config.ENTRY:
+        if ((target_x, target_y) in self.manual_path_history
+                or (target_x, target_y) == self.config.ENTRY):
             return
 
         # start as first step if history empty

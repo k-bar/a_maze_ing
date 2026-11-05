@@ -5,7 +5,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 from app.backends.palette import MazePalette, PRESETS
-from app.engine import AppController
+from app.engine import AppController, EngineState
 from app.backends.base import GraphicBackend
 from app.backends.mlx_image import MLXImage
 from app.grid import RenderGrid, CellState
@@ -297,6 +297,9 @@ class MlxBackend(GraphicBackend):
 
         def handle_press(keycode: int, param: None = None) -> None:
 
+            if self.keys_pressed.get(keycode, False):
+                return
+
             self.keys_pressed[keycode] = True
 
             action = KEY_MAP.get(keycode)
@@ -305,33 +308,58 @@ class MlxBackend(GraphicBackend):
                 return
             if action:
                 controller.handle_action(action)
-                self.render_frame(controller.grid)
+
                 is_repeatable = (
                         action.startswith("move_") or
                         action.startswith("digit_") or
                         action.startswith("seed_digit_") or
                         action == "seed_backspace"
                 )
+                is_size_resize = (action in ("move_up", "move_down",
+                                             "move_left",
+                                             "move_right")
+                                  and controller.arrow_mode.name == "SIZE"
+                                  and controller.state.name != "MANUAL_PLAY")
+                if not is_size_resize:
+                    self.render_frame(controller.grid)
                 if is_repeatable:
                     self.key_repeat_cooldown = 15
 
         def handle_release(keycode: int, param: None = None) -> None:
 
-            if keycode in self.keys_pressed:
+            if keycode in self.keys_pressed and self.keys_pressed[keycode]:
+                action = KEY_MAP.get(keycode)
                 self.keys_pressed[keycode] = False
+
+                if action in ("move_up", "move_down", "move_left",
+                              "move_right"):
+                    if (controller.arrow_mode.name == "SIZE"
+                            and controller.state.name != "MANUAL_PLAY"):
+                        controller.maze_resize()
+                        controller.handle_action("regen")
+                        self.render_frame(controller.grid)
 
         self.mlx.mlx_hook(self.win_ptr, 2, 1, handle_press, None)
         self.mlx.mlx_hook(self.win_ptr, 3, 2, handle_release, None)
 
         def loop_tick(param: None = None) -> None:
             if controller.is_running:
+                is_holding_resize = False
+                if (controller.arrow_mode.name == "SIZE"
+                        and controller.state != EngineState.MANUAL_PLAY):
+                    for k_code, is_pressed in self.keys_pressed.items():
+                        if is_pressed:
+                            act = KEY_MAP.get(k_code)
+                            if act in ("move_up", "move_down", "move_left",
+                                       "move_right"):
+                                is_holding_resize = True
                 if self.key_repeat_cooldown <= 0:
                     for k_code, is_pressed in self.keys_pressed.items():
                         if is_pressed:
                             act = KEY_MAP.get(k_code)
                             if act and (
-                                    act.startswith("move_")
-                                    or act.startswith("seed_digit_")
+                                    # act.startswith("move_")
+                                    act.startswith("seed_digit_")
                                     or act.startswith("digit_")
                                     or act == "seed_backspace"):
                                 controller.handle_action(act)
@@ -340,8 +368,11 @@ class MlxBackend(GraphicBackend):
                     self.key_repeat_cooldown = 4
                 else:
                     self.key_repeat_cooldown -= 1
-                controller.tick()
-                self.render_frame(controller.grid)
+                if not is_holding_resize:
+                    controller.tick()
+                    self.render_frame(controller.grid)
+                else:
+                    self.render_frame(controller.grid)
             else:
                 self.mlx.mlx_loop_exit(self.mlx_ptr)
 
