@@ -66,6 +66,7 @@ class MlxBackend(GraphicBackend):
 
         self.block_size, self.wall_size, self.offset_x, self.offset_y = \
             calculate_mlx_geometry(
+                self,
                 maze_w=width,
                 maze_h=height,
                 win_w=self.fixed_win_width,
@@ -374,6 +375,7 @@ class MlxBackend(GraphicBackend):
     def update_geometry(self, width: int, height: int) -> None:
         self.block_size, self.wall_size, self.offset_x, self.offset_y = \
             calculate_mlx_geometry(
+                self,
                 maze_w=width,
                 maze_h=height,
                 win_w=self.fixed_win_width,
@@ -404,18 +406,12 @@ def get_screen_resolution(fallback: tuple[int, int] = (1280, 720)) \
     return fallback
 
 
-def calculate_mlx_geometry(maze_w: int = 10, maze_h: int = 10,
+def calculate_mlx_geometry(self, maze_w: int = 10, maze_h: int = 10,
                            win_w: int = 1280, win_h: int = 720,
                            hud_h: int = 60) -> tuple[int, int, int, int]:
     available_h = win_h - hud_h
 
-    wall_size = 2
-
-    required_walls_w = (maze_w + 1) * wall_size
-    required_walls_h = (maze_h + 1) * wall_size
-
-    if required_walls_w > win_w or required_walls_h > available_h:
-        wall_size = 1
+    wall_size = self.wall_size
 
     remaining_w = win_w - ((maze_w + 1) * wall_size)
     remaining_h = available_h - ((maze_h + 1) * wall_size)
@@ -424,10 +420,18 @@ def calculate_mlx_geometry(maze_w: int = 10, maze_h: int = 10,
     max_block_h = remaining_h // maze_h
 
     block_size = min(max_block_w, max_block_h)
-    if block_size < 1:
-        block_size = 1
-    if block_size > 1 and block_size % 2 == 0:
+
+    if block_size <= 3:
+        block_size = 3
+
+    if block_size > 3 and block_size % 2 == 0:
         block_size -= 1
+
+    if 6 <= block_size <= 10:
+        wall_size = 2
+
+    if 3 <= block_size <= 5:
+        wall_size = 1
 
     rendered_w = (maze_w * block_size) + ((maze_w + 1) * wall_size)
     rendered_h = (maze_h * block_size) + ((maze_h + 1) * wall_size)
