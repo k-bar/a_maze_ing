@@ -578,7 +578,8 @@ class AppController:
             if self.is_entering_seed else str(self.current_seed)
         mode_name = self.arrow_mode.name
 
-        display_mode_value = "[GAME]" if self.state == EngineState.MANUAL_PLAY else f"[{mode_name}]"
+        display_mode_value = "[GAME]" \
+            if self.state == EngineState.MANUAL_PLAY else f"[{mode_name}]"
 
         return [
             {
@@ -701,8 +702,8 @@ class AppController:
             return
 
         # block to enter on already visited
-        if (target_x, target_y) in self.manual_path_history or (target_x,
-                                                                target_y) == self.config.ENTRY:
+        if ((target_x, target_y) in self.manual_path_history
+                or (target_x, target_y) == self.config.ENTRY):
             return
 
         # start as first step if history empty
@@ -725,4 +726,5 @@ class AppController:
         if (target_x, target_y) == self.config.EXIT:
             self.grid.register_change(target_gx, target_gy, CellState.EXIT)
             self.state = EngineState.SOLVED
+            self.maze.path = self.manual_path_history.copy()
             print("[GAME] VICTORY! Maze solved manually by player!")

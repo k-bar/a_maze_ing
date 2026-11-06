@@ -61,7 +61,6 @@ class ImperfectGenerator(BaseGenerator):
             if wall_count == 3:
                 candidates = []
 
-
                 if ((wn & cell_pos)
                         and y > 0
                         and (x, y - 1) not in (
