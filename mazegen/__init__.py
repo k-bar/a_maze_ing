@@ -1,7 +1,7 @@
 from typing import Type
 
 from .generators import KruskalGenerator, WilsonGenerator, \
-    RecursiveBacktracker, BaseGenerator, ImperfectGenerator
+    RecursiveBacktracker, BaseGenerator, PrimGenerator, ImperfectGenerator
 from .maze_model import Maze, Wall
 from .solvers import MazeSolver
 from .solvers.bfs import BFSSolver
@@ -11,6 +11,7 @@ _ALGORITHMS: dict[str, Type[BaseGenerator]] = {
     "KRUSKAL": KruskalGenerator,
     "WILSON": WilsonGenerator,
     "BACKTRACKER": RecursiveBacktracker,
+    "PRIM": PrimGenerator,
 }
 
 _SOLVERS = {

@@ -84,6 +84,25 @@ class Maze:
             picked_direction = random.choice(list(Direction))
         return picked_direction
 
+    def pick_next_cell(self, cell: int, forbidden: int) -> int | None:
+
+        moves = [d for d in Direction if
+                 self.is_move_possible(cell, d, forbidden)]
+        if not moves:
+            return None
+        picked_direction = random.choice(moves)
+        return self.next_index(cell, picked_direction)
+
+    def gather_possible_neighbours(self, cell: int, forbidden: int) \
+            -> list[int | None]:
+        moves = [d for d in Direction if
+                 self.is_move_possible(cell, d, forbidden)]
+        result = []
+        for next_dir in moves:
+            next_cell = self.next_index(cell, next_dir)
+            result.append(next_cell)
+        return result
+
     @staticmethod
     def pick_random_cell(mask: int, max_cells: int) -> int | None:
         if mask == 0:
