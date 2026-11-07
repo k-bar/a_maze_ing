@@ -41,7 +41,8 @@ class Config(BaseModel):
     SOLVER: Literal["BFS", "DFS"] = (Field(default="BFS"))
 
     ALGORITHM: Literal[
-        "KRUSKAL", "PRIM", "BACKTRACKER", "WILSON"] = Field(default="KRUSKAL")
+        "KRUSKAL", "PRIM", "BACKTRACKER", "WILSON", "PRIM"] = Field(
+        default="KRUSKAL")
 
     ANIMATION: bool = Field(default=True)
     COLOR: str = Field(default="green", min_length=1, max_length=80)
