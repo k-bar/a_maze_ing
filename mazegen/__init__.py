@@ -6,7 +6,7 @@ from .maze_model import Maze, Wall
 from .solvers import MazeSolver
 from .solvers.bfs import BFSSolver
 from .solvers.dfs import DFSSolver
-
+from .utils import Direction
 _ALGORITHMS: dict[str, Type[BaseGenerator]] = {
     "KRUSKAL": KruskalGenerator,
     "WILSON": WilsonGenerator,
@@ -100,7 +100,8 @@ def create_stepping_solver(solver_name: str, maze: Maze) -> MazeSolver:
     return _SOLVERS[solver_name](maze)
 
 
-__all__ = ['Maze', 'Wall', "BaseGenerator",
+__all__ = ['Maze', 'Wall', "Direction",
+           "BaseGenerator",
            "create_stepping_generator",
            "create_stepping_solver",
            "generate_maze",

@@ -1,6 +1,6 @@
 from app import Config
 from app.backends.base import GraphicBackend
-from app.engine import AppController, EngineState
+from app.engine import AppController, EngineState, ArrowMode
 from app.grid import RenderGrid
 
 
@@ -19,6 +19,7 @@ def test_resize_forces_instant_generating_state() -> None:
     ctrl = AppController(cfg, MockBackend())
 
     ctrl.state = EngineState.IDLE
+    ctrl.arrow_mode = ArrowMode.SIZE
     ctrl.init_new_run()
     ctrl.handle_action("move_right")
     assert ctrl.width == 11

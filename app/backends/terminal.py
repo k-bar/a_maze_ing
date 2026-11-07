@@ -21,6 +21,7 @@ input_queue: Queue[str] = Queue()
 
 class TerminalBackend(GraphicBackend):
     def __init__(self) -> None:
+        super().__init__()
         self._last_grid_w: int = 0
         self._last_grid_h: int = 0
         self.controller: AppController | None = None
