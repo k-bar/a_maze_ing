@@ -5,12 +5,13 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 from app.backends.palette import MazePalette, PRESETS
-from app.engine import AppController
+from app.engine import AppController, ArrowMode
 from app.backends.base import GraphicBackend
 from app.backends.mlx_image import MLXImage
 from app.grid import RenderGrid, CellState
 from app.keys import MLX_EVENT_DESTROY, MLX_MASK_NO_MASK, KEY_MAP
 from mlx import Mlx
+from mazegen import Direction
 
 
 class MlxBackend(GraphicBackend):
@@ -44,6 +45,7 @@ class MlxBackend(GraphicBackend):
         self.init_frames_counter = 0
         self.keys_pressed: dict[int, bool] = {}
         self.key_repeat_cooldown = 0
+        self.is_resizing = False
 
     def init_window(self, width: int, height: int, title: str) -> None:
 
@@ -87,6 +89,7 @@ class MlxBackend(GraphicBackend):
                                   self.hud_height)
         assert self.image is not None
         self.image.pixels[:, :] = [0, 0, 0, 255]
+        self.mlx.mlx_do_key_autorepeatoff(self.mlx_ptr)
 
     def _draw_pixel_block(self, gx: int, gy: int,
                           color: tuple[int, int, int]) -> None:
@@ -181,113 +184,110 @@ class MlxBackend(GraphicBackend):
 
     def render_frame(self, grid: RenderGrid) -> None:
 
-        current_palette = self.palette
-        while grid.changed:
-            x, y, state = grid.changed.popleft()
-            if state == CellState.PATH:
-                color = current_palette.get_rgb(state)
-                self._draw_path_block(x, y, color)
-            else:
+        if not self.is_resizing:
 
-                color = current_palette.get_rgb(state)
-                self._draw_pixel_block(x, y, color)
+            current_palette = self.palette
+            while grid.changed:
+                x, y, state = grid.changed.popleft()
+                if state == CellState.PATH:
+                    color = current_palette.get_rgb(state)
+                    self._draw_path_block(x, y, color)
+                else:
+                    color = current_palette.get_rgb(state)
+                    self._draw_pixel_block(x, y, color)
 
-        if self.win_ptr and self.image:
+        else:
             assert self.controller is not None
+            w = self.controller.width
+            h = self.controller.height
+            size_x = w * self.block_size + (w + 1) * self.wall_size
+            size_y = h * self.block_size + (h + 1) * self.wall_size
 
+            current_palette = self.palette
+            r, g, b = current_palette.get_rgb(CellState.WALL)
+            assert self.image is not None
+            self.image.pixels[
+                self.offset_y: self.offset_y + size_y,
+                self.offset_x: self.offset_x + size_x] = [b, g, r, 255]
+
+        if not (self.win_ptr and self.image):
+            return
+        self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.win_ptr,
+                                         self.image.img_ptr, 0, 0)
+
+        assert self.controller is not None
+        ctrl = self.controller
+        current_hud_snapshot = (f"{ctrl.current_seed}_"
+                                f"{ctrl.is_entering_seed}_"
+                                f"{ctrl.seed_input_buffer}_"
+                                f"{ctrl.algorithm_name}_"
+                                f"{ctrl.solver_name}_"
+                                f"{ctrl.arrow_mode.name}_"
+                                f"{ctrl.width}_{ctrl.height}_"
+                                f"{ctrl.state.name}"
+                                f"{ctrl.steps_per_tick}")
+
+        if current_hud_snapshot != self.last_hud_state:
+            self.last_hud_state = current_hud_snapshot
+
+            pil_img = Image.new("RGBA",
+                                (self.fixed_win_width, self.hud_height),
+                                (0, 0, 0, 255))
+            draw = ImageDraw.Draw(pil_img)
+
+            try:
+                font = ImageFont.truetype(
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+                    14)
+            except IOError:
+                font = ImageFont.load_default()
+
+            hud_blocks = ctrl.get_unified_hud_blocks()
+
+            usable_width = self.fixed_win_width - 80
+            num_blocks = len(hud_blocks)
+
+            step_x = usable_width // (
+                    num_blocks - 1) if num_blocks > 1 else 150
+            x_positions = [20 + (i * step_x) for i in range(num_blocks)]
+
+            if len(x_positions) > 6:
+                x_positions[6] = self.fixed_win_width - 140
+
+            color_default = (170, 170, 170, 255)  # Grey
+            color_seed = (255, 85, 85, 255)  # Red
+            color_edit = (255, 204, 0, 255)  # Gold
+
+            for i, block in enumerate(hud_blocks):
+                if i >= len(x_positions):
+                    break
+
+                color = (
+                    color_seed if block["is_seed"] else color_edit) \
+                    if block["is_highlighted"] else color_default
+
+                full_text = f"{block['label']}: {block['value']}"
+                draw.text((x_positions[i], 10), full_text, fill=color,
+                          font=font)
+
+            controls_text = ctrl.get_hud_controls_text(is_narrow=False)
+            c_color = color_seed \
+                if ctrl.is_entering_seed else color_default
+            draw.text((20, 32), controls_text, fill=c_color, font=font)
+
+            np_img = np.array(pil_img)
+
+            bgra_img = np_img.copy()
+            bgra_img[:, :, 0] = np_img[:, :, 2]  # B <- R
+            bgra_img[:, :, 2] = np_img[:, :, 0]  # R <- B
+
+            hud_top = self.fixed_win_height - self.hud_height
+            assert self.hud_image is not None
+            self.hud_image.pixels[hud_top:, :] = [0, 0, 0, 255]
+            self.hud_image.pixels[:, :] = bgra_img
             self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.win_ptr,
-                                             self.image.img_ptr, 0, 0)
-
-            ctrl = self.controller
-            current_hud_snapshot = (f"{ctrl.current_seed}_"
-                                    f"{ctrl.is_entering_seed}_"
-                                    f"{ctrl.seed_input_buffer}_"
-                                    f"{ctrl.algorithm_name}_"
-                                    f"{ctrl.solver_name}_"
-                                    f"{ctrl.arrow_mode.name}_"
-                                    f"{ctrl.width}_{ctrl.height}_"
-                                    f"{ctrl.state.name}"
-                                    f"{ctrl.steps_per_tick}")
-
-            if (current_hud_snapshot != self.last_hud_state
-                    or self.init_frames_counter < 2):
-
-                if self.init_frames_counter < 5:
-                    self.init_frames_counter += 1
-                self.last_hud_state = current_hud_snapshot
-
-                pil_img = Image.new("RGBA",
-                                    (self.fixed_win_width, self.hud_height),
-                                    (0, 0, 0, 255))
-                draw = ImageDraw.Draw(pil_img)
-
-                try:
-                    font = ImageFont.truetype(
-                        "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
-                        14)
-                except IOError:
-                    font = ImageFont.load_default()
-
-                hud_top = self.fixed_win_height - self.hud_height
-
-                assert self.hud_image is not None
-                self.hud_image.pixels[hud_top:, :] = [0, 0, 0, 255]
-                self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.win_ptr,
-                                                 self.hud_image.img_ptr, 0,
-                                                 hud_top)
-
-                hud_blocks = ctrl.get_unified_hud_blocks()
-
-                usable_width = self.fixed_win_width - 80
-                num_blocks = len(hud_blocks)
-
-                step_x = usable_width // (
-                        num_blocks - 1) if num_blocks > 1 else 150
-                x_positions = [20 + (i * step_x) for i in range(num_blocks)]
-
-                if len(x_positions) > 6:
-                    x_positions[6] = self.fixed_win_width - 140
-
-                color_default = (170, 170, 170, 255)  # Grey
-                color_seed = (255, 85, 85, 255)  # Red
-                color_edit = (255, 204, 0, 255)  # Gold
-
-                for i, block in enumerate(hud_blocks):
-                    if i >= len(x_positions):
-                        break
-
-                    color = (
-                        color_seed if block["is_seed"] else color_edit) \
-                        if block["is_highlighted"] else color_default
-
-                    full_text = f"{block['label']}: {block['value']}"
-                    draw.text((x_positions[i], 10), full_text, fill=color,
-                              font=font)
-
-                controls_text = ctrl.get_hud_controls_text(is_narrow=False)
-                c_color = color_seed \
-                    if ctrl.is_entering_seed else color_default
-                draw.text((20, 32), controls_text, fill=c_color, font=font)
-
-                np_img = np.array(pil_img)
-
-                bgra_img = np_img.copy()
-                bgra_img[:, :, 0] = np_img[:, :, 2]  # B <- R
-                bgra_img[:, :, 2] = np_img[:, :, 0]  # R <- B
-
-                assert self.hud_image is not None
-                self.hud_image.pixels[:, :] = bgra_img
-
-                hud_top = self.fixed_win_height - self.hud_height
-                self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.win_ptr,
-                                                 self.hud_image.img_ptr, 0,
-                                                 hud_top)
-            else:
-                hud_top = self.fixed_win_height - self.hud_height
-                assert self.hud_image is not None
-                self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.win_ptr,
-                                                 self.hud_image.img_ptr, 0,
-                                                 hud_top)
+                                             self.hud_image.img_ptr, 0,
+                                             hud_top)
 
     def start_loop(self, controller: AppController) -> None:
         self.controller = controller
@@ -297,24 +297,20 @@ class MlxBackend(GraphicBackend):
                           0)
 
         def handle_press(keycode: int, param: None = None) -> None:
-
-            self.keys_pressed[keycode] = True
-
             action = KEY_MAP.get(keycode)
+            if not action:
+                return
+
             if action == "cycle_palette":
                 self.change_colors(controller)
                 return
-            if action:
+
+            assert self.controller is not None
+            if not action.startswith("move_"):
                 controller.handle_action(action)
-                self.render_frame(controller.grid)
-                is_repeatable = (
-                        action.startswith("move_") or
-                        action.startswith("digit_") or
-                        action.startswith("seed_digit_") or
-                        action == "seed_backspace"
-                )
-                if is_repeatable:
-                    self.key_repeat_cooldown = 15
+                return
+
+            self.keys_pressed[keycode] = True
 
         def handle_release(keycode: int, param: None = None) -> None:
 
@@ -325,32 +321,57 @@ class MlxBackend(GraphicBackend):
         self.mlx.mlx_hook(self.win_ptr, 3, 2, handle_release, None)
 
         def loop_tick(param: None = None) -> None:
-            if controller.is_running:
-                if self.key_repeat_cooldown <= 0:
-                    for k_code, is_pressed in self.keys_pressed.items():
-                        if is_pressed:
-                            act = KEY_MAP.get(k_code)
-                            if act and (
-                                    act.startswith("move_")
-                                    or act.startswith("seed_digit_")
-                                    or act.startswith("digit_")
-                                    or act == "seed_backspace"):
-                                controller.handle_action(act)
-                                self.render_frame(controller.grid)
-
-                    self.key_repeat_cooldown = 4
-                else:
-                    self.key_repeat_cooldown -= 1
-                controller.tick()
-                self.render_frame(controller.grid)
-            else:
+            assert self.controller is not None
+            if not controller.is_running:
+                self.mlx.mlx_do_key_autorepeaton(self.mlx_ptr)
                 self.mlx.mlx_loop_exit(self.mlx_ptr)
+                return
+
+            if self.key_repeat_cooldown > 0:
+                self.key_repeat_cooldown -= 1
+
+            active_move_act: str | None = None
+            for k, pressed in self.keys_pressed.items():
+                if pressed:
+                    act = KEY_MAP.get(k)
+                    if act and act.startswith("move_"):
+                        active_move_act = act
+                        break
+
+            any_arrow_pressed = active_move_act is not None
+            if self.is_resizing and not any_arrow_pressed:
+                self.is_resizing = False
+                controller.handle_action("regen")
+
+            if active_move_act and self.key_repeat_cooldown <= 0:
+                if self.controller.arrow_mode == ArrowMode.SIZE:
+                    self.key_repeat_cooldown = 4
+                    self.is_resizing = True
+                    action_to_direction = {
+                        "move_up": Direction.NORTH,
+                        "move_down": Direction.SOUTH,
+                        "move_right": Direction.EAST,
+                        "move_left": Direction.WEST,
+                    }
+                    direction = action_to_direction.get(active_move_act)
+                    if direction:
+                        new_w = self.controller.width + direction.dx
+                        new_h = self.controller.height + direction.dy
+                        self.controller.validate_and_apply_dimensions(
+                            new_w, new_h)
+                    self.controller.maze_resize()
+                else:
+                    self.key_repeat_cooldown = 6
+                    controller.handle_action(active_move_act)
+            else:
+                controller.tick()
+
+            self.render_frame(controller.grid)
 
         self.mlx.mlx_loop_hook(self.mlx_ptr, loop_tick, None)
         self.mlx.mlx_loop(self.mlx_ptr)
 
     def change_colors(self, controller: AppController) -> None:
-
         old_palette = self.palette
         self.preset_mode = (self.preset_mode + 1) % 5
         if self.preset_mode < len(PRESETS):
@@ -384,9 +405,6 @@ class MlxBackend(GraphicBackend):
             )
         if self.image is not None:
             self.image.pixels[:, :] = [0, 0, 0, 255]
-        if self.hud_image is not None:
-            self.hud_image.pixels[:, :] = [0, 0, 0, 255]
-
         self.last_hud_state = ""
 
 

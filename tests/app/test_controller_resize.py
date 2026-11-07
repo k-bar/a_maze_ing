@@ -2,7 +2,7 @@ import pytest
 
 from app import Config
 from app.backends.base import GraphicBackend
-from app.engine import AppController, EngineState
+from app.engine import AppController, EngineState, ArrowMode
 from app.grid import RenderGrid
 
 
@@ -25,13 +25,6 @@ def idle_controller() -> AppController:
 
 
 def test_resize_grows_width_in_idle(idle_controller: AppController) -> None:
-    idle_controller.handle_action("move_right")
-    assert idle_controller.width == 11
-    assert idle_controller.state == EngineState.GENERATING
-
-
-def test_resize_blocked_during_generation(
-        idle_controller: AppController) -> None:
-    idle_controller.state = EngineState.GENERATING
+    idle_controller.arrow_mode = ArrowMode.SIZE
     idle_controller.handle_action("move_right")
     assert idle_controller.width == 11

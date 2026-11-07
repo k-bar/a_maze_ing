@@ -11,6 +11,7 @@ from app import Config
 from app.grid import RenderGrid, CellState
 from app.backends.base import GraphicBackend
 from mazegen.solvers import MazeSolver
+from mazegen import Direction
 
 
 class EngineState(Enum):
@@ -24,9 +25,11 @@ class EngineState(Enum):
 
 
 class ArrowMode(Enum):
+    NONE = auto()
     SIZE = auto()
     ENTRY = auto()
     EXIT = auto()
+    GAME = auto()
 
 
 class AppController:
@@ -58,7 +61,7 @@ class AppController:
 
         self.state: EngineState = EngineState.INITIALIZING
 
-        self.arrow_mode: ArrowMode = ArrowMode.SIZE
+        self.arrow_mode: ArrowMode = ArrowMode.NONE
 
         self.maze: Maze | None = None
         self.generator_process: BaseGenerator | None = None
@@ -164,6 +167,7 @@ class AppController:
                     if self.state != EngineState.SOLVING:
                         break
             case EngineState.SOLVED:
+                self.arrow_mode = ArrowMode.NONE
                 self.show_path()
             case EngineState.PAUSED:
                 pass
@@ -303,57 +307,41 @@ class AppController:
                 if self.state == EngineState.MANUAL_PLAY:
                     return
                 match self.arrow_mode:
+                    case ArrowMode.NONE:
+                        self.arrow_mode = ArrowMode.SIZE
                     case ArrowMode.SIZE:
                         self.arrow_mode = ArrowMode.ENTRY
                     case ArrowMode.ENTRY:
                         self.arrow_mode = ArrowMode.EXIT
                     case ArrowMode.EXIT:
-                        self.arrow_mode = ArrowMode.SIZE
+                        self.arrow_mode = ArrowMode.NONE
                 print(
                     f"[ENGINE] Arrow keys mode switched to: "
                     f"{self.arrow_mode.name}")
 
             case "move_right" | "move_left" | "move_down" \
                  | "move_up":
+                action_to_direction = {
+                    "move_up": Direction.NORTH,
+                    "move_down": Direction.SOUTH,
+                    "move_right": Direction.EAST,
+                    "move_left": Direction.WEST,
+                }
+                direction = action_to_direction.get(action)
+                assert direction is not None
+                dx = direction.dx
+                dy = direction.dy
                 if self.state == EngineState.MANUAL_PLAY:
-                    dx, dy = 0, 0
-                    if action == "move_up":
-                        dy = -1
-                    elif action == "move_down":
-                        dy = 1
-                    elif action == "move_right":
-                        dx = 1
-                    elif action == "move_left":
-                        dx = -1
                     self._move_player_manual(dx, dy)
                     return
                 match self.arrow_mode:
                     case ArrowMode.SIZE:
-                        new_w = self.width
-                        new_h = self.height
-
-                        if action == "move_right":
-                            new_w += 1
-                        elif action == "move_left":
-                            new_w -= 1
-                        elif action == "move_down":
-                            new_h += 1
-                        elif action == "move_up":
-                            new_h -= 1
+                        new_w = self.width + dx
+                        new_h = self.height + dy
                         self.validate_and_apply_dimensions(new_w, new_h)
                         self.maze_resize()
                         self.handle_action("regen")
                     case ArrowMode.ENTRY | ArrowMode.EXIT:
-                        dx, dy = 0, 0
-                        if action == "move_up":
-                            dy = -1
-                        elif action == "move_down":
-                            dy = 1
-                        elif action == "move_right":
-                            dx = 1
-                        elif action == "move_left":
-                            dx = -1
-
                         if self.arrow_mode == ArrowMode.ENTRY:
                             self._move_live_point("ENTRY", dx, dy)
                         else:
@@ -476,48 +464,62 @@ class AppController:
 
         self.backend.update_geometry(self.width, self.height)
 
-        from app.grid import RenderGrid
-        self.grid = RenderGrid(
-            width=self.width,
-            height=self.height,
-            m_entry=self.config.ENTRY,
-            m_exit=self.config.EXIT
-        )
-
     def validate_and_apply_dimensions(self, target_width: int,
                                       target_height: int) -> None:
 
-        current_ex, current_ey = self.config.EXIT
-        validated_ex = min(current_ex, self.width - 1)
-        validated_ey = min(current_ey, self.height - 1)
-        self.config.EXIT = (validated_ex, validated_ey)
-
         min_size = 3
-        max_w = getattr(self, "max_width", 100)
-        max_h = getattr(self, "max_height", 100)
+        max_w = self.max_width
+        max_h = self.max_height
+
         self.width = max(min_size, min(target_width, max_w))
         self.height = max(min_size, min(target_height, max_h))
 
-        en_x, en_y = self.config.ENTRY
-        self.config.ENTRY = (min(en_x, self.width - 1),
-                             min(en_y, self.height - 1))
+        from mazegen.utils import get_pattern_locked_cells
+        locked_set = set(get_pattern_locked_cells(self.width,
+                                                  self.height))
 
-        ex_x, ex_y = self.config.EXIT
-        self.config.EXIT = (min(ex_x, self.width - 1),
-                            min(ex_y, self.height - 1))
+        def _find_safe_pushed_position(start_x: int, start_y: int,
+                                       is_entry: bool) -> tuple[int, int]:
+            # border cut
+            cx = min(start_x, self.width - 1)
+            cy = min(start_y, self.height - 1)
+
+            # clean position
+            if (cx, cy) not in locked_set:
+                return cx, cy
+
+            # push first left then up
+            for radius in range(1, max(self.width, self.height)):
+                for dx, dy in [(-radius, 0), (0, -radius), (radius, 0),
+                               (0, radius)]:
+                    tx = cx + dx
+                    ty = cy + dy
+                    if 0 <= tx < self.width and 0 <= ty < self.height:
+                        if (tx, ty) not in locked_set:
+                            # ensure ENTRY and EXIT not at the same place
+                            other_point = self.config.EXIT if is_entry \
+                                else self.config.ENTRY
+                            if (tx, ty) != other_point:
+                                return tx, ty
+
+            # safety fallback
+            return (0, 0) if is_entry else (self.width - 1, self.height - 1)
+
+        self.config.ENTRY = _find_safe_pushed_position(self.config.ENTRY[0],
+                                                       self.config.ENTRY[1],
+                                                       is_entry=True)
+        self.config.EXIT = _find_safe_pushed_position(self.config.EXIT[0],
+                                                      self.config.EXIT[1],
+                                                      is_entry=False)
 
         if self.maze is not None:
-            if (hasattr(self, "LOCKE_CELLS")
-                    and isinstance(self.maze.locked_cells, list)):
-                validate_locks = []
-                for lx, ly in self.maze.locked_cells:
-                    validate_locks.append((min(lx, self.width - 1),
-                                           min(ly, self.height - 1)))
-                self.maze.locked_cells = validate_locks
+            self.maze.locked_cells = set(locked_set)
 
         print(
-            f"[ENGINE] Validated dimensions applied:"
-            f" {self.width}x{self.height}")
+            f"[ENGINE] Validated dimensions applied: "
+            f"{self.width}x{self.height} |"
+            f" ENTRY: {self.config.ENTRY} |"
+            f" EXIT: {self.config.EXIT}")
 
     def _move_live_point(self, point_type: str, dx: int, dy: int) -> None:
         current_x, current_y = self.config.ENTRY \
@@ -612,7 +614,7 @@ class AppController:
                 "is_seed": False
             },
             {
-                "label": "EDIT",
+                "label": "MODE",
                 "value": display_mode_value,
                 "width_spec": 15,
                 "is_highlighted": (
@@ -679,7 +681,7 @@ class AppController:
                 0 <= target_x < self.width and 0 <= target_y < self.height):
             return
 
-        # locke barrier
+        # locked barrier
         if (target_x, target_y) in self.maze.locked_cells:
             return
 
