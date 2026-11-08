@@ -38,6 +38,8 @@ class Maze:
         self.height = height
         self.m_entry = m_entry
         self.m_exit = m_exit
+        self.m_entry_idx = m_entry[1] * width + m_entry[0]
+        self.m_exit_idx = m_exit[1] * width + m_exit[0]
         self.perfect = perfect
         self.seed = seed
 
@@ -55,6 +57,22 @@ class Maze:
             self.locked_cells_mask |= (1 << y * self.width + x)
 
         self.path: list[tuple[int, int]] = []
+
+        self._border_n: int = (1 << width) - 1
+        self._border_s: int = ((1 << width) - 1) << (width * (height - 1))
+        self._border_w: int = 0
+        self._border_e: int = 0
+
+        for r in range(height):
+            self._border_w |= (1 << (r * width))
+            self._border_e |= (1 << (r * width + width - 1))
+
+        self.border_masks = {
+            0: self._border_n,  # NORTH
+            1: self._border_e,  # EAST
+            2: self._border_s,  # SOUTH
+            3: self._border_w  # WEST
+        }
 
     def get_walls(self) -> tuple[int, int, int, int]:
         return self.walls_n, self.walls_e, self.walls_s, self.walls_w
@@ -79,10 +97,8 @@ class Maze:
         return index + (self.width * direction.dy) + direction.dx
 
     def pick_possible_direction(self, cell: int, forbidden: int) -> Direction:
-        picked_direction = random.choice(list(Direction))
-        while not self.is_move_possible(cell, picked_direction, forbidden):
-            picked_direction = random.choice(list(Direction))
-        return picked_direction
+        moves = [d for d in Direction if self.is_move_possible(cell, d, forbidden)]
+        return random.choice(moves)
 
     def pick_next_cell(self, cell: int, forbidden: int) -> int | None:
 
@@ -126,18 +142,10 @@ class Maze:
 
     def is_move_possible(self, cell: int, picked_dir: Direction,
                          forbidden: int) -> bool:
-        move_map = {
-            Direction.NORTH: (self.is_north_border_cell, -self.width),
-            Direction.EAST: (self.is_east_border_cell, 1),
-            Direction.SOUTH: (self.is_south_border_cell, self.width),
-            Direction.WEST: (self.is_west_border_cell, -1),
-        }
-        is_border, offset = move_map[picked_dir]
-
-        if is_border(cell):
+        if self.border_masks[picked_dir.bit_index] & (1 << cell):
             return False
 
-        next_cell = cell + offset
+        next_cell = cell + (self.width * picked_dir.dy) + picked_dir.dx
         return forbidden & (1 << next_cell) == 0
 
     def is_north_border_cell(self, index: int) -> bool:

@@ -38,7 +38,7 @@ class Config(BaseModel):
     PERFECT: bool = Field(default=True)
 
     SEED: int | None = Field(default=None)
-    SOLVER: Literal["BFS", "DFS"] = (Field(default="BFS"))
+    SOLVER: Literal["BFS", "DFS", "ASTAR"] = (Field(default="BFS"))
 
     ALGORITHM: Literal[
         "KRUSKAL", "PRIM", "BACKTRACKER", "WILSON", "PRIM"] = Field(
@@ -108,7 +108,6 @@ class Config(BaseModel):
                 )
 
         elif self.DISPLAY_MODE == "MLX":
-            win_w, win_h = 1280, 720
 
             if self.WINDOW_WIDTH and self.WINDOW_HEIGHT:
                 win_w, win_h = self.WINDOW_WIDTH, self.WINDOW_HEIGHT
@@ -118,9 +117,12 @@ class Config(BaseModel):
                 win_h = int(scr_h * 0.9)
 
             hud_h = 60
+            available_h = win_h - hud_h
 
-            max_w = (win_w - 1) // 4
-            max_h = (win_h - hud_h - 1) // 4
+            block_min_size = 1
+
+            max_w = (win_w - 1) // (block_min_size + 1)
+            max_h = (available_h - 1) // (block_min_size + 1)
 
             if self.WIDTH > max_w or self.HEIGHT > max_h:
                 raise ValueError(

@@ -6,7 +6,9 @@ from .maze_model import Maze, Wall
 from .solvers import MazeSolver
 from .solvers.bfs import BFSSolver
 from .solvers.dfs import DFSSolver
+from .solvers.astar import AStarSolver
 from .utils import Direction
+
 _ALGORITHMS: dict[str, Type[BaseGenerator]] = {
     "KRUSKAL": KruskalGenerator,
     "WILSON": WilsonGenerator,
@@ -16,7 +18,8 @@ _ALGORITHMS: dict[str, Type[BaseGenerator]] = {
 
 _SOLVERS = {
     "BFS": BFSSolver,
-    "DFS": DFSSolver
+    "DFS": DFSSolver,
+    "ASTAR": AStarSolver,
 }
 
 
