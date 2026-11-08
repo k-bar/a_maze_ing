@@ -167,7 +167,8 @@ class AppController:
                     if self.state != EngineState.SOLVING:
                         break
             case EngineState.SOLVED:
-                self.arrow_mode = ArrowMode.NONE
+                if self.solver_name == "MANUAL":
+                    self.arrow_mode = ArrowMode.NONE
                 self.show_path()
             case EngineState.PAUSED:
                 pass
