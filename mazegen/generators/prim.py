@@ -24,9 +24,11 @@ class PrimGenerator(BaseGenerator):
         while frontier_mask:
 
             current_cell = self.maze.pick_random_cell(frontier_mask, max_cells)
+            add_new_frontiers(current_cell)
 
             # break a wall toward maze
-            maze_cell = self.maze.pick_next_cell(current_cell, ~maze_mask)
+            maze_cell = self.maze.pick_next_cell(cell=current_cell,
+                                                 forbidden=~maze_mask)
             if maze_cell is None:
                 continue
             self.maze.flip_both_walls(current_cell, maze_cell)
