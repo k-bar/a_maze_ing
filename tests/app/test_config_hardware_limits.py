@@ -36,7 +36,7 @@ def test_pydantic_rejects_huge_maze_for_terminal() -> None:
 
 
 def test_pydantic_accepts_valid_maze_for_terminal(
-        monkeypatch: MonkeyPatch) -> None:
+        mock_terminal_small: None) -> None:
     good_data = {"WIDTH": 10, "HEIGHT": 5, "DISPLAY_MODE": "TERMINAL"}
 
     config = Config.model_validate(good_data)

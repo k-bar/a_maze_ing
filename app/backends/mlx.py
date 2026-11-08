@@ -35,6 +35,8 @@ class MlxBackend(GraphicBackend):
         self.maze_image_height = self.fixed_win_height - self.hud_height
 
         self.block_size = 30
+        self.block_min_size = 1
+        self.wall_min_size = 1
         self.wall_size: int = int(self.block_size / 10)
         self.offset_x = 0
         self.offset_y = 0
@@ -68,7 +70,7 @@ class MlxBackend(GraphicBackend):
 
         self.block_size, self.wall_size, self.offset_x, self.offset_y = \
             calculate_mlx_geometry(
-                self,
+                block_min_size=self.block_min_size,
                 maze_w=width,
                 maze_h=height,
                 win_w=self.fixed_win_width,
@@ -77,8 +79,11 @@ class MlxBackend(GraphicBackend):
             )
 
         available_h = self.fixed_win_height - self.hud_height
-        self.controller.max_width = (self.fixed_win_width - 1) // 4
-        self.controller.max_height = (available_h - 1) // 4
+
+        self.controller.max_width = (self.fixed_win_width - 1) // (
+                self.block_min_size + self.wall_min_size)
+        self.controller.max_height = (available_h - 1) // (
+                self.block_min_size + self.wall_min_size)
 
         self.win_ptr = self.mlx.mlx_new_window(
             self.mlx_ptr, self.fixed_win_width, self.fixed_win_height, title
@@ -127,6 +132,10 @@ class MlxBackend(GraphicBackend):
     def _draw_path_block(self, gx: int, gy: int,
                          color: tuple[int, int, int]) -> None:
         if self.image is None:
+            return
+
+        if self.block_size == 1:
+            self._draw_pixel_block(gx, gy, color)
             return
 
         path_line_size = self.block_size // 3
@@ -396,7 +405,7 @@ class MlxBackend(GraphicBackend):
     def update_geometry(self, width: int, height: int) -> None:
         self.block_size, self.wall_size, self.offset_x, self.offset_y = \
             calculate_mlx_geometry(
-                self,
+                block_min_size=self.block_min_size,
                 maze_w=width,
                 maze_h=height,
                 win_w=self.fixed_win_width,
@@ -424,32 +433,38 @@ def get_screen_resolution(fallback: tuple[int, int] = (1280, 720)) \
     return fallback
 
 
-def calculate_mlx_geometry(self, maze_w: int = 10, maze_h: int = 10,
+def calculate_mlx_geometry(block_min_size: int = 1, maze_w: int = 10,
+                           maze_h: int = 10,
                            win_w: int = 1280, win_h: int = 720,
                            hud_h: int = 60) -> tuple[int, int, int, int]:
     available_h = win_h - hud_h
 
-    wall_size = self.wall_size
+    max_possible_w = (win_w - (maze_w + 1)) // maze_w
+    max_possible_h = (available_h - (maze_h + 1)) // maze_h
+    absolute_max_block = min(max_possible_w, max_possible_h)
 
-    remaining_w = win_w - ((maze_w + 1) * wall_size)
-    remaining_h = available_h - ((maze_h + 1) * wall_size)
+    if absolute_max_block <= block_min_size:
+        wall_size = 1
+        block_size = block_min_size
+    elif absolute_max_block <= 5:
+        wall_size = 1
+        block_size = absolute_max_block
+    elif absolute_max_block <= 10:
+        wall_size = 2
+        rem_w = win_w - ((maze_w + 1) * wall_size)
+        rem_h = available_h - ((maze_h + 1) * wall_size)
+        block_size = min(rem_w // maze_w, rem_h // maze_h)
+    else:
+        wall_size = max(3, absolute_max_block // 10)
+        rem_w = win_w - ((maze_w + 1) * wall_size)
+        rem_h = available_h - ((maze_h + 1) * wall_size)
+        block_size = min(rem_w // maze_w, rem_h // maze_h)
 
-    max_block_w = remaining_w // maze_w
-    max_block_h = remaining_h // maze_h
-
-    block_size = min(max_block_w, max_block_h)
-
-    if block_size <= 3:
-        block_size = 3
-
-    if block_size > 3 and block_size % 2 == 0:
+    if block_size > block_min_size and block_size % 2 == 0:
         block_size -= 1
 
-    if 6 <= block_size <= 10:
-        wall_size = 2
-
-    if 3 <= block_size <= 5:
-        wall_size = 1
+    if block_size <= block_min_size:
+        block_size = block_min_size
 
     rendered_w = (maze_w * block_size) + ((maze_w + 1) * wall_size)
     rendered_h = (maze_h * block_size) + ((maze_h + 1) * wall_size)

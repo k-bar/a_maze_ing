@@ -94,7 +94,7 @@ class Maze:
         return self.next_index(cell, picked_direction)
 
     def gather_possible_neighbours(self, cell: int, forbidden: int) \
-            -> list[int | None]:
+            -> list[int]:
         moves = [d for d in Direction if
                  self.is_move_possible(cell, d, forbidden)]
         result = []
@@ -104,9 +104,9 @@ class Maze:
         return result
 
     @staticmethod
-    def pick_random_cell(mask: int, max_cells: int) -> int | None:
+    def pick_random_cell(mask: int, max_cells: int) -> int:
         if mask == 0:
-            return None
+            raise ValueError("mask cannot be empty")
         while True:
             candidate = random.randrange(max_cells)
             if mask & (1 << candidate):

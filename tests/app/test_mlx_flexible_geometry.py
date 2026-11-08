@@ -3,7 +3,7 @@ from app.backends.mlx import calculate_mlx_geometry
 
 def test_flexible_geometry_maximizes_space_for_small_maze() -> None:
     block_size, wall_size, offset_x, offset_y = calculate_mlx_geometry(
-        maze_w=10, maze_h=10, win_w=1280, win_h=720, hud_h=60
+        block_min_size=1, maze_w=10, maze_h=10, win_w=1280, win_h=720, hud_h=60
     )
 
     # cell must have odd size - to fit path inside at center
