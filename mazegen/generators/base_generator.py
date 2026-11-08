@@ -43,7 +43,6 @@ class BaseGenerator(ABC):
         untouched_cells &= ~self.maze.locked_cells_mask
         first_maze_cell = self.maze.pick_random_cell(untouched_cells,
                                                      max_cells)
-        assert first_maze_cell is not None
         untouched_cells &= ~(1 << first_maze_cell)
 
         return untouched_cells, first_maze_cell, max_cells

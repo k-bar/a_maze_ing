@@ -12,15 +12,17 @@ class WilsonGenerator(BaseGenerator):
         untouched_cells, _, max_cells = self._initialize_generator()
 
         while untouched_cells:
-            start_cell = self.maze.pick_random_cell(untouched_cells, max_cells)
-            assert start_cell is not None
+            start_cell = self.maze.pick_random_cell(mask=untouched_cells,
+                                                    max_cells=max_cells)
+
             current_path = [start_cell]
             current_path_mask = (1 << start_cell)
             while True:
                 current_cell = current_path[-1]
                 next_cell = self.maze.next_index(
                     current_cell, self.maze.pick_possible_direction(
-                        current_cell, self.maze.locked_cells_mask))
+                        cell=current_cell,
+                        forbidden=self.maze.locked_cells_mask))
                 # part of maze:
                 if not untouched_cells & (1 << next_cell):
                     self.maze.flip_both_walls(current_cell, next_cell)

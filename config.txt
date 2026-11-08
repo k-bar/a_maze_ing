@@ -2,10 +2,10 @@
 ### Configuration for maze generation ###
 #########################################
 
-WIDTH=3
-HEIGHT=3
+WIDTH=50
+HEIGHT=20
 ENTRY=0,0
-EXIT=2,2
+EXIT=49,19
 OUTPUT_FILE=maze.txt
 PERFECT=False
 SEED=123
@@ -29,3 +29,5 @@ DISPLAY_MODE=MLX
 # int(1080 * 0.9) = 972 - hud (60) = 912
 # max_w = (1728 - ) / 4 = 1727 / 4 = 431
 # max_h = (912 - 1) / 4 = 911 / 4 = 224
+
+# 863x455 - for min_block_size = 1

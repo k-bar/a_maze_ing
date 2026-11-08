@@ -1,4 +1,3 @@
-import random
 from typing import Generator
 
 from . import BaseGenerator
@@ -16,7 +15,8 @@ class RecursiveBacktracker(BaseGenerator):
 
         while untouched_cells:
             current_cell = path[-1]
-            next_cell = self.maze.pick_next_cell(current_cell, ~untouched_cells)
+            next_cell = self.maze.pick_next_cell(cell=current_cell,
+                                                 forbidden=~untouched_cells)
 
             if next_cell is not None:
                 # add cell to path and maze
