@@ -2,10 +2,10 @@
 ### Configuration for maze generation ###
 #########################################
 
-WIDTH=50
-HEIGHT=20
+WIDTH=863
+HEIGHT=455
 ENTRY=0,0
-EXIT=1,1
+EXIT=430,226
 OUTPUT_FILE=maze.txt
 PERFECT=False
 SEED=123
@@ -13,11 +13,11 @@ SEED=123
 # Algorithms: KRUSKAL, PRIM, WILSON, BACKTRACKER
 ALGORITHM=PRIM
 
-# Solvers: BFS, DFS
-SOLVER=DFS
+# Solvers: BFS, DFS, ASTAR
+SOLVER=ASTAR
 
 # Renderer modes: MLX, Terminal
-DISPLAY_MODE=Terminal
+DISPLAY_MODE=MLX
 
 # WINDOW_WIDTH=800
 # WINDOW_HEIGHT= 600
