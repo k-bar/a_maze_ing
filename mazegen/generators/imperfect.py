@@ -24,6 +24,25 @@ class ImperfectGenerator(BaseGenerator):
         while (base_step := self.base_generator.step()) is not None:
             yield base_step
 
+        self.make_imperfect()
+
+    def generate_all(self) -> None:
+        print("imperfect robie tylko")
+        self.make_imperfect()
+
+    def make_imperfect(self) \
+            -> Generator[tuple[int, int, Direction], None, None]:
+        """Remove walls from eligible dead-end cells.
+
+        Scans the maze in row-major order. For each unlocked cell with
+        exactly three walls, removes a randomly selected wall to an eligible
+        neighboring cell, if one exists. The maze grid is modified in place.
+        Random choices are initialized using the maze seed.
+        """
+        #
+        # while (base_step := self.base_generator.step()) is not None:
+        #     yield base_step
+
         if self.maze.perfect:
             return
 
