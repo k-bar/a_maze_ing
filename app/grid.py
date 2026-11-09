@@ -37,18 +37,13 @@ class RenderGrid:
             dtype=object
         )
         self.changed: deque[tuple[int, int, CellState]] = deque()
+        self.require_full_redraw = False
         self.clear()
 
     def clear(self) -> None:
         self.changed.clear()
-
-        for y in range(self.grid_height):
-            for x in range(self.grid_width):
-                self.register_change(x, y, CellState.WALL)
-
-        for x in range(self.width):
-            for y in range(self.height):
-                self.register_change((x * 2) + 1, (y * 2) + 1, CellState.FLOOR)
+        self.cells[:, :] = CellState.WALL
+        self.cells[1::2, 1::2] = CellState.FLOOR
 
         for cx, cy in get_pattern_locked_cells(self.width, self.height):
             fx, fy = (cx * 2) + 1, (cy * 2) + 1
@@ -59,7 +54,16 @@ class RenderGrid:
 
         ex_x, ex_y = self.m_exit
         self.register_change((ex_x * 2) + 1, (ex_y * 2) + 1, CellState.EXIT)
+        self.require_full_redraw = True
 
     def register_change(self, x: int, y: int, state: CellState) -> None:
         self.cells[y, x] = state
         self.changed.append((x, y, state))
+
+    def push_entire_grid_to_changed(self) -> None:
+        self.changed.clear()
+        yy, xx = np.mgrid[0:self.grid_height, 0:self.grid_width]
+        flat_x = xx.ravel()
+        flat_y = yy.ravel()
+        flat_states = self.cells.ravel()
+        self.changed.extend(zip(flat_x, flat_y, flat_states))

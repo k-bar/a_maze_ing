@@ -89,7 +89,7 @@ def test_pydantic_accepts_custom_window_dimensions_from_config() -> None:
 
 def test_pydantic_applies_boundaries_based_on_custom_window_size() -> None:
     over_limit_data = {
-        "WIDTH": 300,
+        "WIDTH": 500,
         "HEIGHT": 10,
         "DISPLAY_MODE": "MLX",
         "WINDOW_WIDTH": 800,

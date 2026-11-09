@@ -78,7 +78,10 @@ def test_should_destroy_only_the_physical_wall_tile(
     controller.maze = MagicMock()
     controller.generator_process = MagicMock()
     assert controller.generator_process is not None
-    controller.generator_process.step.return_value = (0, 0, MockDirection())
+    controller.generator_process.step.side_effect = [
+        (0, 0, MockDirection()),
+        None
+    ]
 
     cell_value: CellState = controller.grid.cells[1][2]
     assert cell_value == CellState.WALL
