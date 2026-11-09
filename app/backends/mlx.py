@@ -196,14 +196,35 @@ class MlxBackend(GraphicBackend):
         if not self.is_resizing:
 
             current_palette = self.palette
-            while grid.changed:
-                x, y, state = grid.changed.popleft()
-                if state == CellState.PATH:
-                    color = current_palette.get_rgb(state)
-                    self._draw_path_block(x, y, color)
-                else:
-                    color = current_palette.get_rgb(state)
-                    self._draw_pixel_block(x, y, color)
+            # while grid.changed:
+            #     x, y, state = grid.changed.popleft()
+            #     if state == CellState.PATH:
+            #         color = current_palette.get_rgb(state)
+            #         self._draw_path_block(x, y, color)
+            #     else:
+            #         color = current_palette.get_rgb(state)
+            #         self._draw_pixel_block(x, y, color)
+            if grid.require_full_redraw:
+                grid.require_full_redraw = False
+                grid.changed.clear()
+
+                if self.image is not None:
+                    self.image.pixels[:, :] = [0, 0, 0, 255]
+
+                for y in range(grid.height * 2 + 1):
+                    for x in range(grid.width * 2 + 1):
+                        state = grid.cells[y, x]
+                        color = current_palette.get_rgb(state)
+                        self._draw_pixel_block(x, y, color)
+            else:
+                while grid.changed:
+                    x, y, state = grid.changed.popleft()
+                    if state == CellState.PATH:
+                        color = current_palette.get_rgb(state)
+                        self._draw_path_block(x, y, color)
+                    else:
+                        color = current_palette.get_rgb(state)
+                        self._draw_pixel_block(x, y, color)
 
         else:
             assert self.controller is not None

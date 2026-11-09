@@ -33,6 +33,10 @@ class TerminalBackend(GraphicBackend):
 
     def render_frame(self, grid: RenderGrid) -> None:
 
+        if grid.require_full_redraw:
+            grid.require_full_redraw = False
+            grid.push_entire_grid_to_changed()
+
         if grid.width != self._last_grid_w or grid.height != self._last_grid_h:
             self._last_grid_w = grid.width
             self._last_grid_h = grid.height

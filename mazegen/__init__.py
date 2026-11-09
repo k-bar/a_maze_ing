@@ -16,7 +16,7 @@ _ALGORITHMS: dict[str, Type[BaseGenerator]] = {
     "PRIM": PrimGenerator,
 }
 
-_SOLVERS = {
+_SOLVERS: dict[str, type[MazeSolver]] = {
     "BFS": BFSSolver,
     "DFS": DFSSolver,
     "ASTAR": AStarSolver,

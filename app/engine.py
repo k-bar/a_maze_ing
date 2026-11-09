@@ -358,46 +358,87 @@ class AppController:
         self.backend.start_loop(controller=self)
 
     def generate_maze(self, skip: bool = False) -> None:
+        assert self.generator_process is not None
+        assert self.maze is not None
 
-        while True:
-            assert self.generator_process is not None
-            changed_cell = self.generator_process.step()
-            if changed_cell is None:
-                assert self.maze is not None
-                self.maze.m_entry = self.config.ENTRY
-                self.maze.m_exit = self.config.EXIT
-
-                if self.solver_name == "MANUAL":
-                    self.manual_path_history.clear()
-                    self.state = EngineState.MANUAL_PLAY
-                else:
-                    from mazegen import create_stepping_solver
-                    self.solver_process = create_stepping_solver(
-                        self.solver_name, self.maze)
-                    self.state = EngineState.SOLVING
-                break
-            x, y, dirs = changed_cell
-            cx = (x * 2) + 1
-            cy = (y * 2) + 1
-
-            tx, ty = cx + dirs.dx, cy + dirs.dy
-            if self.grid.cells[ty, tx] == CellState.FLOOR:
-                new_state = CellState.WALL
+        if skip:
+            if hasattr(self.generator_process, "generate_all"):
+                self.generator_process.generate_all()
             else:
-                new_state = CellState.FLOOR
-            self.grid.register_change(tx, ty, new_state)
-            self.grid.register_change(self.config.ENTRY[0] * 2 + 1,
-                                      self.config.ENTRY[1] * 2 + 1,
-                                      CellState.ENTRY)
-            self.grid.register_change(self.config.EXIT[0] * 2 + 1,
-                                      self.config.EXIT[1] * 2 + 1,
-                                      CellState.EXIT)
+                while self.generator_process.step() is not None:
+                    pass
+            wn, we, ws, ww = self.maze.get_walls()
+            w = self.width
 
-            if not skip:
-                break
+            self.grid.cells[:, :] = CellState.WALL
+            self.grid.cells[1::2, 1::2] = CellState.FLOOR
+
+            for y in range(self.height):
+                y_offset = y * w
+                grid_y = y * 2 + 1
+
+                for x in range(w):
+                    cell_idx = y_offset + x
+                    grid_x = x * 2 + 1
+                    cell_bit = 1 << cell_idx
+
+                    if we & cell_bit:
+                        self.grid.cells[grid_y, grid_x + 1] = CellState.WALL
+                    else:
+                        self.grid.cells[grid_y, grid_x + 1] = CellState.FLOOR
+
+                    if ws & cell_bit:
+                        self.grid.cells[grid_y + 1, grid_x] = CellState.WALL
+                    else:
+                        self.grid.cells[grid_y + 1, grid_x] = CellState.FLOOR
+
+            from mazegen.utils import get_pattern_locked_cells
+            for cx, cy in get_pattern_locked_cells(self.width, self.height):
+                self.grid.cells[(cy * 2) + 1, (cx * 2) + 1] = CellState.LOCK
+
+            self.grid.cells[self.config.ENTRY[1] * 2 + 1,
+                            self.config.ENTRY[0] * 2 + 1] = CellState.ENTRY
+            self.grid.cells[self.config.EXIT[1] * 2 + 1,
+                            self.config.EXIT[0] * 2 + 1] = CellState.EXIT
+
+            self.grid.require_full_redraw = True
+
+            if self.solver_name == "MANUAL":
+                self.manual_path_history.clear()
+                self.state = EngineState.MANUAL_PLAY
+            else:
+                from mazegen import create_stepping_solver
+                self.solver_process = create_stepping_solver(self.solver_name,
+                                                             self.maze)
+                self.state = EngineState.SOLVING
+            return
+
+        changed_cell = self.generator_process.step()
+        if changed_cell is None:
+            assert self.maze is not None
+            self.maze.m_entry = self.config.ENTRY
+            self.maze.m_exit = self.config.EXIT
+            if self.solver_name == "MANUAL":
+                self.manual_path_history.clear()
+                self.state = EngineState.MANUAL_PLAY
+            else:
+                from mazegen import create_stepping_solver
+                self.solver_process = create_stepping_solver(
+                    self.solver_name, self.maze)
+                self.state = EngineState.SOLVING
+            return
+        x, y, dirs = changed_cell
+        cx = (x * 2) + 1
+        cy = (y * 2) + 1
+
+        tx, ty = cx + dirs.dx, cy + dirs.dy
+        if self.grid.cells[ty, tx] == CellState.FLOOR:
+            new_state = CellState.WALL
+        else:
+            new_state = CellState.FLOOR
+        self.grid.register_change(tx, ty, new_state)
 
     def solve(self, skip: bool = False) -> None:
-
         if self.maze is not None:
             while True:
                 assert self.solver_process is not None
@@ -467,7 +508,6 @@ class AppController:
 
     def validate_and_apply_dimensions(self, target_width: int,
                                       target_height: int) -> None:
-
         min_size = 3
         max_w = self.max_width
         max_h = self.max_height
@@ -575,7 +615,6 @@ class AppController:
         is_seed: bool
 
     def get_unified_hud_blocks(self) -> list[HudBlock]:
-
         perf_suffix = "P" if self.config.PERFECT else "I"
         seed_display = f"{self.seed_input_buffer}_" \
             if self.is_entering_seed else str(self.current_seed)

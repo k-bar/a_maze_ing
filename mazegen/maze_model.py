@@ -97,7 +97,8 @@ class Maze:
         return index + (self.width * direction.dy) + direction.dx
 
     def pick_possible_direction(self, cell: int, forbidden: int) -> Direction:
-        moves = [d for d in Direction if self.is_move_possible(cell, d, forbidden)]
+        moves = [d for d in Direction
+                 if self.is_move_possible(cell, d, forbidden)]
         return random.choice(moves)
 
     def pick_next_cell(self, cell: int, forbidden: int) -> int | None:
@@ -147,15 +148,3 @@ class Maze:
 
         next_cell = cell + (self.width * picked_dir.dy) + picked_dir.dx
         return forbidden & (1 << next_cell) == 0
-
-    def is_north_border_cell(self, index: int) -> bool:
-        return index < self.width
-
-    def is_south_border_cell(self, index: int) -> bool:
-        return index >= self.width * (self.height - 1)
-
-    def is_east_border_cell(self, index: int) -> bool:
-        return (index + 1) % self.width == 0
-
-    def is_west_border_cell(self, index: int) -> bool:
-        return (index % self.width) == 0
