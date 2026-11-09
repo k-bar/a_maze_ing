@@ -362,8 +362,20 @@ class AppController:
         assert self.maze is not None
 
         if skip:
-            if hasattr(self.generator_process, "generate_all"):
-                self.generator_process.generate_all()
+            target_gen = self.generator_process
+            self.init_new_run()
+            if hasattr(target_gen, "base_generator"):
+                target_gen = getattr(self.generator_process, "base_generator")
+
+            if hasattr(target_gen, "generate_all"):
+                target_gen.generate_all()
+
+                if hasattr(self.generator_process, "generate_all") and self.generator_process != target_gen:
+                    self.generator_process.generate_all()
+                elif self.generator_process != target_gen:
+                    while self.generator_process.step() is not None:
+                        pass
+
             else:
                 while self.generator_process.step() is not None:
                     pass

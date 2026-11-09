@@ -194,16 +194,8 @@ class MlxBackend(GraphicBackend):
     def render_frame(self, grid: RenderGrid) -> None:
 
         if not self.is_resizing:
-
             current_palette = self.palette
-            # while grid.changed:
-            #     x, y, state = grid.changed.popleft()
-            #     if state == CellState.PATH:
-            #         color = current_palette.get_rgb(state)
-            #         self._draw_path_block(x, y, color)
-            #     else:
-            #         color = current_palette.get_rgb(state)
-            #         self._draw_pixel_block(x, y, color)
+
             if grid.require_full_redraw:
                 grid.require_full_redraw = False
                 grid.changed.clear()

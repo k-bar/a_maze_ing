@@ -1,4 +1,4 @@
-from typing import Generator
+from typing import Generator, override
 
 from . import BaseGenerator
 from mazegen.utils import Direction
@@ -49,7 +49,10 @@ class WilsonGenerator(BaseGenerator):
                     self.maze.flip_both_walls(current_cell, next_cell)
                     yield self.maze.get_coords_and_dir(current_cell, next_cell)
 
+
     def generate_all(self) -> None:
+        print("wykrylem", flush=True)
+
         untouched_cells, _, max_cells = self._initialize_generator()
 
         cell_directions: dict[int, Direction] = {}
