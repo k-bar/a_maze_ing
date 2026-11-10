@@ -32,6 +32,9 @@ class Direction(Enum):
                 return direction
         raise ValueError(f"No Direction for dx={dx}, dy={dy}")
 
+    def get_flat_offset(self, width: int) -> int:
+        return (width * self.dy) + self.dx
+
 
 def get_pattern_locked_cells(width: int, height: int) -> set[tuple[int, int]]:
     """

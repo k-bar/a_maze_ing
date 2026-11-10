@@ -25,7 +25,7 @@ module-name = "mazegen"
 mlx = { path = "pkgs/mlx-2.2-py3-none-any.whl" }
 
 [[tool.mypy.overrides]]
-module="mlx"
+module = "mlx"
 ignore_missing_imports = true
 
 [dependency-groups]
@@ -42,6 +42,6 @@ test = [
 dev = [
     "flake8>=7.4.1",
     "mypy>=2.3.1",
-    { include-group = "test"},
-    { include-group = "app"},
+    { include-group = "test" },
+    { include-group = "app" },
 ]

@@ -1,29 +1,86 @@
+import random
+from dataclasses import dataclass
 from typing import Generator
 
 from . import BaseGenerator
 from ..utils import Direction
 
 
+@dataclass(slots=True)
+class BacktrackerState:
+    untouched_set: set[int]
+    path: list[int]
+    directions_map: tuple[tuple[int, int], ...]
+
+
 class RecursiveBacktracker(BaseGenerator):
+
+    def _setup_shared_state(self) -> BacktrackerState:
+        untouched_mask, start_cell, max_cells = self._initialize_generator()
+        width = self.maze.width
+        directions_map = tuple(
+            (d.bit_index, d.get_flat_offset(width)) for d in Direction
+        )
+        untouched_set = {
+            cell for cell in range(max_cells)
+            if untouched_mask & (1 << cell)
+        }
+        return BacktrackerState(
+            untouched_set=untouched_set,
+            path=[start_cell],
+            directions_map=directions_map,
+        )
 
     def _algorithm_loop(self) \
             -> Generator[tuple[int, int, Direction], None, None]:
 
-        untouched_cells, start_cell, _ = self._initialize_generator()
+        state = self._setup_shared_state()
+        untouched_set = state.untouched_set
+        path = state.path
+        directions_map = state.directions_map
+        border_masks = self.maze.border_masks
 
-        path = [start_cell]
-
-        while untouched_cells:
+        while untouched_set and path:
             current_cell = path[-1]
-            next_cell = self.maze.pick_next_cell(cell=current_cell,
-                                                 forbidden=~untouched_cells)
+            cell_bit = 1 << current_cell
+            moves = [
+                current_cell + offset for bit_idx, offset in directions_map
+                if not (border_masks[bit_idx] & cell_bit)
+                and (current_cell + offset) in untouched_set
+            ]
 
-            if next_cell is not None:
+            if moves:
                 # add cell to path and maze
-                untouched_cells &= ~(1 << next_cell)
+                next_cell = random.choice(moves)
+                untouched_set.remove(next_cell)
                 self.maze.flip_both_walls(current_cell, next_cell)
                 path.append(next_cell)
                 yield self.maze.get_coords_and_dir(current_cell, next_cell)
             # no possible moves, backtrack:
+            else:
+                path.pop()
+
+    def generate_all(self) -> None:
+
+        state = self._setup_shared_state()
+        untouched_set = state.untouched_set
+        path = state.path
+        directions_map = state.directions_map
+        border_masks = self.maze.border_masks
+
+        while untouched_set and path:
+            current_cell = path[-1]
+            cell_bit = 1 << current_cell
+            moves = [
+                current_cell + offset for bit_idx, offset in directions_map
+                if not (border_masks[bit_idx] & cell_bit)
+                and (current_cell + offset) in untouched_set
+            ]
+
+            if moves:
+                next_cell = random.choice(moves)
+                untouched_set.remove(next_cell)
+                self.maze.flip_both_walls(current_cell, next_cell)
+                path.append(next_cell)
             else:
                 path.pop()

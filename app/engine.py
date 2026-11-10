@@ -362,15 +362,17 @@ class AppController:
         assert self.maze is not None
 
         if skip:
-            target_gen = self.generator_process
             self.init_new_run()
+            target_gen = self.generator_process
+
             if hasattr(target_gen, "base_generator"):
                 target_gen = getattr(self.generator_process, "base_generator")
 
             if hasattr(target_gen, "generate_all"):
                 target_gen.generate_all()
 
-                if hasattr(self.generator_process, "generate_all") and self.generator_process != target_gen:
+                if (hasattr(self.generator_process, "generate_all")
+                        and self.generator_process != target_gen):
                     self.generator_process.generate_all()
                 elif self.generator_process != target_gen:
                     while self.generator_process.step() is not None:
@@ -451,34 +453,37 @@ class AppController:
         self.grid.register_change(tx, ty, new_state)
 
     def solve(self, skip: bool = False) -> None:
-        if self.maze is not None:
-            while True:
-                assert self.solver_process is not None
-                path_cell = self.solver_process.step()
-                if path_cell is None:
-                    self.state = EngineState.SOLVED
-                    export_to_file(self.maze)
-                    break
-                x, y, dirs = path_cell
+        if self.maze is None:
+            return
+        # while True:
+        assert self.solver_process is not None
+        if skip:
+            self.solver_process.solve_all()
+            self.state = EngineState.SOLVED
+            export_to_file(self.maze)
+            return
 
-                cx = (x * 2) + 1
-                cy = (y * 2) + 1
+        path_cell = self.solver_process.step()
+        if path_cell is None:
+            self.state = EngineState.SOLVED
+            export_to_file(self.maze)
+            return
 
-                wx = cx - dirs.dx
-                wy = cy - dirs.dy
+        x, y, dirs = path_cell
+        cx = (x * 2) + 1
+        cy = (y * 2) + 1
+        wx = cx - dirs.dx
+        wy = cy - dirs.dy
 
-                self.grid.register_change(cx, cy, CellState.PATH)
-                self.grid.register_change(wx, wy, CellState.PATH)
+        self.grid.register_change(cx, cy, CellState.PATH)
+        self.grid.register_change(wx, wy, CellState.PATH)
 
-                self.grid.register_change(self.config.ENTRY[0] * 2 + 1,
-                                          self.config.ENTRY[1] * 2 + 1,
-                                          CellState.ENTRY)
-                self.grid.register_change(self.config.EXIT[0] * 2 + 1,
-                                          self.config.EXIT[1] * 2 + 1,
-                                          CellState.EXIT)
-
-                if not skip:
-                    break
+        self.grid.register_change(self.config.ENTRY[0] * 2 + 1,
+                                  self.config.ENTRY[1] * 2 + 1,
+                                  CellState.ENTRY)
+        self.grid.register_change(self.config.EXIT[0] * 2 + 1,
+                                  self.config.EXIT[1] * 2 + 1,
+                                  CellState.EXIT)
 
     def show_path(self) -> None:
         if self.maze is None:

@@ -8,7 +8,7 @@ from mazegen.utils import Direction
 class MockGenerator(BaseGenerator):
     def __init__(self) -> None:
         fake_maze = Maze(width=3, height=3, m_entry=(0, 0), m_exit=(2, 2),
-                         perfect=False, seed=42)
+                         perfect=False, seed=999)
         super().__init__(fake_maze)
 
     def step(self) -> tuple[int, int, Direction] | None:
@@ -28,16 +28,18 @@ class MockGenerator(BaseGenerator):
         self.maze.walls_n &= ~(1 << 6)
         yield 0, 1, Direction.SOUTH
 
+        self.maze.walls_e &= ~(1 << 6)
+        self.maze.walls_w &= ~(1 << 7)
+        yield 0, 2, Direction.EAST
+
 
 def test_imperfect_generator_should_be_deterministic_and_remove_dead_ends() \
         -> None:
     base_gen_1 = MockGenerator()
     imperfect_gen_1 = ImperfectGenerator(base_gen_1)
-    imperfect_gen_1.maze.seed = 999
 
     base_gen_2 = MockGenerator()
     imperfect_gen_2 = ImperfectGenerator(base_gen_2)
-    imperfect_gen_2.maze.seed = 999
 
     steps_1 = []
     while (step := imperfect_gen_1.step()) is not None:

@@ -10,43 +10,38 @@ class AStarSolver(MazeSolver):
     def _solve_loop(self) -> Generator[tuple[int, int, Direction], None, None]:
 
         maze_walls = self.maze.get_walls()
-        width = self.maze.width
-
-        locked_mask = self.maze.locked_cells_mask
         border_mask = self.maze.border_masks
+        width = self.maze.width
+        locked_mask = self.maze.locked_cells_mask
 
         start_idx = self.maze.m_entry[1] * width + self.maze.m_entry[0]
         exit_idx = self.maze.m_exit[1] * width + self.maze.m_exit[0]
+        exit_x = exit_idx % width
+        exit_y = exit_idx // width
 
-        def manhattan_distance(idx_a: int, idx_b: int) -> int:
-            return (abs((idx_a % width) - (idx_b % width))
-                    + abs((idx_a // width) - (idx_b // width)))
+        directions_map = tuple(
+            (
+                d,
+                maze_walls[d.bit_index] | border_mask[d.bit_index],
+                d.get_flat_offset(width),
+            )
+            for d in Direction
+        )
 
-        # f_score (total_cost) = g_score(moves_done) + h_score(manhattan_dist)
-        # unique counter
-        # current
-        queue: list[tuple[int, int, int]] = []
+        start_f_score = abs((start_idx % width) - exit_x) + abs(
+            (start_idx // width) - exit_y
+        )
+        queue: list[tuple[int, int, int]] = [(start_f_score, 0, start_idx)]
+        came_from: dict[int, int] = {}
+        g_score: dict[int, int] = {start_idx: 0}
         count = 0
 
-        start_f_score = manhattan_distance(start_idx, exit_idx)
-
-        # initial state, cost: 0 moves + manhattan
-        heapq.heappush(queue, (start_f_score, count, start_idx))
-
-        # structure of graph: current -> parent
-        came_from: dict[int, int] = {}
-
-        # real cost of getting moves for each state (state > moves number)
-        g_score: dict[int, int] = {start_idx: 0}
-
         while queue:
-
-            # get state with the lowest cost
-            _, _, current_idx = heapq.heappop(queue)
+            f_val, _, current_idx = heapq.heappop(queue)
 
             if current_idx == exit_idx:
-                path = []
-                curr: int = exit_idx
+                path: list[tuple[int, int]] = []
+                curr = exit_idx
 
                 while curr in came_from:
                     path.append((curr % width, curr // width))
@@ -56,31 +51,32 @@ class AStarSolver(MazeSolver):
                 self.maze.path = path
                 break
 
+            curr_g = g_score[current_idx]
+            curr_h = abs((current_idx % width) - exit_x) + abs(
+                (current_idx // width) - exit_y
+            )
+            if f_val > curr_g + curr_h:
+                continue
+
             current_cell_bit = 1 << current_idx
+            tentative_g = curr_g + 1
 
-            for direction in Direction:
-
-                bit_idx = direction.bit_index
-
-                if ((maze_walls[bit_idx] | border_mask[bit_idx])
-                        & current_cell_bit):
+            for direction, blocked_mask, offset in directions_map:
+                if blocked_mask & current_cell_bit:
                     continue
 
-                next_idx = current_idx + (width * direction.dy) + direction.dx
-
+                next_idx = current_idx + offset
                 if (1 << next_idx) & locked_mask:
                     continue
 
-                tentative_g_score = g_score[current_idx] + 1
-
-                if (next_idx not in g_score
-                        or tentative_g_score < g_score[next_idx]):
+                if next_idx not in g_score or tentative_g < g_score[next_idx]:
                     came_from[next_idx] = current_idx
-                    g_score[next_idx] = tentative_g_score
+                    g_score[next_idx] = tentative_g
 
-                    yield next_idx % width, next_idx // width, direction
+                    nx = next_idx % width
+                    ny = next_idx // width
+                    yield nx, ny, direction
 
-                    f_score = tentative_g_score + manhattan_distance(
-                        next_idx, exit_idx)
+                    f_score = tentative_g + abs(nx - exit_x) + abs(ny - exit_y)
                     count += 1
                     heapq.heappush(queue, (f_score, count, next_idx))
