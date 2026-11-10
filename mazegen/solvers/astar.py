@@ -40,15 +40,7 @@ class AStarSolver(MazeSolver):
             f_val, _, current_idx = heapq.heappop(queue)
 
             if current_idx == exit_idx:
-                path: list[tuple[int, int]] = []
-                curr = exit_idx
-
-                while curr in came_from:
-                    path.append((curr % width, curr // width))
-                    curr = came_from[curr]
-                path.append((start_idx % width, start_idx // width))
-                path.reverse()
-                self.maze.path = path
+                self._reconstruct_path(came_from, start_idx, exit_idx)
                 break
 
             curr_g = g_score[current_idx]

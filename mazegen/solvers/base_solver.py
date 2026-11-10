@@ -25,3 +25,21 @@ class MazeSolver(ABC):
         while self.step() is not None:
             pass
         return self.maze.path
+
+    def _reconstruct_path(
+            self,
+            came_from: dict[int, int],
+            start_idx: int,
+            exit_idx: int,
+    ) -> None:
+        width = self.maze.width
+        path: list[tuple[int, int]] = []
+        curr = exit_idx
+
+        while curr in came_from:
+            path.append((curr % width, curr // width))
+            curr = came_from[curr]
+
+        path.append((start_idx % width, start_idx // width))
+        path.reverse()
+        self.maze.path = path
