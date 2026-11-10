@@ -24,11 +24,11 @@ class ImperfectGenerator(BaseGenerator):
         while (base_step := self.base_generator.step()) is not None:
             yield base_step
 
-        self.make_imperfect()
+        yield from self.make_imperfect()
 
     def generate_all(self) -> None:
-        print("imperfect robie tylko")
-        self.make_imperfect()
+        for _ in self.make_imperfect():
+            pass
 
     def make_imperfect(self) \
             -> Generator[tuple[int, int, Direction], None, None]:
@@ -39,29 +39,29 @@ class ImperfectGenerator(BaseGenerator):
         neighboring cell, if one exists. The maze grid is modified in place.
         Random choices are initialized using the maze seed.
         """
-        #
-        # while (base_step := self.base_generator.step()) is not None:
-        #     yield base_step
-
         if self.maze.perfect:
             return
 
         if self.maze.seed is not None:
             random.seed(self.maze.seed)
+
         visited: set[tuple[int, int]] = set()
         blind_ends: list[tuple[int, int]] = []
+        locked = set(self.maze.locked_cells)
+        width = self.maze.width
+        height = self.maze.height
 
-        for y in range(self.maze.height):
-            for x in range(self.maze.width):
-                if (x, y) not in self.maze.locked_cells:
-
-                    cell_pos = 1 << ((y * self.maze.width) + x)
-
-                    wall_count = 0
-                    for wall in self.maze.get_walls():
-                        if wall & cell_pos:
-                            wall_count += 1
-
+        wn, we, ws, ww = self.maze.get_walls()
+        for y in range(height):
+            for x in range(width):
+                if (x, y) not in locked:
+                    cell_pos = 1 << ((y * width) + x)
+                    wall_count = (
+                            bool(wn & cell_pos)
+                            + bool(we & cell_pos)
+                            + bool(ws & cell_pos)
+                            + bool(ww & cell_pos)
+                    )
                     if wall_count == 3:
                         blind_ends.append((x, y))
 
@@ -69,63 +69,41 @@ class ImperfectGenerator(BaseGenerator):
 
         while blind_ends:
             x, y = blind_ends.pop()
-            cell_pos = 1 << ((y * self.maze.width) + x)
-            wall_count = 0
-
-            for wall in self.maze.get_walls():
-                if wall & cell_pos:
-                    wall_count += 1
-
+            cell_pos = 1 << ((y * width) + x)
             wn, we, ws, ww = self.maze.get_walls()
+            wall_count = (
+                    bool(wn & cell_pos)
+                    + bool(we & cell_pos)
+                    + bool(ws & cell_pos)
+                    + bool(ww & cell_pos)
+            )
+
             if wall_count == 3:
                 candidates = []
 
-                if ((wn & cell_pos)
-                        and y > 0
-                        and (x, y - 1) not in (
-                                self.maze.locked_cells | visited)):
+                if ((wn & cell_pos) and y > 0
+                        and (x, y - 1) not in locked
+                        and (x, y - 1) not in visited):
                     candidates.append((x, y - 1))
-                if ((we & cell_pos)
-                        and x < self.maze.width - 1
-                        and (x + 1, y) not in (self.maze.locked_cells
-                                               | visited)):
+                if ((we & cell_pos) and x < width - 1
+                        and (x + 1, y) not in locked
+                        and (x + 1, y) not in visited):
                     candidates.append((x + 1, y))
-                if ((ws & cell_pos)
-                        and y < self.maze.height - 1
-                        and (x, y + 1) not in (self.maze.locked_cells
-                                               | visited)):
+                if ((ws & cell_pos) and y < height - 1
+                        and (x, y + 1) not in locked
+                        and (x, y + 1) not in visited):
                     candidates.append((x, y + 1))
-                if ((ww & cell_pos)
-                        and x > 0
-                        and (x - 1, y) not in (
-                                self.maze.locked_cells | visited)):
+                if ((ww & cell_pos) and x > 0
+                        and (x - 1, y) not in locked
+                        and (x - 1, y) not in visited):
                     candidates.append((x - 1, y))
 
                 if candidates:
                     nx, ny = random.choice(candidates)
-
-                    cell_a = cell_pos
-                    cell_b = 1 << (
-                            (ny * self.maze.width) + nx)
-
                     visited.add((x, y))
 
-                    dx = nx - x
-                    dy = ny - y
+                    cell_a_idx = (y * width) + x
+                    cell_b_idx = (ny * width) + nx
 
-                    if dx > 0:
-                        self.maze.walls_e &= ~cell_a
-                        self.maze.walls_w &= ~cell_b
-                        yield x, y, Direction.EAST
-                    elif dx < 0:
-                        self.maze.walls_w &= ~cell_a
-                        self.maze.walls_e &= ~cell_b
-                        yield x, y, Direction.WEST
-                    elif dy > 0:
-                        self.maze.walls_s &= ~cell_a
-                        self.maze.walls_n &= ~cell_b
-                        yield x, y, Direction.SOUTH
-                    elif dy < 0:
-                        self.maze.walls_n &= ~cell_a
-                        self.maze.walls_s &= ~cell_b
-                        yield x, y, Direction.NORTH
+                    self.maze.flip_both_walls(cell_a_idx, cell_b_idx)
+                    yield self.maze.get_coords_and_dir(cell_a_idx, cell_b_idx)

@@ -1,110 +1,119 @@
 import random
+from dataclasses import dataclass, field
 from typing import Generator
 
 from . import BaseGenerator
 from ..utils import Direction
 
 
+@dataclass(slots=True)
+class PrimState:
+    width: int
+    border_masks: dict[int, int]
+    locked_mask: int
+
+    maze_cells_set: set[int] = field(default_factory=set)
+    frontier_set: set[int] = field(default_factory=set)
+    frontier_list: list[int] = field(default_factory=list)
+
+    def add_frontiers(self, cell: int) -> None:
+        cell_bit = 1 << cell
+        for d in Direction:
+            if not (self.border_masks[d.bit_index] & cell_bit):
+                n_idx = cell + d.get_flat_offset(self.width)
+                if (n_idx not in self.maze_cells_set
+                        and n_idx not in self.frontier_set
+                        and not (self.locked_mask & (1 << n_idx))):
+                    self.frontier_set.add(n_idx)
+                    self.frontier_list.append(n_idx)
+
+
 class PrimGenerator(BaseGenerator):
+
+    def _setup_shared_state(self) -> PrimState:
+        _, start_cell, _ = self._initialize_generator()
+        state = PrimState(
+            width=self.maze.width,
+            border_masks=self.maze.border_masks,
+            locked_mask=self.maze.locked_cells_mask,
+        )
+        state.maze_cells_set.add(start_cell)
+        state.add_frontiers(start_cell)
+        return state
 
     def _algorithm_loop(self) -> \
             Generator[tuple[int, int, Direction], None, None]:
-        valid_cells_mask, start_cell, max_cells = self._initialize_generator()
 
-        maze_mask = (1 << start_cell)
-        frontier_mask = 0
-
-        def add_new_frontiers(cell: int) -> None:
-            nonlocal frontier_mask
-            forbid = maze_mask | ~valid_cells_mask
-            new_frontiers = self.maze.gather_possible_neighbours(cell, forbid)
-            frontier_mask |= sum(1 << f for f in new_frontiers)
-
-        add_new_frontiers(start_cell)
-
-        while frontier_mask:
-
-            current_cell = self.maze.pick_random_cell(frontier_mask, max_cells)
-            add_new_frontiers(current_cell)
-
-            # break a wall toward maze
-            maze_cell = self.maze.pick_next_cell(cell=current_cell,
-                                                 forbidden=~maze_mask)
-            if maze_cell is None:
-                continue
-            self.maze.flip_both_walls(current_cell, maze_cell)
-            yield self.maze.get_coords_and_dir(current_cell, maze_cell)
-
-            # remove cell from frontier and add it to maze
-            maze_mask |= (1 << current_cell)
-            frontier_mask &= ~(1 << current_cell)
-
-    def generate_all(self) -> None:
-        print("wykrylem")
-        valid_cells_mask, start_cell, max_cells = self._initialize_generator()
-
-        maze_mask = (1 << start_cell)
-        frontier_mask = 0
-
+        state = self._setup_shared_state()
+        border_mask = self.maze.border_masks
         width = self.maze.width
-        locked_mask = self.maze.locked_cells_mask
 
-        border_n = self.maze.border_masks[0]
-        border_e = self.maze.border_masks[1]
-        border_s = self.maze.border_masks[2]
-        border_w = self.maze.border_masks[3]
+        f_list = state.frontier_list
+        f_set = state.frontier_set
+        m_set = state.maze_cells_set
+        add_frontiers_fn = state.add_frontiers
 
-        def add_new_frontiers(cell: int) -> None:
-            nonlocal frontier_mask
-            forbid_mask = maze_mask | ~valid_cells_mask | locked_mask
+        while f_list:
+            idx = random.randrange(len(f_list))
+            current_cell = f_list[idx]
 
-            if not (border_n & (1 << cell)):
-                n_conn = cell - width
-                if not (forbid_mask & (1 << n_conn)):
-                    frontier_mask |= (1 << n_conn)
+            f_list[idx] = f_list[-1]
+            f_list.pop()
+            f_set.remove(current_cell)
 
-            if not (border_e & (1 << cell)):
-                e_conn = cell + 1
-                if not (forbid_mask & (1 << e_conn)):
-                    frontier_mask |= (1 << e_conn)
+            if current_cell in m_set:
+                continue
 
-            if not (border_s & (1 << cell)):
-                s_conn = cell + width
-                if not (forbid_mask & (1 << s_conn)):
-                    frontier_mask |= (1 << s_conn)
+            m_set.add(current_cell)
+            add_frontiers_fn(current_cell)
 
-            if not (border_w & (1 << cell)):
-                w_conn = cell - 1
-                if not (forbid_mask & (1 << w_conn)):
-                    frontier_mask |= (1 << w_conn)
-
-        add_new_frontiers(start_cell)
-
-        while frontier_mask:
-            current_cell = self.maze.pick_random_cell(frontier_mask, max_cells)
-            add_new_frontiers(current_cell)
-
+            curr_bit = 1 << current_cell
             possible_connections = []
 
-            if not (border_n & (1 << current_cell)):
-                n_idx = current_cell - width
-                if maze_mask & (1 << n_idx): possible_connections.append(n_idx)
-            if not (border_e & (1 << current_cell)):
-                e_idx = current_cell + 1
-                if maze_mask & (1 << e_idx): possible_connections.append(e_idx)
-            if not (border_s & (1 << current_cell)):
-                s_idx = current_cell + width
-                if maze_mask & (1 << s_idx): possible_connections.append(s_idx)
-            if not (border_w & (1 << current_cell)):
-                w_idx = current_cell - 1
-                if maze_mask & (1 << w_idx): possible_connections.append(w_idx)
+            for d in Direction:
+                if not (border_mask[d.bit_index] & curr_bit):
+                    neighbor = current_cell + d.get_flat_offset(width)
+                    if neighbor in m_set:
+                        possible_connections.append(neighbor)
 
-            if not possible_connections:
+            if possible_connections:
+                maze_cell = random.choice(possible_connections)
+                self.maze.flip_both_walls(current_cell, maze_cell)
+                yield self.maze.get_coords_and_dir(current_cell, maze_cell)
+
+    def generate_all(self) -> None:
+        state = self._setup_shared_state()
+        border_mask = self.maze.border_masks
+        width = self.maze.width
+
+        f_list = state.frontier_list
+        f_set = state.frontier_set
+        m_set = state.maze_cells_set
+        add_frontiers_fn = state.add_frontiers
+
+        while f_list:
+            idx = random.randrange(len(f_list))
+            current_cell = f_list[idx]
+
+            f_list[idx] = f_list[-1]
+            f_list.pop()
+            f_set.remove(current_cell)
+
+            if current_cell in m_set:
                 continue
 
-            maze_cell = random.choice(possible_connections)
+            m_set.add(current_cell)
+            add_frontiers_fn(current_cell)
 
-            self.maze.flip_both_walls(current_cell, maze_cell)
+            curr_bit = 1 << current_cell
+            possible_connections = []
 
-            maze_mask |= (1 << current_cell)
-            frontier_mask &= ~(1 << current_cell)
+            for d in Direction:
+                if not (border_mask[d.bit_index] & curr_bit):
+                    neighbor = current_cell + d.get_flat_offset(width)
+                    if neighbor in m_set:
+                        possible_connections.append(neighbor)
+
+            if possible_connections:
+                maze_cell = random.choice(possible_connections)
+                self.maze.flip_both_walls(current_cell, maze_cell)

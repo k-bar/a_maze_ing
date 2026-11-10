@@ -2,51 +2,42 @@ import random
 from typing import Generator
 
 from . import BaseGenerator
-from mazegen.utils import Direction
 from ..maze_model import Maze
+from ..utils import Direction
 
 
 class KruskalGenerator(BaseGenerator):
 
     def __init__(self, maze: Maze) -> None:
-        super().__init__(maze)
-
         """
         Disjoint-set (Union-Find) data structure.
         Used in graph theory to find the Minimum Spanning Tree (MST)
         and prevent the formation of cycles (loops).
         """
+        super().__init__(maze)
 
-        # A dictionary where each cell points to its parent cell.
-        # It resembles a linked list. If a cell points to itself,
-        # it is the root node of the tree (corridor).
-        self.parent: dict[tuple[int, int], tuple[int, int]] = {}
+        # A list where each cell index points to its parent cell index.
+        # If a cell points to itself, it is the root node of the tree.
+        self.parent: list[int] = []
+        self.deep: list[int] = []
 
-        # A dictionary storing the "depth" (rank) of the tree
-        self.deep: dict[tuple[int, int], int] = {}
-        self.edges: list[tuple[int, int, str]] = []
-
-        random.shuffle(self.edges)
-
-        self._animation_iterator = self._algorithm_loop()
-
-    def find(self, node: tuple[int, int]) -> tuple[int, int]:
+    def find(self, node: int) -> int:
         """
-        Recursively finds the root node ("boss") for a given cell.
-        It flattens the tree along the way (path compression) by
-        assigning the found parent directly to the cell.
-
-        Args:
-            node: The cell for which the root node is being searched.
-
-        Returns:
-            The root parent of the set to which the cell belongs.
+        Iteratively finds the root node ("boss") for a given cell.
+        Flattens the tree along the way (path compression).
         """
-        if self.parent[node] != node:
-            self.parent[node] = self.find(self.parent[node])
-        return self.parent[node]
+        root = node
+        while self.parent[root] != root:
+            root = self.parent[root]
 
-    def union(self, node1: tuple[int, int], node2: tuple[int, int]) -> bool:
+        while self.parent[node] != root:
+            next_node = self.parent[node]
+            self.parent[node] = root
+            node = next_node
+
+        return root
+
+    def union(self, node1: int, node2: int) -> bool:
         """
         Merges two sets to which the given cells belong, optimizing
         the connection based on the depth (rank) of the trees.
@@ -76,94 +67,53 @@ class KruskalGenerator(BaseGenerator):
 
         return True
 
-    def add(self, node: tuple[int, int]) -> None:
-        """
-        Adds a new cell as a new, separate set.
+    def _setup_edges(self) -> list[tuple[int, int]]:
 
-        Args:
-            node: Coordinates of the cell to add.
-        """
-        self.parent[node] = node
-        self.deep[node] = 0
+        width = self.maze.width
+        height = self.maze.height
+        total_cells = width * height
 
-    def prepare_kruskal(self) -> None:
-        """
-        Prepares the Union-Find data structure for Kruskal's algorithm.
+        self.parent = list(range(total_cells))
+        self.deep = [0] * total_cells
 
-        Adds every cell coordinates to the Union-Find structure as a separate
-        set, skipping any coordinates belonging to the locked '42' pattern.
-        """
+        if self.maze.seed is not None:
+            random.seed(self.maze.seed)
 
-        for y in range(self.maze.height):
-            for x in range(self.maze.width):
-                if (x, y) not in self.maze.locked_cells:
-                    self.add((x, y))
+        locked_set = set(self.maze.locked_cells)
 
-    def step(self) -> tuple[int, int, Direction] | None:
-        try:
-            return next(self._animation_iterator)
-        except StopIteration:
-            return None
+        edges: list[tuple[int, int]] = []
+        for y in range(height):
+            row_offset = y * width
+            for x in range(width):
+                if (x, y) in locked_set:
+                    continue
+
+                cell1 = row_offset + x
+                if x + 1 < width and (x + 1, y) not in locked_set:
+                    edges.append((cell1, cell1 + 1))
+
+                if y + 1 < height and (x, y + 1) not in locked_set:
+                    edges.append((cell1, cell1 + width))
+
+        random.shuffle(edges)
+        return edges
 
     def _algorithm_loop(self) \
             -> Generator[tuple[int, int, Direction], None, None]:
         """
         Generates the maze using a randomized Kruskal's algorithm.
-
-        Collects all possible internal edges (West-East and North-South)
-        excluding locked cells, shuffles them using the provided seed,
-        and iterates through them. If an edge connects two disjoint sets,
-        they are merged in the Union-Find structure and the dividing walls
-        are demolished in the grid.
-
-        Args:
-            seed_val: A string seed used to initialize the random number
-                      generator for reproducible maze layouts.
         """
-        self.prepare_kruskal()
 
-        random.seed(self.maze.seed)
-
-        edges: list[tuple[tuple[int, int], tuple[int, int]]] = []
-        for y in range(self.maze.height):
-            for x in range(self.maze.width):
-                if (x, y) in self.maze.locked_cells:
-                    continue
-
-                if (x + 1 < self.maze.width
-                        and (x + 1, y) not in self.maze.locked_cells):
-                    edges.append(((x, y), (x + 1, y)))
-
-                if (y + 1 < self.maze.height
-                        and (x, y + 1) not in self.maze.locked_cells):
-                    edges.append(((x, y), (x, y + 1)))
-
-        random.shuffle(edges)
+        edges = self._setup_edges()
 
         for cell1, cell2 in edges:
             if self.union(cell1, cell2):
-                x1, y1 = cell1
-                x2, y2 = cell2
+                self.maze.flip_both_walls(cell1, cell2)
+                yield self.maze.get_coords_and_dir(cell1, cell2)
 
-                dx = x2 - x1
-                dy = y2 - y1
+    def generate_all(self) -> None:
+        edges = self._setup_edges()
 
-                cell_a = 1 << ((y1 * self.maze.width) + x1)
-                cell_b = 1 << ((y2 * self.maze.width) + x2)
-
-                if dx > 0:
-                    self.maze.walls_e &= ~cell_a
-                    self.maze.walls_w &= ~cell_b
-                    yield x1, y1, Direction.EAST
-                elif dx < 0:
-                    self.maze.walls_w &= ~cell_a
-                    self.maze.walls_e &= ~cell_b
-                    yield x1, y1, Direction.WEST
-                elif dy > 0:
-                    self.maze.walls_s &= ~cell_a
-                    self.maze.walls_n &= ~cell_b
-                    yield x1, y1, Direction.SOUTH
-                elif dy < 0:
-                    self.maze.walls_n &= ~cell_a
-                    self.maze.walls_s &= ~cell_b
-                    yield x1, y1, Direction.NORTH
+        for cell1, cell2 in edges:
+            if self.union(cell1, cell2):
+                self.maze.flip_both_walls(cell1, cell2)

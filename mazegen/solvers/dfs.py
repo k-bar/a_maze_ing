@@ -6,76 +6,55 @@ from ..utils import Direction
 
 class DFSSolver(MazeSolver):
 
-    def _solve_loop(self) -> Generator[tuple[int, int, Direction], None, None]:
-        """Find corridor from ENTRY to EXIT as BFS."""
-        stack: list[tuple[int, int]] = ([self.maze.m_entry])
+    def _solve_loop(self) \
+            -> Generator[tuple[int, int, Direction], None, None]:
+        """Find path from ENTRY to EXIT using Depth-First Search (DFS)."""
+        maze_walls = self.maze.get_walls()
+        border_mask = self.maze.border_masks
+        width = self.maze.width
+        locked_mask = self.maze.locked_cells_mask
 
-        visited: set[tuple[int, int]] = {self.maze.m_entry}
+        start_idx = self.maze.m_entry[1] * width + self.maze.m_entry[0]
+        exit_idx = self.maze.m_exit[1] * width + self.maze.m_exit[0]
 
-        came_from: dict[tuple[int, int], tuple[int, int] | None] \
-            = {self.maze.m_entry: None}
+        directions_map = tuple(
+            (
+                d,
+                maze_walls[d.bit_index] | border_mask[d.bit_index],
+                d.get_flat_offset(width),
+            )
+            for d in Direction
+        )
 
-        directions = {
-            (0, -1): Direction.NORTH,
-            (1, 0): Direction.EAST,
-            (0, 1): Direction.SOUTH,
-            (-1, 0): Direction.WEST
-        }
+        stack: list[int] = [start_idx]
+        visited: set[int] = {start_idx}
+        came_from: dict[int, int] = {}
 
-        moves = [
-            (0, -1),
-            (1, 0),
-            (0, 1),
-            (-1, 0)
-        ]
+        while stack:
+            current_idx = stack.pop()
+            current_cell_bit = 1 << current_idx
 
-        while stack and self.maze.m_exit not in visited:
-            current: tuple[int, int] | None = stack.pop()
+            for direction, blocked_mask, offset in directions_map:
+                if blocked_mask & current_cell_bit:
+                    continue
 
-            # if current == self.m_exit:
-            #     path = []
-            #     curr: tuple[int, int] | None = self.m_exit
-            #
-            #     while curr is not None:
-            #         path.append(curr)
-            #         curr = came_from[curr]
-            #
-            #     path.reverse()
-            #     self.path = path
-            #     print(path)
-            #     break
+                next_idx = current_idx + offset
+                if next_idx in visited or ((1 << next_idx) & locked_mask):
+                    continue
 
-            if current is not None:
-                x, y = current
-                cell_position = 1 << (y * self.maze.width + x)
+                visited.add(next_idx)
+                came_from[next_idx] = current_idx
+                stack.append(next_idx)
 
-                for wall_number, wall in enumerate(self.maze.get_walls()):
+                yield next_idx % width, next_idx // width, direction
 
-                    dx, dy = moves[wall_number]
-                    nx = x + dx
-                    ny = y + dy
-                    if (
-                            0 <= nx < self.maze.width
-                            and 0 <= ny < self.maze.height
-                            and (nx, ny) not in self.maze.locked_cells):
-                        if not wall & cell_position:
-
-                            if (nx, ny) not in visited:
-                                visited.add((nx, ny))
-                                came_from[(nx, ny)] = current
-                                stack.append((nx, ny))
-                                # TU
-                                yield nx, ny, directions[(nx - x, ny - y)]
-                                if (nx, ny) == self.maze.m_exit:
-                                    path = []
-                                    curr: tuple[int, int] | None \
-                                        = self.maze.m_exit
-
-                                    while curr is not None:
-                                        path.append(curr)
-                                        curr = came_from[curr]
-
-                                    path.reverse()
-                                    self.maze.path = path
-                                    # print(path)
-                                    break
+                if next_idx == exit_idx:
+                    path: list[tuple[int, int]] = []
+                    curr = exit_idx
+                    while curr in came_from:
+                        path.append((curr % width, curr // width))
+                        curr = came_from[curr]
+                    path.append((start_idx % width, start_idx // width))
+                    path.reverse()
+                    self.maze.path = path
+                    return
