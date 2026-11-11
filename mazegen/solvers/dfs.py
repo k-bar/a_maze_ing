@@ -50,3 +50,4 @@ class DFSSolver(MazeSolver):
 
                 if next_idx == exit_idx:
                     self._reconstruct_path(came_from, start_idx, exit_idx)
+                    return
