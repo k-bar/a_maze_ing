@@ -48,9 +48,9 @@ def test_pydantic_accepts_exact_maximum_size_for_terminal(
         mock_terminal_small: None) -> None:
     """TERMINAL: Edge case - size exactly on limit
     for 80x24 max_w = (80-1)//2 = 39. max_h = (24-1-2)//2 = 10"""
-    exact_data = {"WIDTH": 19, "HEIGHT": 8, "DISPLAY_MODE": "TERMINAL"}
+    exact_data = {"WIDTH": 18, "HEIGHT": 8, "DISPLAY_MODE": "TERMINAL"}
     config = Config.model_validate(exact_data)
-    assert config.WIDTH == 19
+    assert config.WIDTH == 18
     assert config.HEIGHT == 8
 
 

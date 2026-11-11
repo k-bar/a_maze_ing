@@ -1,3 +1,4 @@
+import gc
 import random
 import sys
 from enum import Enum, auto
@@ -77,15 +78,20 @@ class AppController:
 
     def init_new_run(self) -> None:
         """factory for generator and managing seed"""
+        self.solver_process = None
+        self.generator_process = None
+        self.maze = None
+        self.grid.changed.clear()
+        gc.collect()
         if self.initial_seed is not None:
             self.current_seed = self.initial_seed
         else:
             self.current_seed = random.randint(1, 999999)
-            print(
-                f"[ENGINE] initiating algorithm: "
-                f"{self.algorithm_name}"
-                f" with seed: {self.current_seed}"
-            )
+        print(
+            f"[ENGINE] initiating algorithm: "
+            f"{self.algorithm_name}"
+            f" with seed: {self.current_seed}"
+        )
 
         self.generator_process = create_stepping_generator(
             algorithm_name=self.algorithm_name,
@@ -94,7 +100,6 @@ class AppController:
             m_entry=self.config.ENTRY,
             m_exit=self.config.EXIT,
             perfect=self.config.PERFECT,
-            # solver=self.config.SOLVER,
             seed=self.current_seed
         )
 
@@ -174,6 +179,13 @@ class AppController:
             case EngineState.SOLVED:
                 if self.solver_name == "MANUAL":
                     self.arrow_mode = ArrowMode.NONE
+                try:
+                    if self.maze is not None:
+                        export_to_file(self.maze, self.config.OUTPUT_FILE)
+                except OSError as e:
+                    print(
+                        f"[ENGINE ERROR] It wasn't possible to save maze: {e}",
+                        file=sys.stderr)
                 self.show_path()
             case EngineState.PAUSED:
                 pass
@@ -343,7 +355,7 @@ class AppController:
                 match self.arrow_mode:
                     case ArrowMode.SIZE:
                         new_w = self.width + dx
-                        new_h = self.height + dy
+                        new_h = self.height - dy
                         self.validate_and_apply_dimensions(new_w, new_h)
                         self.maze_resize()
                         self.handle_action("regen")
@@ -392,24 +404,18 @@ class AppController:
             self.grid.cells[:, :] = CellState.WALL
             self.grid.cells[1::2, 1::2] = CellState.FLOOR
 
+            cell_bit = 1
             for y in range(self.height):
-                y_offset = y * w
                 grid_y = y * 2 + 1
-
                 for x in range(w):
-                    cell_idx = y_offset + x
                     grid_x = x * 2 + 1
-                    cell_bit = 1 << cell_idx
-
-                    if we & cell_bit:
-                        self.grid.cells[grid_y, grid_x + 1] = CellState.WALL
-                    else:
-                        self.grid.cells[grid_y, grid_x + 1] = CellState.FLOOR
-
-                    if ws & cell_bit:
-                        self.grid.cells[grid_y + 1, grid_x] = CellState.WALL
-                    else:
-                        self.grid.cells[grid_y + 1, grid_x] = CellState.FLOOR
+                    self.grid.cells[grid_y, grid_x + 1] = (
+                        CellState.WALL if (we & cell_bit) else CellState.FLOOR
+                    )
+                    self.grid.cells[grid_y + 1, grid_x] = (
+                        CellState.WALL if (ws & cell_bit) else CellState.FLOOR
+                    )
+                    cell_bit <<= 1
 
             from mazegen.utils import get_pattern_locked_cells
             for cx, cy in get_pattern_locked_cells(self.width, self.height):
@@ -459,18 +465,15 @@ class AppController:
     def solve(self, skip: bool = False) -> None:
         if self.maze is None:
             return
-        # while True:
         assert self.solver_process is not None
         if skip:
             self.solver_process.solve_all()
             self.state = EngineState.SOLVED
-            export_to_file(self.maze)
             return
 
         path_cell = self.solver_process.step()
         if path_cell is None:
             self.state = EngineState.SOLVED
-            export_to_file(self.maze)
             return
 
         x, y, dirs = path_cell

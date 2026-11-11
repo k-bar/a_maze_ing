@@ -1,6 +1,8 @@
+import os
 import re
 import subprocess
 import sys
+from pathlib import Path
 from typing import Literal, Any
 from mazegen.utils import get_pattern_locked_cells
 import typing
@@ -99,8 +101,14 @@ class Config(BaseModel):
         if self.DISPLAY_MODE == "TERMINAL":
             cols, lines = _get_terminal_bounds()
 
-            max_w = (cols - 1) // 4
-            max_h = (lines - 1 - 6) // 2
+            max_w = (cols - 1) // 4 - 1
+            max_h = (lines - 1 - 7) // 2
+
+            if max_w < 3 or max_h < 3:
+                raise ValueError(
+                    f"Terminal window ({cols}x{lines}) is too small! "
+                    f"Minimum required size is 17x15 characters."
+                )
 
             if self.WIDTH > max_w or self.HEIGHT > max_h:
                 raise ValueError(
@@ -136,6 +144,38 @@ class Config(BaseModel):
 
         return self
 
+    @field_validator("OUTPUT_FILE")
+    @classmethod
+    def validate_output_file(cls, value: str) -> str:
+        clean_path = value.strip()
+        if not clean_path:
+            raise ValueError("OUTPUT_FILE cannot be empty or whitespace only.")
+
+        path = Path(clean_path)
+
+        if path.exists() and path.is_dir():
+            raise ValueError(
+                f"OUTPUT_FILE '{clean_path}' is a directory, not a file."
+            )
+
+        parent_dir = path.parent
+        if not parent_dir.exists():
+            raise ValueError(
+                f"Directory '{parent_dir}' for OUTPUT_FILE does not exist."
+            )
+
+        if not os.access(parent_dir, os.W_OK):
+            raise ValueError(
+                f"No write permissions in directory '{parent_dir}'."
+            )
+
+        if path.exists() and not os.access(path, os.W_OK):
+            raise ValueError(
+                f"File '{clean_path}' already exists and is read-only."
+            )
+
+        return clean_path
+
 
 def read_config(name: str) -> Config:
     """
@@ -152,8 +192,8 @@ def read_config(name: str) -> Config:
         with open(name, "r", encoding='utf-8') as f:
             return read_and_parse(f)
     except OSError as e:
-        print(f"Error opening file '{name}': {e}", file=sys.stderr)
-        sys.exit(1)
+        raise ValueError(
+            f"Error opening configuration file '{name}': {e}") from e
 
 
 def read_and_parse(file: typing.IO[str]) -> Config:
@@ -186,35 +226,38 @@ def read_and_parse(file: typing.IO[str]) -> Config:
             if key in ["ENTRY", "EXIT"] and "," in val:
                 try:
                     parsed_val = tuple(map(int, val.split(",")))
+                    if len(parsed_val) != 2:
+                        raise ValueError(
+                            "Expected exactly two coordinates (X,Y).")
                     config_data[key] = parsed_val
                     continue
                 except ValueError as e:
-                    print(f"ENTRY/EXIT are invalid! \n {e}", file=sys.stderr)
-                    sys.exit(1)
+                    raise ValueError(
+                        f"Invalid coordinates for {key} ('{val}'): {e}") from e
 
             if key in ["WINDOW_WIDTH", "WINDOW_HEIGHT"]:
                 try:
                     config_data[key] = int(val)
                     continue
-                except ValueError:
-                    pass
-
+                except ValueError as e:
+                    raise ValueError(
+                        f"Invalid integer for {key} ('{val}'): {e}") from e
             config_data[key] = val
 
-    if config_data:
-        try:
-            config = Config.model_validate(config_data)
-            print("Configuration loaded successfully:\n")
-            return config
+    if not config_data:
+        raise ValueError(
+            "Configuration file is empty or has no valid KEY=VALUE pairs.")
 
-        except ValidationError as e:
-            print("Error validating configuration file:\n", file=sys.stderr)
-            print(e)
-            sys.exit(1)
-    else:
-        print("Configuration file is empty or has no data "
-              "in the format KEY=VALUE.", file=sys.stderr)
-        sys.exit(1)
+    try:
+        config = Config.model_validate(config_data)
+        print("Configuration loaded successfully:\n")
+        return config
+
+    except ValidationError as e:
+        error_msgs = "; ".join(
+            [f"{err['loc']}: {err['msg']}" for err in e.errors()])
+        raise ValueError(
+            f"Configuration validation failed -> {error_msgs}") from e
 
 
 def _get_terminal_bounds() -> tuple[int, int]:

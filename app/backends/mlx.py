@@ -1,6 +1,7 @@
 import itertools
 import re
 import subprocess
+import sys
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -360,20 +361,27 @@ class MlxBackend(GraphicBackend):
         )
 
         def handle_press(keycode: int, param: None = None) -> None:
-            action = KEY_MAP.get(keycode)
-            if not action:
-                return
+            try:
+                action = KEY_MAP.get(keycode)
+                if not action:
+                    return
 
-            if action == "cycle_palette":
-                self.change_colors()
-                return
+                if action == "cycle_palette":
+                    self.change_colors()
+                    return
 
-            assert self.controller is not None
-            if not action.startswith("move_"):
-                controller.handle_action(action)
-                return
+                assert self.controller is not None
+                if not action.startswith("move_"):
+                    controller.handle_action(action)
+                    return
 
-            self.keys_pressed[keycode] = True
+                self.keys_pressed[keycode] = True
+            except Exception as e:
+                import logging
+                logging.critical("Error inside MLX handle_press",
+                                 exc_info=True)
+                print(f"\n[MLX INPUT ERROR] {e}", file=sys.stderr)
+                self._cleanup()
 
         def handle_release(keycode: int, param: None = None) -> None:
 
@@ -384,56 +392,58 @@ class MlxBackend(GraphicBackend):
         self.mlx.mlx_hook(self.win_ptr, 3, 2, handle_release, None)
 
         def loop_tick(param: None = None) -> None:
-            assert self.controller is not None
-            if not controller.is_running:
-                self.mlx.mlx_do_key_autorepeaton(self.mlx_ptr)
-                if self.image is not None:
-                    self.mlx.mlx_destroy_image(self.mlx_ptr,
-                                               self.image.img_ptr)
-                self.mlx.mlx_destroy_window(self.mlx_ptr, self.win_ptr)
-                self.mlx.mlx_loop_exit(self.mlx_ptr)
-                return
+            try:
 
-            if self.key_repeat_cooldown > 0:
-                self.key_repeat_cooldown -= 1
+                assert self.controller is not None
+                if not controller.is_running:
+                    self._cleanup()
+                    return
 
-            active_move_act: str | None = None
-            for k, pressed in self.keys_pressed.items():
-                if pressed:
-                    act = KEY_MAP.get(k)
-                    if act and act.startswith("move_"):
-                        active_move_act = act
-                        break
+                if self.key_repeat_cooldown > 0:
+                    self.key_repeat_cooldown -= 1
 
-            any_arrow_pressed = active_move_act is not None
-            if self.is_resizing and not any_arrow_pressed:
-                self.is_resizing = False
-                controller.handle_action("regen")
+                active_move_act: str | None = None
+                for k, pressed in self.keys_pressed.items():
+                    if pressed:
+                        act = KEY_MAP.get(k)
+                        if act and act.startswith("move_"):
+                            active_move_act = act
+                            break
 
-            if active_move_act and self.key_repeat_cooldown <= 0:
-                if self.controller.arrow_mode == ArrowMode.SIZE:
-                    self.key_repeat_cooldown = 4
-                    self.is_resizing = True
-                    action_to_direction = {
-                        "move_up": Direction.NORTH,
-                        "move_down": Direction.SOUTH,
-                        "move_right": Direction.EAST,
-                        "move_left": Direction.WEST,
-                    }
-                    direction = action_to_direction.get(active_move_act)
-                    if direction:
-                        new_w = self.controller.width + direction.dx
-                        new_h = self.controller.height + direction.dy
-                        self.controller.validate_and_apply_dimensions(
-                            new_w, new_h)
-                    self.controller.maze_resize()
+                any_arrow_pressed = active_move_act is not None
+                if self.is_resizing and not any_arrow_pressed:
+                    self.is_resizing = False
+                    controller.handle_action("regen")
+
+                if active_move_act and self.key_repeat_cooldown <= 0:
+                    if self.controller.arrow_mode == ArrowMode.SIZE:
+                        self.key_repeat_cooldown = 4
+                        self.is_resizing = True
+                        action_to_direction = {
+                            "move_up": Direction.NORTH,
+                            "move_down": Direction.SOUTH,
+                            "move_right": Direction.EAST,
+                            "move_left": Direction.WEST,
+                        }
+                        direction = action_to_direction.get(active_move_act)
+                        if direction:
+                            new_w = self.controller.width + direction.dx
+                            new_h = self.controller.height - direction.dy
+                            self.controller.validate_and_apply_dimensions(
+                                new_w, new_h)
+                        self.controller.maze_resize()
+                    else:
+                        self.key_repeat_cooldown = 6
+                        controller.handle_action(active_move_act)
                 else:
-                    self.key_repeat_cooldown = 6
-                    controller.handle_action(active_move_act)
-            else:
-                controller.tick()
+                    controller.tick()
 
-            self.render_frame(controller.grid)
+                self.render_frame(controller.grid)
+            except Exception as e:
+                import logging
+                logging.critical("Error inside MLX loop_tick", exc_info=True)
+                print(f"\n[MLX ERROR] {e}", file=sys.stderr)
+                self._cleanup()
 
         self.mlx.mlx_loop_hook(self.mlx_ptr, loop_tick, None)
         self.mlx.mlx_loop(self.mlx_ptr)
@@ -468,6 +478,25 @@ class MlxBackend(GraphicBackend):
         if self.image is not None:
             self.image.pixels[:, :] = [0, 0, 0, 255]
         self.last_hud_state = ""
+
+    def _cleanup(self) -> None:
+        """Safely restores X11 autorepeat and destroys MLX resources."""
+        if self.mlx and self.mlx_ptr:
+            try:
+                self.mlx.mlx_do_key_autorepeaton(self.mlx_ptr)
+            except Exception:
+                pass
+            if self.image is not None:
+                self.mlx.mlx_destroy_image(self.mlx_ptr, self.image.img_ptr)
+                self.image = None
+            if self.hud_image is not None:
+                self.mlx.mlx_destroy_image(self.mlx_ptr,
+                                           self.hud_image.img_ptr)
+                self.hud_image = None
+            if self.win_ptr is not None:
+                self.mlx.mlx_destroy_window(self.mlx_ptr, self.win_ptr)
+                self.win_ptr = None
+            self.mlx.mlx_loop_exit(self.mlx_ptr)
 
 
 def get_screen_resolution(fallback: tuple[int, int] = (1280, 720)) \

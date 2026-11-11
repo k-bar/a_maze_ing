@@ -1,3 +1,5 @@
+import io
+
 import pytest
 from io import StringIO
 from _pytest.capture import CaptureFixture
@@ -25,13 +27,8 @@ def test_should_parse_valid_config() -> None:
 
 
 def test_should_parse_invalid_config(capsys: CaptureFixture[str]) -> None:
-    invalid_data = (
-        "WIDTH=abc\n"
-        "HEIGHT=-5\n"
-    )
-    fake_file = StringIO(invalid_data)
-    with pytest.raises(SystemExit):
-        read_and_parse(fake_file)
+    invalid_content = io.StringIO("WIDTH=not_an_int\nHEIGHT=1\n")
+    with pytest.raises(ValueError) as exc_info:
+        read_and_parse(invalid_content)
 
-    captured = capsys.readouterr()
-    assert "Error validating configuration file:\n" in captured.err
+    assert "Configuration validation failed" in str(exc_info.value)

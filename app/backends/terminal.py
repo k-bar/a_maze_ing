@@ -71,11 +71,38 @@ class TerminalBackend(GraphicBackend):
 
     def start_loop(self, controller: "AppController") -> None:
         """Main loop with step by step animation"""
+        if not sys.stdin.isatty() or not sys.stdout.isatty():
+            print(
+                "[TERMINAL ERROR] Application requires an "
+                "interactive terminal (TTY).",
+                file=sys.stderr
+            )
+            controller.is_running = False
+            return
 
         self.controller = controller
         cols, lines = get_terminal_dimensions()
-        controller.max_width = (cols - 1) // 4 - 1
-        controller.max_height = (lines - 1 - 7) // 2
+        calc_max_w = (cols - 1) // 4 - 1
+        calc_max_h = (lines - 1 - 7) // 2
+
+        if calc_max_w < 3 or calc_max_h < 3:
+            print(
+                f"[TERMINAL ERROR] Terminal window is too small "
+                f"({cols}x{lines}). "
+                f"Minimum required size is 17x15 characters.",
+                file=sys.stderr
+            )
+            controller.is_running = False
+            return
+
+        controller.max_width = calc_max_w
+        controller.max_height = calc_max_h
+
+        if (controller.width > controller.max_width
+                or controller.height > controller.max_height):
+            controller.validate_and_apply_dimensions(controller.width,
+                                                     controller.height)
+            controller.handle_action("regen")
 
         menu_y_position = len(controller.grid.cells) + 2
         try:

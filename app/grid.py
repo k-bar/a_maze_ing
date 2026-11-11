@@ -47,13 +47,16 @@ class RenderGrid:
 
         for cx, cy in get_pattern_locked_cells(self.width, self.height):
             fx, fy = (cx * 2) + 1, (cy * 2) + 1
-            self.register_change(fx, fy, CellState.LOCK)
+            # self.register_change(fx, fy, CellState.LOCK)
+            self.cells[fy, fx] = CellState.LOCK
 
         en_x, en_y = self.m_entry
-        self.register_change((en_x * 2) + 1, (en_y * 2) + 1, CellState.ENTRY)
+        # self.register_change((en_x * 2) + 1, (en_y * 2) + 1, CellState.ENTRY)
+        self.cells[(en_y * 2) + 1, (en_x * 2) + 1] = CellState.ENTRY
 
         ex_x, ex_y = self.m_exit
-        self.register_change((ex_x * 2) + 1, (ex_y * 2) + 1, CellState.EXIT)
+        # self.register_change((ex_x * 2) + 1, (ex_y * 2) + 1, CellState.EXIT)
+        self.cells[(ex_y * 2) + 1, (ex_x * 2) + 1] = CellState.EXIT
         self.require_full_redraw = True
 
     def register_change(self, x: int, y: int, state: CellState) -> None:
@@ -63,7 +66,7 @@ class RenderGrid:
     def push_entire_grid_to_changed(self) -> None:
         self.changed.clear()
         yy, xx = np.mgrid[0:self.grid_height, 0:self.grid_width]
-        flat_x = xx.ravel()
-        flat_y = yy.ravel()
-        flat_states = self.cells.ravel()
-        self.changed.extend(zip(flat_x, flat_y, flat_states))
+        self.changed.extend(
+            zip(xx.ravel().tolist(), yy.ravel().tolist(),
+                self.cells.ravel().tolist())
+        )
