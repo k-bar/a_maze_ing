@@ -2,13 +2,13 @@
 ### Configuration for maze generation ###
 #########################################
 
-WIDTH=863
-HEIGHT=455
-ENTRY=300,20
-EXIT=600,300
+WIDTH=30
+HEIGHT=30
+ENTRY=3,2
+EXIT=6,3
 OUTPUT_FILE=maze.txt
 PERFECT=True
-SEED=123
+SEED=7
 
 # Algorithms: KRUSKAL, PRIM, WILSON, BACKTRACKER
 ALGORITHM=PRIM

@@ -50,7 +50,7 @@ class ImperfectGenerator(BaseGenerator):
         if self.maze.seed is not None:
             random.seed(self.maze.seed)
 
-        visited: set[tuple[int, int]] = set()
+        # visited: set[tuple[int, int]] = set()
         blind_ends: list[tuple[int, int]] = []
         locked = set(self.maze.locked_cells)
         width = self.maze.width
@@ -74,25 +74,25 @@ class ImperfectGenerator(BaseGenerator):
                 candidates = []
 
                 if ((wn & cell_pos) and y > 0
-                        and (x, y - 1) not in locked
-                        and (x, y - 1) not in visited):
+                        and (x, y - 1) not in locked):
+                        # and (x, y - 1) not in visited):
                     candidates.append((x, y - 1))
                 if ((we & cell_pos) and x < width - 1
-                        and (x + 1, y) not in locked
-                        and (x + 1, y) not in visited):
+                        and (x + 1, y) not in locked):
+                        # and (x + 1, y) not in visited):
                     candidates.append((x + 1, y))
                 if ((ws & cell_pos) and y < height - 1
-                        and (x, y + 1) not in locked
-                        and (x, y + 1) not in visited):
+                        and (x, y + 1) not in locked):
+                        # and (x, y + 1) not in visited):
                     candidates.append((x, y + 1))
                 if ((ww & cell_pos) and x > 0
-                        and (x - 1, y) not in locked
-                        and (x - 1, y) not in visited):
+                        and (x - 1, y) not in locked):
+                        # and (x - 1, y) not in visited):
                     candidates.append((x - 1, y))
 
                 if candidates:
                     nx, ny = random.choice(candidates)
-                    visited.add((x, y))
+                    # visited.add((x, y))
 
                     cell_a_idx = (y * width) + x
                     cell_b_idx = (ny * width) + nx
