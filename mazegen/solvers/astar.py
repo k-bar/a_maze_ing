@@ -9,8 +9,6 @@ class AStarSolver(MazeSolver):
 
     def _solve_loop(self) -> Generator[tuple[int, int, Direction], None, None]:
 
-        maze_walls = self.maze.get_walls()
-        border_mask = self.maze.border_masks
         width = self.maze.width
         locked_mask = self.maze.locked_cells_mask
 
@@ -19,14 +17,7 @@ class AStarSolver(MazeSolver):
         exit_x = exit_idx % width
         exit_y = exit_idx // width
 
-        directions_map = tuple(
-            (
-                d,
-                maze_walls[d.bit_index] | border_mask[d.bit_index],
-                d.get_flat_offset(width),
-            )
-            for d in Direction
-        )
+        directions_map = self._get_directions_map()
 
         start_f_score = abs((start_idx % width) - exit_x) + abs(
             (start_idx // width) - exit_y

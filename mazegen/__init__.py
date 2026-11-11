@@ -66,7 +66,7 @@ def solve_maze(maze: Maze, algorithm: str = "BFS") -> list[tuple[int, int]]:
     return solver_process.solve_all()
 
 
-def get_available_algorithm() -> list[str]:
+def get_available_algorithms() -> list[str]:
     """Public function returning lists of available algorithms"""
     return list(_ALGORITHMS.keys())
 
@@ -85,12 +85,13 @@ def create_stepping_generator(
         seed: int | None = None
 ) -> BaseGenerator:
     """Public factory for stepping generators for application engine"""
+    upper_algorithm = algorithm_name.upper()
     if algorithm_name not in _ALGORITHMS:
         raise ValueError(f"Algorithm {algorithm_name} not available")
 
     maze = Maze(width, height, m_entry, m_exit, perfect, seed)
 
-    generator_class = _ALGORITHMS[algorithm_name]
+    generator_class = _ALGORITHMS[upper_algorithm]
     gen = generator_class(maze)
     if not perfect:
         from mazegen.generators.imperfect import ImperfectGenerator
@@ -99,9 +100,10 @@ def create_stepping_generator(
 
 
 def create_stepping_solver(solver_name: str, maze: Maze) -> MazeSolver:
+    upper_solver = solver_name.upper()
     if solver_name not in _SOLVERS:
         raise ValueError(f"Solver {solver_name} not available")
-    return _SOLVERS[solver_name](maze)
+    return _SOLVERS[upper_solver](maze)
 
 
 __all__ = ['Maze', 'Wall', "Direction",
@@ -110,5 +112,5 @@ __all__ = ['Maze', 'Wall', "Direction",
            "create_stepping_solver",
            "generate_maze",
            "solve_maze",
-           "get_available_algorithm",
+           "get_available_algorithms",
            "get_available_solvers"]

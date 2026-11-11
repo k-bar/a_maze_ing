@@ -26,6 +26,20 @@ class MazeSolver(ABC):
             pass
         return self.maze.path
 
+    def _get_directions_map(self) -> tuple[tuple[Direction, int, int], ...]:
+        maze_walls = self.maze.get_walls()
+        border_mask = self.maze.border_masks
+        width = self.maze.width
+
+        return tuple(
+            (
+                d,
+                maze_walls[d.bit_index] | border_mask[d.bit_index],
+                d.get_flat_offset(width),
+            )
+            for d in Direction
+        )
+
     def _reconstruct_path(
             self,
             came_from: dict[int, int],
@@ -33,13 +47,13 @@ class MazeSolver(ABC):
             exit_idx: int,
     ) -> None:
         width = self.maze.width
-        path: list[tuple[int, int]] = []
+        indices = [exit_idx]
         curr = exit_idx
 
         while curr in came_from:
-            path.append((curr % width, curr // width))
             curr = came_from[curr]
+            indices.append(curr)
 
-        path.append((start_idx % width, start_idx // width))
-        path.reverse()
-        self.maze.path = path
+        self.maze.path = [
+            (idx % width, idx // width) for idx in reversed(indices)
+        ]

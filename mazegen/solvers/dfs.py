@@ -1,6 +1,6 @@
 from typing import Generator
 
-from . import MazeSolver
+from .base_solver import MazeSolver
 from ..utils import Direction
 
 
@@ -9,26 +9,21 @@ class DFSSolver(MazeSolver):
     def _solve_loop(self) \
             -> Generator[tuple[int, int, Direction], None, None]:
         """Find path from ENTRY to EXIT using Depth-First Search (DFS)."""
-        maze_walls = self.maze.get_walls()
-        border_mask = self.maze.border_masks
+
         width = self.maze.width
         locked_mask = self.maze.locked_cells_mask
-
         start_idx = self.maze.m_entry[1] * width + self.maze.m_entry[0]
         exit_idx = self.maze.m_exit[1] * width + self.maze.m_exit[0]
 
-        directions_map = tuple(
-            (
-                d,
-                maze_walls[d.bit_index] | border_mask[d.bit_index],
-                d.get_flat_offset(width),
-            )
-            for d in Direction
-        )
+        directions_map = self._get_directions_map()
 
         stack: list[int] = [start_idx]
         visited: set[int] = {start_idx}
         came_from: dict[int, int] = {}
+
+        if start_idx == exit_idx:
+            self._reconstruct_path(came_from, start_idx, exit_idx)
+            return
 
         while stack:
             current_idx = stack.pop()

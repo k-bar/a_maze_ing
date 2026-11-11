@@ -28,6 +28,5 @@ def get_backend(display_mode: str) -> GraphicBackend:
             f"[BACKEND] Warning: Unknown display mode: '{display_mode}'."
             f" Falling back to TERMINAL",
             file=sys.stderr)
-        raise RuntimeError(
-            "Critical: TERMINAL backend loader not found in registry.")
+        return _load_terminal()
     return loader()

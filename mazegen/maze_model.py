@@ -38,8 +38,6 @@ class Maze:
         self.height = height
         self.m_entry = m_entry
         self.m_exit = m_exit
-        self.m_entry_idx = m_entry[1] * width + m_entry[0]
-        self.m_exit_idx = m_exit[1] * width + m_exit[0]
         self.perfect = perfect
         self.seed = seed
 
@@ -60,12 +58,9 @@ class Maze:
 
         self._border_n: int = (1 << width) - 1
         self._border_s: int = ((1 << width) - 1) << (width * (height - 1))
-        self._border_w: int = 0
-        self._border_e: int = 0
-
-        for r in range(height):
-            self._border_w |= (1 << (r * width))
-            self._border_e |= (1 << (r * width + width - 1))
+        self._border_w = sum(1 << (r * width) for r in range(height))
+        self._border_e = sum(1 << (r * width + width - 1)
+                             for r in range(height))
 
         self.border_masks = {
             0: self._border_n,  # NORTH
@@ -92,33 +87,6 @@ class Maze:
             case Direction.WEST:
                 self.walls_w ^= (1 << cell)
                 self.walls_e ^= (1 << next_cell)
-
-    def next_index(self, index: int, direction: Direction) -> int:
-        return index + (self.width * direction.dy) + direction.dx
-
-    def pick_possible_direction(self, cell: int, forbidden: int) -> Direction:
-        moves = [d for d in Direction
-                 if self.is_move_possible(cell, d, forbidden)]
-        return random.choice(moves)
-
-    def pick_next_cell(self, cell: int, forbidden: int) -> int | None:
-
-        moves = [d for d in Direction if
-                 self.is_move_possible(cell, d, forbidden)]
-        if not moves:
-            return None
-        picked_direction = random.choice(moves)
-        return self.next_index(cell, picked_direction)
-
-    def gather_possible_neighbours(self, cell: int, forbidden: int) \
-            -> list[int]:
-        moves = [d for d in Direction if
-                 self.is_move_possible(cell, d, forbidden)]
-        result = []
-        for next_dir in moves:
-            next_cell = self.next_index(cell, next_dir)
-            result.append(next_cell)
-        return result
 
     @staticmethod
     def pick_random_cell(mask: int, max_cells: int) -> int:

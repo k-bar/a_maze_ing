@@ -103,8 +103,8 @@ class AppController:
         self.solver_process = None
 
     def change_algorithm_in_runtime(self) -> None:
-        from mazegen import get_available_algorithm
-        available_algos = get_available_algorithm()
+        from mazegen import get_available_algorithms
+        available_algos = get_available_algorithms()
         try:
             current_idx = available_algos.index(self.algorithm_name)
             next_idx = (current_idx + 1) % len(available_algos)
@@ -495,11 +495,10 @@ class AppController:
             return
         self.hide_path()
 
-        for x, y in self.maze.path:
+        for i, (x, y) in enumerate(self.maze.path):
             self.grid.register_change(x * 2 + 1, y * 2 + 1,
                                       CellState.PATH)
 
-            i = self.maze.path.index((x, y))
             if i > 0:
                 nx, ny = self.maze.path[i - 1]
                 px = nx - x
@@ -507,13 +506,13 @@ class AppController:
                 self.grid.register_change(x * 2 + 1 + px,
                                           y * 2 + 1 + py,
                                           CellState.PATH)
-            gx_en = self.maze.m_entry[0] * 2 + 1
-            gy_en = self.maze.m_entry[1] * 2 + 1
-            self.grid.register_change(gx_en, gy_en, CellState.ENTRY)
+        gx_en = self.maze.m_entry[0] * 2 + 1
+        gy_en = self.maze.m_entry[1] * 2 + 1
+        self.grid.register_change(gx_en, gy_en, CellState.ENTRY)
 
-            gx_ex = self.maze.m_exit[0] * 2 + 1
-            gy_ex = self.maze.m_exit[1] * 2 + 1
-            self.grid.register_change(gx_ex, gy_ex, CellState.EXIT)
+        gx_ex = self.maze.m_exit[0] * 2 + 1
+        gy_ex = self.maze.m_exit[1] * 2 + 1
+        self.grid.register_change(gx_ex, gy_ex, CellState.EXIT)
         self.state = EngineState.IDLE
 
     def hide_path(self) -> None:
