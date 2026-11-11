@@ -10,7 +10,6 @@ class BaseGenerator(ABC):
     def __init__(self, maze: Maze) -> None:
         self.maze = maze
         self._animation_iterator = self._algorithm_loop()
-        # self.skipping = False
 
     def step(self) -> tuple[int, int, Direction] | None:
         """

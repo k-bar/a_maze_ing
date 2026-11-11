@@ -41,7 +41,7 @@ class Config(BaseModel):
     SOLVER: Literal["BFS", "DFS", "ASTAR"] = (Field(default="BFS"))
 
     ALGORITHM: Literal[
-        "KRUSKAL", "PRIM", "BACKTRACKER", "WILSON", "PRIM"] = Field(
+        "KRUSKAL", "PRIM", "BACKTRACKER", "WILSON"] = Field(
         default="KRUSKAL")
 
     ANIMATION: bool = Field(default=True)
@@ -58,9 +58,9 @@ class Config(BaseModel):
             return None
         return value
 
-    @field_validator("DISPLAY_MODE", mode="before")
+    @field_validator("DISPLAY_MODE", "ALGORITHM", "SOLVER", mode="before")
     @classmethod
-    def force_uppercase_mode(cls, value: str) -> str:
+    def force_uppercase_mode(cls, value: Any) -> Any:
         if isinstance(value, str):
             return value.strip().upper()
         return value
@@ -92,6 +92,9 @@ class Config(BaseModel):
             entry_exit(self.EXIT, self.HEIGHT, self.WIDTH)
         except ValueError as e:
             raise ValueError(f"Point EXIT {e}")
+
+        if self.ENTRY == self.EXIT:
+            raise ValueError("ENTRY and EXIT coordinates cannot be identical!")
 
         if self.DISPLAY_MODE == "TERMINAL":
             cols, lines = _get_terminal_bounds()

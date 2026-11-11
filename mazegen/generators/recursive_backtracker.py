@@ -21,10 +21,9 @@ class RecursiveBacktracker(BaseGenerator):
         directions_map = tuple(
             (d.bit_index, d.get_flat_offset(width)) for d in Direction
         )
-        untouched_set = {
-            cell for cell in range(max_cells)
-            if untouched_mask & (1 << cell)
-        }
+        locked_indices = {y * width + x for x, y in self.maze.locked_cells}
+        locked_indices.add(start_cell)
+        untouched_set = set(range(max_cells)) - locked_indices
         return BacktrackerState(
             untouched_set=untouched_set,
             path=[start_cell],

@@ -1,3 +1,4 @@
+import itertools
 import re
 import subprocess
 
@@ -7,12 +8,32 @@ from PIL import Image, ImageDraw, ImageFont
 from app.backends.palette import MazePalette, PRESETS
 from app.engine import AppController, ArrowMode
 from app.backends.base import GraphicBackend
-from app.backends.mlx_image import MLXImage
 from app.grid import RenderGrid, CellState
 from app.keys import MLX_EVENT_DESTROY, MLX_MASK_NO_MASK, KEY_MAP, \
     MLX_EVENT_CLIENT_MESSAGE
 from mlx import Mlx
 from mazegen import Direction
+
+
+class MLXImage:
+    """Wrapper for raw image buffer for MiniLibX"""
+
+    def __init__(self,
+                 mlx: Mlx,
+                 mlx_ptr: object,
+                 width: int,
+                 height: int) -> None:
+        self.img_ptr = mlx.mlx_new_image(mlx_ptr, width, height)
+        img_info = mlx.mlx_get_data_addr(self.img_ptr)
+        self.img_buffer: bytearray = img_info[0]
+        self.bits_per_pixel: int = img_info[1]
+        self.size_line: int = img_info[2]
+        self.endian: int = img_info[3]
+        raw_pixels = np.frombuffer(self.img_buffer, dtype=np.uint8).reshape(
+            height, self.size_line // 4, 4
+        )
+        self.pixels = raw_pixels[:, :width]
+        self.pixels.flags.writeable = True
 
 
 class MlxBackend(GraphicBackend):
@@ -28,6 +49,11 @@ class MlxBackend(GraphicBackend):
         self.image: MLXImage | None = None
         self.hud_image: MLXImage | None = None
         self.palette: MazePalette = PRESETS[0]
+        self._palette_stream = itertools.chain(
+            PRESETS[1:],
+            iter(MazePalette.generate_random_harmonized, None),
+        )
+
         self.preset_mode = 0
 
         self.fixed_win_width = 1280
@@ -339,7 +365,7 @@ class MlxBackend(GraphicBackend):
                 return
 
             if action == "cycle_palette":
-                self.change_colors(controller)
+                self.change_colors()
                 return
 
             assert self.controller is not None
@@ -361,6 +387,10 @@ class MlxBackend(GraphicBackend):
             assert self.controller is not None
             if not controller.is_running:
                 self.mlx.mlx_do_key_autorepeaton(self.mlx_ptr)
+                if self.image is not None:
+                    self.mlx.mlx_destroy_image(self.mlx_ptr,
+                                               self.image.img_ptr)
+                self.mlx.mlx_destroy_window(self.mlx_ptr, self.win_ptr)
                 self.mlx.mlx_loop_exit(self.mlx_ptr)
                 return
 
@@ -408,14 +438,9 @@ class MlxBackend(GraphicBackend):
         self.mlx.mlx_loop_hook(self.mlx_ptr, loop_tick, None)
         self.mlx.mlx_loop(self.mlx_ptr)
 
-    def change_colors(self, controller: AppController) -> None:
+    def change_colors(self) -> None:
         old_palette = self.palette
-        self.preset_mode = (self.preset_mode + 1) % 5
-        if self.preset_mode < len(PRESETS):
-            self.palette = PRESETS[self.preset_mode]
-        else:
-            self.palette = MazePalette.generate_random_harmonized()
-
+        self.palette = next(self._palette_stream)
         if self.image is None:
             return
 

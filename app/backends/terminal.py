@@ -47,22 +47,17 @@ class TerminalBackend(GraphicBackend):
             assert self.controller is not None
             draw_menu(menu_y_position, self.controller)
 
+        chunks: list[str] = []
         while grid.changed:
-            changed_cell = grid.changed.popleft()
-            if not changed_cell:
-                return
-            x, y, state = changed_cell
+            x, y, state = grid.changed.popleft()
             content = resolve_cell_content(x, y, state, self.palette)
 
-            screen_x = x // 2 * 4
-            if x % 2 != 0:
-                screen_x += 1
-            screen_y = y + 1
+            screen_x = (x // 2 * 4) + (1 if x % 2 != 0 else 0)
+            chunks.append(f"\033[{y + 1};{screen_x + 1}H{content}")
 
-            cell_payload = f"\033[{screen_y};{screen_x + 1}H{content}"
-            _real_output.write(cell_payload)
-
-        _real_output.flush()
+        if chunks:
+            _real_output.write("".join(chunks))
+            _real_output.flush()
 
     def change_colors(self, controller: "AppController") -> None:
 
@@ -244,7 +239,7 @@ def input_thread_worker() -> None:
                 ready_seq_, _, _ = select.select([fd], [], [], 0.02)
                 if ready_seq_:
                     b_rest = os.read(fd, 2)
-                    ch += b_rest.decode('utf-8', errors='ingore')
+                    ch += b_rest.decode('utf-8', errors='ignore')
 
             input_queue.put(ch)
         except OSError:
@@ -459,7 +454,7 @@ def draw_menu(y_offset: int, ctrl: AppController) -> None:
     else:
         info_colored = raw_info.replace("<", color_edit).replace(">", reset)
 
-    color_header = "\033[1:34m"
+    color_header = "\033[1;34m"
 
     # \033[?7l - Disable line wrapping
     # \033[?7h - Enable line wrapping

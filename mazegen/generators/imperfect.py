@@ -30,6 +30,11 @@ class ImperfectGenerator(BaseGenerator):
         for _ in self.make_imperfect():
             pass
 
+    @staticmethod
+    def _count_walls(cell_pos: int,
+                     walls: tuple[int, int, int, int]) -> int:
+        return sum(bool(wall & cell_pos) for wall in walls)
+
     def make_imperfect(self) \
             -> Generator[tuple[int, int, Direction], None, None]:
         """Remove walls from eligible dead-end cells.
@@ -51,18 +56,12 @@ class ImperfectGenerator(BaseGenerator):
         width = self.maze.width
         height = self.maze.height
 
-        wn, we, ws, ww = self.maze.get_walls()
+        walls = self.maze.get_walls()
         for y in range(height):
             for x in range(width):
                 if (x, y) not in locked:
                     cell_pos = 1 << ((y * width) + x)
-                    wall_count = (
-                            bool(wn & cell_pos)
-                            + bool(we & cell_pos)
-                            + bool(ws & cell_pos)
-                            + bool(ww & cell_pos)
-                    )
-                    if wall_count == 3:
+                    if self._count_walls(cell_pos, walls) == 3:
                         blind_ends.append((x, y))
 
         random.shuffle(blind_ends)
@@ -71,14 +70,7 @@ class ImperfectGenerator(BaseGenerator):
             x, y = blind_ends.pop()
             cell_pos = 1 << ((y * width) + x)
             wn, we, ws, ww = self.maze.get_walls()
-            wall_count = (
-                    bool(wn & cell_pos)
-                    + bool(we & cell_pos)
-                    + bool(ws & cell_pos)
-                    + bool(ww & cell_pos)
-            )
-
-            if wall_count == 3:
+            if self._count_walls(cell_pos, (wn, we, ws, ww)) == 3:
                 candidates = []
 
                 if ((wn & cell_pos) and y > 0

@@ -67,7 +67,7 @@ class KruskalGenerator(BaseGenerator):
 
         return True
 
-    def _setup_edges(self) -> list[tuple[int, int]]:
+    def _setup_shared_state(self) -> list[tuple[int, int]]:
 
         width = self.maze.width
         height = self.maze.height
@@ -104,7 +104,7 @@ class KruskalGenerator(BaseGenerator):
         Generates the maze using a randomized Kruskal's algorithm.
         """
 
-        edges = self._setup_edges()
+        edges = self._setup_shared_state()
 
         for cell1, cell2 in edges:
             if self.union(cell1, cell2):
@@ -112,7 +112,7 @@ class KruskalGenerator(BaseGenerator):
                 yield self.maze.get_coords_and_dir(cell1, cell2)
 
     def generate_all(self) -> None:
-        edges = self._setup_edges()
+        edges = self._setup_shared_state()
 
         for cell1, cell2 in edges:
             if self.union(cell1, cell2):

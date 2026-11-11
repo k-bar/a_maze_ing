@@ -26,11 +26,10 @@ class Direction(Enum):
 
     @classmethod
     def from_xy(cls, dx: int, dy: int) -> "Direction":
-        for direction in cls:
-
-            if direction.dx == dx and direction.dy == dy:
-                return direction
-        raise ValueError(f"No Direction for dx={dx}, dy={dy}")
+        try:
+            return next(d for d in cls if d.dx == dx and d.dy == dy)
+        except StopIteration as exc:
+            raise ValueError(f"No Direction for dx={dx}, dy={dy}") from exc
 
     def get_flat_offset(self, width: int) -> int:
         return (width * self.dy) + self.dx

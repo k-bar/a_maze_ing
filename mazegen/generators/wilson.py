@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Generator
 
 from . import BaseGenerator
-from mazegen.utils import Direction
+from ..utils import Direction
 
 
 @dataclass(slots=True)
@@ -16,11 +16,11 @@ class WilsonContext:
 
 class WilsonGenerator(BaseGenerator):
 
-    def _get_loop_context(self) -> WilsonContext:
+    def _setup_shared_state(self) -> WilsonContext:
         untouched_cells, _, max_cells = self._initialize_generator()
         width = self.maze.width
         directions_map = tuple(
-            (d.bit_index, width * d.dy + d.dx) for d in Direction
+            (d.bit_index, d.get_flat_offset(width)) for d in Direction
         )
         return WilsonContext(
             untouched_cells=untouched_cells,
@@ -32,7 +32,7 @@ class WilsonGenerator(BaseGenerator):
     def _algorithm_loop(self) \
             -> Generator[tuple[int, int, Direction], None, None]:
 
-        ctx = self._get_loop_context()
+        ctx = self._setup_shared_state()
         untouched_cells = ctx.untouched_cells
         max_cells = ctx.max_cells
         locked_mask = ctx.locked_mask
@@ -62,16 +62,14 @@ class WilsonGenerator(BaseGenerator):
                     yield self.maze.get_coords_and_dir(current_cell, next_cell)
                     while current_path:
                         cell = current_path.pop()
-                        assert cell is not None
                         untouched_cells &= ~(1 << cell)
                     break
                 # backtrack if loop
                 elif current_path_mask & (1 << next_cell):
                     while current_path[-1] != next_cell:
-                        assert (removed := current_path.pop()) is not None
+                        removed = current_path.pop()
                         current_path_mask &= ~(1 << removed)
                         previous_cell = current_path[-1]
-                        assert previous_cell is not None
                         self.maze.flip_both_walls(removed, previous_cell)
                         yield self.maze.get_coords_and_dir(removed,
                                                            previous_cell)
@@ -84,7 +82,7 @@ class WilsonGenerator(BaseGenerator):
 
     def generate_all(self) -> None:
 
-        ctx = self._get_loop_context()
+        ctx = self._setup_shared_state()
         untouched_cells = ctx.untouched_cells
         max_cells = ctx.max_cells
         locked_mask = ctx.locked_mask
@@ -101,7 +99,7 @@ class WilsonGenerator(BaseGenerator):
                 moves = [
                     offset for bit_idx, offset in directions_map
                     if not (border_masks[bit_idx] & cell_bit) and not (
-                                locked_mask & (1 << (current_cell + offset)))
+                            locked_mask & (1 << (current_cell + offset)))
                 ]
                 offset = random.choice(moves)
                 cell_directions[current_cell] = offset

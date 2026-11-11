@@ -2,7 +2,7 @@ from app import Config
 from app.backends.base import GraphicBackend
 from app.engine import AppController, EngineState
 from app.grid import RenderGrid
-from mazegen import get_available_algorithm
+from mazegen import get_available_algorithms
 
 
 class MockBackend(GraphicBackend):
@@ -18,7 +18,7 @@ def test_controller_cycles_algorithm_correctly() -> None:
     ctrl = AppController(cfg, MockBackend())
     ctrl.state = EngineState.IDLE
 
-    available = get_available_algorithm()
+    available = get_available_algorithms()
     assert len(available) > 0
 
     current_idx = available.index("KRUSKAL")

@@ -18,13 +18,19 @@ class MazePalette:
     lock: RGB
 
     def get_rgb(self, state: CellState) -> RGB:
-        return {
-            CellState.FLOOR: self.floor,
-            CellState.ENTRY: self.entry,
-            CellState.EXIT: self.exit_c,
-            CellState.PATH: self.path,
-            CellState.LOCK: self.lock,
-        }.get(state, self.wall)
+        match state:
+            case CellState.FLOOR:
+                return self.floor
+            case CellState.ENTRY:
+                return self.entry
+            case CellState.EXIT:
+                return self.exit_c
+            case CellState.PATH:
+                return self.path
+            case CellState.LOCK:
+                return self.lock
+            case _:
+                return self.wall
 
     @classmethod
     def generate_random_harmonized(cls) -> Self:
