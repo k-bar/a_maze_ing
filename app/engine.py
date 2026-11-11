@@ -6,7 +6,8 @@ from typing import TypedDict
 import numpy as np
 
 from app.export_func import export_to_file
-from mazegen import create_stepping_generator, Maze, BaseGenerator
+from mazegen import Maze, BaseGenerator, create_stepping_generator, \
+    create_stepping_solver
 from app import Config
 from app.grid import RenderGrid, CellState
 from app.backends.base import GraphicBackend
@@ -426,7 +427,6 @@ class AppController:
                 self.manual_path_history.clear()
                 self.state = EngineState.MANUAL_PLAY
             else:
-                from mazegen import create_stepping_solver
                 self.solver_process = create_stepping_solver(self.solver_name,
                                                              self.maze)
                 self.state = EngineState.SOLVING
@@ -441,7 +441,6 @@ class AppController:
                 self.manual_path_history.clear()
                 self.state = EngineState.MANUAL_PLAY
             else:
-                from mazegen import create_stepping_solver
                 self.solver_process = create_stepping_solver(
                     self.solver_name, self.maze)
                 self.state = EngineState.SOLVING
@@ -618,15 +617,19 @@ class AppController:
         if self.state in [EngineState.IDLE, EngineState.SOLVING,
                           EngineState.SOLVED]:
             self.hide_path()
-            from mazegen import create_stepping_solver
             assert self.maze is not None
 
             self.maze.m_entry = self.config.ENTRY
             self.maze.m_exit = self.config.EXIT
 
-            self.solver_process = create_stepping_solver(self.config.SOLVER,
-                                                         self.maze)
-            self.state = EngineState.SOLVING
+            if self.solver_name == "MANUAL":
+                self.manual_path_history.clear()
+                self.state = EngineState.MANUAL_PLAY
+            else:
+                self.solver_process = create_stepping_solver(
+                    self.solver_name, self.maze
+                )
+                self.state = EngineState.SOLVING
 
     class HudBlock(TypedDict):
         label: str
