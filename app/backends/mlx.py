@@ -9,7 +9,8 @@ from app.engine import AppController, ArrowMode
 from app.backends.base import GraphicBackend
 from app.backends.mlx_image import MLXImage
 from app.grid import RenderGrid, CellState
-from app.keys import MLX_EVENT_DESTROY, MLX_MASK_NO_MASK, KEY_MAP
+from app.keys import MLX_EVENT_DESTROY, MLX_MASK_NO_MASK, KEY_MAP, \
+    MLX_EVENT_CLIENT_MESSAGE
 from mlx import Mlx
 from mazegen import Direction
 
@@ -313,10 +314,24 @@ class MlxBackend(GraphicBackend):
 
     def start_loop(self, controller: AppController) -> None:
         self.controller = controller
-        self.mlx.mlx_hook(self.win_ptr, MLX_EVENT_DESTROY,
-                          MLX_MASK_NO_MASK,
-                          lambda *args: controller.handle_action("quit"),
-                          0)
+
+        def on_close(*args: object) -> None:
+            controller.handle_action("quit")
+
+        self.mlx.mlx_hook(
+            self.win_ptr,
+            MLX_EVENT_DESTROY,
+            MLX_MASK_NO_MASK,
+            on_close,
+            0,
+        )
+        self.mlx.mlx_hook(
+            self.win_ptr,
+            MLX_EVENT_CLIENT_MESSAGE,
+            MLX_MASK_NO_MASK,
+            on_close,
+            0,
+        )
 
         def handle_press(keycode: int, param: None = None) -> None:
             action = KEY_MAP.get(keycode)
