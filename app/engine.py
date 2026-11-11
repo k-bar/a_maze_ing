@@ -70,6 +70,7 @@ class AppController:
         self.is_entering_seed = False
         self.seed_input_buffer = ""
         self.steps_per_tick = 1
+        self.skip_cooldown = 0
         self.manual_path_history: list[tuple[int, int]] = []
         self.init_new_run()
 
@@ -162,6 +163,9 @@ class AppController:
             case EngineState.IDLE:
                 return
             case EngineState.SOLVING:
+                if self.skip_cooldown > 0:
+                    self.skip_cooldown -= 1
+                    return
                 for _ in range(self.steps_per_tick):
                     self.solve()
                     if self.state != EngineState.SOLVING:
@@ -416,6 +420,7 @@ class AppController:
                             self.config.EXIT[0] * 2 + 1] = CellState.EXIT
 
             self.grid.require_full_redraw = True
+            self.skip_cooldown = 1
 
             if self.solver_name == "MANUAL":
                 self.manual_path_history.clear()
