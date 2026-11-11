@@ -35,6 +35,68 @@ class ImperfectGenerator(BaseGenerator):
                      walls: tuple[int, int, int, int]) -> int:
         return sum(bool(wall & cell_pos) for wall in walls)
 
+    def _creates_3x3_room(self, x: int, y: int, nx: int, ny: int) -> bool:
+        """Return True if opening between x,y / nx,ny creates a 3x3 room."""
+        width = self.maze.width
+        height = self.maze.height
+        if width < 3 or height < 3:
+            return False
+
+        _, we, ws, _ = self.maze.get_walls()
+        idx_a = y * width + x
+        idx_b = ny * width + nx
+
+        if y == ny:
+            we &= ~(1 << min(idx_a, idx_b))
+        else:
+            ws &= ~(1 << min(idx_a, idx_b))
+
+        min_x = max(0, min(x, nx) - 2)
+        max_x = min(width - 3, max(x, nx))
+        min_y = max(0, min(y, ny) - 2)
+        max_y = min(height - 3, max(y, ny))
+
+        for top_y in range(min_y, max_y + 1):
+            for left_x in range(min_x, max_x + 1):
+                v_closed = any(
+                    we & (1 << ((top_y + dy) * width + (left_x + dx)))
+                    for dy in range(3)
+                    for dx in range(2)
+                )
+                if v_closed:
+                    continue
+
+                h_closed = any(
+                    ws & (1 << ((top_y + dy) * width + (left_x + dx)))
+                    for dy in range(2)
+                    for dx in range(3)
+                )
+                if not h_closed:
+                    return True
+
+        return False
+
+    def _count_safe_moves(
+            self, x: int, y: int, locked: set[tuple[int, int]]
+    ) -> int:
+        wn, we, ws, ww = self.maze.get_walls()
+        cell_pos = 1 << ((y * self.maze.width) + x)
+        moves = [
+            (x, y - 1, bool(wn & cell_pos)),
+            (x + 1, y, bool(we & cell_pos)),
+            (x, y + 1, bool(ws & cell_pos)),
+            (x - 1, y, bool(ww & cell_pos)),
+        ]
+        return sum(
+            1
+            for nx, ny, closed in moves
+            if closed
+            and 0 <= nx < self.maze.width
+            and 0 <= ny < self.maze.height
+            and (nx, ny) not in locked
+            and not self._creates_3x3_room(x, y, nx, ny)
+        )
+
     def make_imperfect(self) \
             -> Generator[tuple[int, int, Direction], None, None]:
         """Remove walls from eligible dead-end cells.
@@ -50,7 +112,6 @@ class ImperfectGenerator(BaseGenerator):
         if self.maze.seed is not None:
             random.seed(self.maze.seed)
 
-        # visited: set[tuple[int, int]] = set()
         blind_ends: list[tuple[int, int]] = []
         locked = set(self.maze.locked_cells)
         width = self.maze.width
@@ -65,6 +126,10 @@ class ImperfectGenerator(BaseGenerator):
                         blind_ends.append((x, y))
 
         random.shuffle(blind_ends)
+        blind_ends.sort(
+            key=lambda pos: self._count_safe_moves(pos[0], pos[1], locked),
+            reverse=True,
+        )
 
         while blind_ends:
             x, y = blind_ends.pop()
@@ -75,24 +140,24 @@ class ImperfectGenerator(BaseGenerator):
 
                 if ((wn & cell_pos) and y > 0
                         and (x, y - 1) not in locked):
-                        # and (x, y - 1) not in visited):
                     candidates.append((x, y - 1))
                 if ((we & cell_pos) and x < width - 1
                         and (x + 1, y) not in locked):
-                        # and (x + 1, y) not in visited):
                     candidates.append((x + 1, y))
                 if ((ws & cell_pos) and y < height - 1
                         and (x, y + 1) not in locked):
-                        # and (x, y + 1) not in visited):
                     candidates.append((x, y + 1))
                 if ((ww & cell_pos) and x > 0
                         and (x - 1, y) not in locked):
-                        # and (x - 1, y) not in visited):
                     candidates.append((x - 1, y))
 
-                if candidates:
-                    nx, ny = random.choice(candidates)
-                    # visited.add((x, y))
+                safe_candidates = [
+                    (cx, cy) for cx, cy in candidates
+                    if not self._creates_3x3_room(x, y, cx, cy)
+                ]
+
+                if safe_candidates:
+                    nx, ny = random.choice(safe_candidates)
 
                     cell_a_idx = (y * width) + x
                     cell_b_idx = (ny * width) + nx
