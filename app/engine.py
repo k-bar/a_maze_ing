@@ -642,7 +642,6 @@ class AppController:
         is_seed: bool
 
     def get_unified_hud_blocks(self) -> list[HudBlock]:
-        perf_suffix = "P" if self.config.PERFECT else "I"
         seed_display = f"{self.seed_input_buffer}_" \
             if self.is_entering_seed else str(self.current_seed)
         mode_name = self.arrow_mode.name
@@ -660,9 +659,16 @@ class AppController:
             },
             {
                 "label": "[A]LG",
-                "value": f"{self.algorithm_name}({perf_suffix})",
+                "value": self.algorithm_name,
                 "width_spec": 16,
                 "is_highlighted": False,
+                "is_seed": False
+            },
+            {
+                "label": "[P]ERFECT",
+                "value": str(self.config.PERFECT),
+                "width_spec": 14,
+                "is_highlighted": self.config.PERFECT,
                 "is_seed": False
             },
             {
@@ -698,7 +704,7 @@ class AppController:
                 "is_seed": False
             },
             {
-                "label": "SPEED",
+                "label": "SPEED [+/-]",
                 "value": f"{self.steps_per_tick}x",
                 "width_spec": 10,
                 "is_highlighted": False,
