@@ -14,7 +14,8 @@ build:
 
 install:
 	@echo "preparing virtual environment and install mazegen as editable package..."
-	uv venv
+	uv venv --allow-existing
+	uv sync --all-groups
 	uv pip install -e .
 
 run:

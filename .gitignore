@@ -217,8 +217,7 @@ __marimo__/
 .streamlit/secrets.toml
 /en.subject.pdf
 
-*.whl
-
+mazegen-*-py3-none-any/
 # Output files
 maze.txt
 /PROJECT-SPEC.pdf

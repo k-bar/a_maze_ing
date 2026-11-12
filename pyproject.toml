@@ -6,10 +6,10 @@ build-backend = "uv_build"
 name = "mazegen"
 version = "0.1.0"
 description = "This is the way"
-readme = "README.md"
+readme = "mazegen/README.md"
 requires-python = ">=3.14"
 license = "MIT"
-license-files = ["LICENSE"]
+license-files = ["mazegen/LICENSE"]
 authors = [
     { name = "kdzwigal", email = "kdzwigal@student.42warsaw.pl" },
     { name = "kbartosz", email = "kbartosz@student.42warsaw.pl" }
