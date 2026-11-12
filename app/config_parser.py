@@ -22,9 +22,9 @@ class Config(BaseModel):
     Attributes:
         WIDTH (int): The width of the maze. Mandatory.
         HEIGHT (int): The height of the maze. Mandatory.
-        ENTRY (tuple): Starting coordinates (x, y). Default is (0, 0).
-        EXIT (tuple): Target coordinates (x, y). Default is (0, 0).
-        OUTPUT_FILE (str | None): File path to save the output.
+        ENTRY (tuple): Starting coordinates (x, y).
+        EXIT (tuple): Target coordinates (x, y).
+        OUTPUT_FILE (str): File path to save the output.
         PERFECT (bool): If True, generates a perfect maze without loops.
         SEED (int): Random seed used for generation reproducible results.
         ALGORITHM (str): The maze generation algorithm to use.
@@ -32,12 +32,12 @@ class Config(BaseModel):
         COLOR (str): Primary color for rendering.
         DISPLAY_MODE (str): Output mode (e.g., MLX or Terminal).
     """
-    WIDTH: int = Field(..., ge=2, le=1000)
-    HEIGHT: int = Field(..., ge=2, le=1000)
-    ENTRY: tuple[int, int] = Field(default=(0, 0))
-    EXIT: tuple[int, int] = Field(default=(1, 1))
-    OUTPUT_FILE: str = Field(default="maze.txt", min_length=1, max_length=80)
-    PERFECT: bool = Field(default=True)
+    WIDTH: int = Field(ge=4, le=863)
+    HEIGHT: int = Field(ge=4, le=455)
+    ENTRY: tuple[int, int] = Field()
+    EXIT: tuple[int, int] = Field()
+    OUTPUT_FILE: str = Field(min_length=1, max_length=80)
+    PERFECT: bool = Field()
 
     SEED: int | None = Field(default=None)
     SOLVER: Literal["BFS", "DFS", "ASTAR"] = (Field(default="BFS"))
