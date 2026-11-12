@@ -17,6 +17,7 @@ from mazegen import Direction
 
 
 class EngineState(Enum):
+    """Enumeration of the maze engine's execution states."""
     INITIALIZING = auto()
     GENERATING = auto()
     IDLE = auto()
@@ -27,6 +28,7 @@ class EngineState(Enum):
 
 
 class ArrowMode(Enum):
+    """Enumeration of the arrow key control modes."""
     NONE = auto()
     SIZE = auto()
     ENTRY = auto()
@@ -35,7 +37,22 @@ class ArrowMode(Enum):
 
 
 class AppController:
+    """Main controller managing maze generation, solving, and application state.
+
+    Attributes:
+        config (Config): The application configuration.
+        backend (GraphicBackend): The rendering backend (e.g., Terminal, MLX).
+        grid (RenderGrid): The grid holding the visual state of the maze.
+        maze (Maze | None): The internal maze structure.
+    """
+
     def __init__(self, m_config: Config, backend: GraphicBackend, ) -> None:
+        """Initializes the AppController.
+
+        Args:
+            m_config: Validated application configuration.
+            backend: The graphic backend used for rendering.
+        """
         self.config = m_config
         self.backend = backend
 
@@ -77,7 +94,7 @@ class AppController:
         self.init_new_run()
 
     def init_new_run(self) -> None:
-        """factory for generator and managing seed"""
+        """Initializes a new maze generator and resets the engine state."""
         self.solver_process = None
         self.generator_process = None
         self.maze = None
@@ -109,6 +126,7 @@ class AppController:
         self.solver_process = None
 
     def change_algorithm_in_runtime(self) -> None:
+        """Cycles to the next available maze generation algorithm."""
         from mazegen import get_available_algorithms
         available_algos = get_available_algorithms()
         try:
@@ -126,6 +144,8 @@ class AppController:
         )
 
     def change_solver_in_runtime(self) -> None:
+        """Cycles to the next available maze solving algorithm or manual mode.
+        """
         from mazegen import get_available_solvers, create_stepping_solver
         available_solvers = get_available_solvers() + ["MANUAL"]
         try:
@@ -366,7 +386,7 @@ class AppController:
                             self._move_live_point("EXIT", dx, dy)
 
     def start(self) -> None:
-
+        """Starts the main application loop on the graphic backend."""
         self.backend.controller = self
         self.backend.init_window(self.width,
                                  self.height,
@@ -375,6 +395,12 @@ class AppController:
         self.backend.start_loop(controller=self)
 
     def generate_maze(self, skip: bool = False) -> None:
+        """Executes the maze generation process.
+
+        Args:
+            skip: If True, bypasses animation and completes generation
+            instantly.
+        """
         assert self.generator_process is not None
         assert self.maze is not None
 
@@ -463,6 +489,11 @@ class AppController:
         self.grid.register_change(tx, ty, new_state)
 
     def solve(self, skip: bool = False) -> None:
+        """Executes the maze solving process.
+
+        Args:
+            skip: If True, bypasses animation and completes solving instantly.
+        """
         if self.maze is None:
             return
         assert self.solver_process is not None
@@ -493,6 +524,7 @@ class AppController:
                                   CellState.EXIT)
 
     def show_path(self) -> None:
+        """Reveals the solved path on the visual grid."""
         if self.maze is None:
             return
         self.hide_path()
@@ -518,11 +550,13 @@ class AppController:
         self.state = EngineState.IDLE
 
     def hide_path(self) -> None:
+        """Hides the solved path, restoring affected cells to floor."""
         path_coordinates = np.argwhere(self.grid.cells == CellState.PATH)
         for y, x in path_coordinates:
             self.grid.register_change(x, y, CellState.FLOOR)
 
     def maze_resize(self) -> None:
+        """Notifies the backend to update geometry after logical size change."""
         print(
             f"[ENGINE] Resize action executed. New logical size: "
             f"{self.width}x{self.height}", file=sys.stderr)
@@ -531,6 +565,12 @@ class AppController:
 
     def validate_and_apply_dimensions(self, target_width: int,
                                       target_height: int) -> None:
+        """Validates and sets new dimensions, repositioning entry/exit safely.
+
+        Args:
+            target_width: The requested new maze width.
+            target_height: The requested new maze height.
+        """
         min_size = 4
         max_w = self.max_width
         max_h = self.max_height
@@ -586,6 +626,13 @@ class AppController:
             f" EXIT: {self.config.EXIT}")
 
     def _move_live_point(self, point_type: str, dx: int, dy: int) -> None:
+        """Moves the ENTRY or EXIT points dynamically across the grid.
+
+        Args:
+            point_type: Either "ENTRY" or "EXIT".
+            dx: Delta on the X axis.
+            dy: Delta on the Y axis.
+        """
         current_x, current_y = self.config.ENTRY \
             if point_type == "ENTRY" else self.config.EXIT
         target_x = current_x + dx
@@ -635,6 +682,7 @@ class AppController:
                 self.state = EngineState.SOLVING
 
     class HudBlock(TypedDict):
+        """Structure of a single HUD info block for rendering."""
         label: str
         value: str
         width_spec: int
@@ -642,6 +690,11 @@ class AppController:
         is_seed: bool
 
     def get_unified_hud_blocks(self) -> list[HudBlock]:
+        """Generates the structured HUD block data.
+
+        Returns:
+            A list of dictionary configurations representing HUD segments.
+        """
         seed_display = f"{self.seed_input_buffer}_" \
             if self.is_entering_seed else str(self.current_seed)
         mode_name = self.arrow_mode.name
@@ -713,6 +766,14 @@ class AppController:
         ]
 
     def get_hud_controls_text(self, is_narrow: bool = False) -> str:
+        """Generates context-aware controls text for the UI footer.
+
+        Args:
+            is_narrow: If True, returns a shortened controls string.
+
+        Returns:
+            A string containing formatted control instructions.
+        """
         if is_narrow:
             return ("ENTER:Confirm | BACKSPACE:Delete | SPACE:Cancel"
                     if self.is_entering_seed
@@ -740,6 +801,12 @@ class AppController:
         return f"{base_start} | {core} {base_end}"
 
     def _move_player_manual(self, dx: int, dy: int) -> None:
+        """Handles manual player movement through the maze in GAME mode.
+
+        Args:
+            dx: Movement delta on the X axis.
+            dy: Movement delta on the Y axis.
+        """
         if self.state != EngineState.MANUAL_PLAY or not self.maze:
             return
 

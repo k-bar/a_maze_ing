@@ -10,6 +10,20 @@ type RGB = tuple[int, int, int]
 
 @dataclass(frozen=True)
 class MazePalette:
+    """
+    A color palette configuration for rendering a maze.
+
+    This dataclass holds RGB color values for various elements of a maze grid,
+    ensuring a consistent color scheme across different rendering components.
+
+    Attributes:
+        wall (RGB): Color used for maze walls.
+        floor (RGB): Color used for open, walkable floor cells.
+        entry (RGB): Color indicating the maze's starting point.
+        exit_c (RGB): Color indicating the maze's end point/exit.
+        path (RGB): Color used to highlight the solved path.
+        lock (RGB): Color representing locked or blocked states.
+    """
     wall: RGB
     floor: RGB
     entry: RGB
@@ -18,6 +32,16 @@ class MazePalette:
     lock: RGB
 
     def get_rgb(self, state: CellState) -> RGB:
+        """
+        Retrieves the corresponding RGB color for a given cell state.
+
+        Args:
+            state (CellState): The current state/type of the cell.
+
+        Returns:
+            RGB: A tuple representing the RGB color for the requested state.
+                 Defaults to the wall color if the state is unknown.
+        """
         match state:
             case CellState.FLOOR:
                 return self.floor
@@ -34,7 +58,17 @@ class MazePalette:
 
     @classmethod
     def generate_random_harmonized(cls) -> Self:
-        """Generates coherent and contrast HSV palette"""
+        """
+        Generates a coherent and contrasting random color palette.
+
+        Calculates colors based on a random base hue using the HSV color space
+        to ensure the generated palette is visually pleasing and maintains
+        proper contrast between different maze elements (e.g., walls vs. floor,
+        distinct entry/exit colors).
+
+        Returns:
+            MazePalette: A new instance of the palette with harmonized colors.
+        """
         base_h = random.random()
 
         wall_rgb = cls._hsv_to_rgb255(base_h, 0.75, 0.4)
@@ -50,10 +84,23 @@ class MazePalette:
 
     @staticmethod
     def _hsv_to_rgb255(h: float, s: float, v: float) -> RGB:
+        """
+        Converts HSV color values to an 8-bit RGB format.
+
+        Args:
+            h (float): Hue value in the range [0.0, 1.0].
+            s (float): Saturation value in the range [0.0, 1.0].
+            v (float): Value (brightness) in the range [0.0, 1.0].
+
+        Returns:
+            RGB: A tuple of (Red, Green, Blue) integers in the range [0, 255].
+        """
         r, g, b = colorsys.hsv_to_rgb(h, s, v)
         return int(r * 255), int(g * 255), int(b * 255)
 
-
+# Predefined standard palettes for the maze renderer.
+# Index 0: Classic high-contrast dark theme.
+# Index 1: Light theme with distinct structural boundaries.
 PRESETS = [
     MazePalette((128, 81, 37), (30, 30, 30), (0, 255, 0), (255, 0, 0),
                 (0, 255, 255), (222, 217, 213)),

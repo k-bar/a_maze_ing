@@ -17,13 +17,27 @@ from mazegen import Direction
 
 
 class MLXImage:
-    """Wrapper for raw image buffer for MiniLibX"""
+    """
+    Wrapper for raw image buffer for MiniLibX.
+
+    Provides a convenient interface to modify MiniLibX image pixels using
+    a NumPy array for fast memory operations.
+    """
 
     def __init__(self,
                  mlx: Mlx,
                  mlx_ptr: object,
                  width: int,
                  height: int) -> None:
+        """
+        Initializes a new MLX image buffer.
+
+        Args:
+            mlx: The MiniLibX instance.
+            mlx_ptr: The MiniLibX context pointer.
+            width: The width of the image in pixels.
+            height: The height of the image in pixels.
+        """
         self.img_ptr = mlx.mlx_new_image(mlx_ptr, width, height)
         img_info = mlx.mlx_get_data_addr(self.img_ptr)
         self.img_buffer: bytearray = img_info[0]
@@ -38,7 +52,14 @@ class MLXImage:
 
 
 class MlxBackend(GraphicBackend):
+    """
+    MiniLibX implementation of the GraphicBackend.
+
+    Handles window creation, drawing operations, HUD rendering, and event
+    loop management for the maze generator using the MLX library.
+    """
     def __init__(self) -> None:
+        """Initializes the MLX backend with default configurations."""
         super().__init__()
 
         self.pixel_width = 0
@@ -78,6 +99,14 @@ class MlxBackend(GraphicBackend):
         self.is_resizing = False
 
     def init_window(self, width: int, height: int, title: str) -> None:
+        """
+        Creates the application window and calculates layout geometry.
+
+        Args:
+            width: Number of maze cells horizontally.
+            height: Number of maze cells vertically.
+            title: Title of the window.
+        """
 
         assert self.controller is not None
         cfg = self.controller.config
@@ -126,6 +155,14 @@ class MlxBackend(GraphicBackend):
 
     def _draw_pixel_block(self, gx: int, gy: int,
                           color: tuple[int, int, int]) -> None:
+        """
+        Draws a rectangular block (wall or cell) based on grid coordinates.
+
+        Args:
+            gx: Grid X coordinate. Even values indicate walls, odd indicate cells.
+            gy: Grid Y coordinate. Even values indicate walls, odd indicate cells.
+            color: RGB tuple for the block color.
+        """
         if self.image is None:
             return
 
@@ -159,6 +196,14 @@ class MlxBackend(GraphicBackend):
 
     def _draw_path_block(self, gx: int, gy: int,
                          color: tuple[int, int, int]) -> None:
+        """
+        Draws a partial-width path connecting cells (used for solutions/generation).
+
+        Args:
+            gx: Grid X coordinate.
+            gy: Grid Y coordinate.
+            color: RGB tuple for the path color.
+        """
         if self.image is None:
             return
 
@@ -220,6 +265,12 @@ class MlxBackend(GraphicBackend):
             real_start_x: real_start_x + size_x] = [b, g, r, 255]
 
     def render_frame(self, grid: RenderGrid) -> None:
+        """
+        Updates the MLX image buffer with the current grid state and renders the HUD.
+
+        Args:
+            grid: RenderGrid containing the current logical state of the maze.
+        """
 
         if not self.is_resizing:
             current_palette = self.palette
@@ -356,6 +407,12 @@ class MlxBackend(GraphicBackend):
                                              hud_top)
 
     def start_loop(self, controller: AppController) -> None:
+        """
+        Starts the MiniLibX event loop and registers key/window hooks.
+
+        Args:
+            controller: The main AppController handling application logic.
+        """
         self.controller = controller
 
         def on_close(*args: object) -> None:
@@ -465,6 +522,10 @@ class MlxBackend(GraphicBackend):
         self.mlx.mlx_loop(self.mlx_ptr)
 
     def change_colors(self) -> None:
+        """
+        Cycles the color palette and dynamically updates existing image pixels
+        without requiring a full maze redraw.
+        """
         old_palette = self.palette
         self.palette = next(self._palette_stream)
         if self.image is None:
@@ -482,6 +543,13 @@ class MlxBackend(GraphicBackend):
             current_pixels[mask] = new_bgr
 
     def update_geometry(self, width: int, height: int) -> None:
+        """
+        Recalculates rendering constraints and sizes for a newly sized maze.
+
+        Args:
+            width: New horizontal maze dimension.
+            height: New vertical maze dimension.
+        """
         self.block_size, self.wall_size, self.offset_x, self.offset_y = \
             calculate_mlx_geometry(
                 block_min_size=self.block_min_size,
@@ -517,6 +585,16 @@ class MlxBackend(GraphicBackend):
 
 def get_screen_resolution(fallback: tuple[int, int] = (1280, 720)) \
         -> tuple[int, int]:
+    """
+    Retrieves the current display resolution using the `xrandr` shell command.
+
+    Args:
+        fallback: A fallback resolution tuple (width, height) used if the
+                  command fails or the system does not support xrandr.
+
+    Returns:
+        tuple[int, int]: The screen resolution (width, height).
+    """
     try:
         output = subprocess.check_output(
             "xrandr 2>/dev/null | grep 'current'",
@@ -535,6 +613,27 @@ def calculate_mlx_geometry(block_min_size: int = 1, maze_w: int = 10,
                            maze_h: int = 10,
                            win_w: int = 1280, win_h: int = 720,
                            hud_h: int = 60) -> tuple[int, int, int, int]:
+    """
+    Calculates the optimum dimensions and offsets to center a maze inside a window.
+
+    Determines the largest possible integer sizes for cells and walls so the maze
+    uses as much available window space as possible without overflowing.
+
+    Args:
+        block_min_size: Minimum pixel size for a single maze cell.
+        maze_w: Number of maze cells horizontally.
+        maze_h: Number of maze cells vertically.
+        win_w: Window width in pixels.
+        win_h: Window total height in pixels.
+        hud_h: Height reserved for the HUD at the bottom.
+
+    Returns:
+        tuple[int, int, int, int]: Computed values for:
+            - block_size (width/height of a cell)
+            - wall_size (thickness of walls)
+            - offset_x (padding from left edge)
+            - offset_y (padding from top edge)
+    """
     available_h = win_h - hud_h
 
     max_possible_w = (win_w - (maze_w + 1)) // maze_w

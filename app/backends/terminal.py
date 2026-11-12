@@ -1,3 +1,10 @@
+"""
+Terminal backend module for rendering mazes and handling user interaction.
+
+This module provides the `TerminalBackend` class, which uses ANSI escape codes,
+raw terminal mode (tty), and standard input/output streams to draw interactive
+mazes directly in the console.
+"""
 import io
 import os
 import select
@@ -22,6 +29,9 @@ input_queue: Queue[str] = Queue()
 
 
 class TerminalRenderMode(Enum):
+    """
+    Enumeration of available visual rendering modes for the terminal.
+    """
     BOX_THIN = auto()
     BOX_HEAVY = auto()
     BOX_DOUBLE = auto()
@@ -31,6 +41,14 @@ class TerminalRenderMode(Enum):
 
 @dataclass(frozen=True)
 class BoxTileSet:
+    """
+    Defines the character set used for rendering box-drawing characters.
+
+    Attributes:
+        chars (dict[tuple[bool, bool, bool, bool], str]): Mapping of neighbor
+            states (up, down, left, right) to the corresponding box character.
+        horiz_fill (str): The character used to fill horizontal spaces between nodes.
+    """
     chars: dict[tuple[bool, bool, bool, bool], str]
     horiz_fill: str
 
@@ -109,7 +127,11 @@ BOX_MODE_PAIRS: dict[TerminalRenderMode, tuple[BoxTileSet, BoxTileSet]] = {
 
 
 class TerminalBackend(GraphicBackend):
+    """
+    Handles terminal-based rendering and interactive input listening.
+    """
     def __init__(self) -> None:
+        """Initializes the terminal backend state."""
         super().__init__()
         self._last_grid_w: int = 0
         self._last_grid_h: int = 0
@@ -119,9 +141,22 @@ class TerminalBackend(GraphicBackend):
         self.render_mode: TerminalRenderMode = TerminalRenderMode.BOX_HEAVY
 
     def init_window(self, width: int, height: int, title: str) -> None:
+        """
+        No-op for the terminal backend, as the window is the terminal itself.
+        """
         pass
 
     def render_frame(self, grid: RenderGrid) -> None:
+        """
+        Draws the current state of the grid to the terminal using ANSI escapes.
+
+        Calculates delta updates to minimize console output bandwidth, and
+        redraws the entire menu/grid only when dimensions change or a full
+        redraw is explicitly requested.
+
+        Args:
+            grid (RenderGrid): The maze grid object containing cell states.
+        """
 
         if grid.require_full_redraw:
             grid.require_full_redraw = False
@@ -166,6 +201,12 @@ class TerminalBackend(GraphicBackend):
             _real_output.flush()
 
     def change_colors(self, controller: "AppController") -> None:
+        """
+        Cycles through predefined color palettes or generates a random one.
+
+        Args:
+            controller (AppController): The main application controller.
+        """
 
         self.preset_mode = (self.preset_mode + 1) % 5
         if self.preset_mode < len(PRESETS):
@@ -175,13 +216,28 @@ class TerminalBackend(GraphicBackend):
         controller.grid.require_full_redraw = True
 
     def cycle_render_mode(self, controller: AppController) -> None:
+        """
+        Cycles the active rendering style (e.g., ASCII, heavy boxes, blocks).
+
+        Args:
+            controller (AppController): The main application controller.
+        """
         modes = list(TerminalRenderMode)
         next_idx = (modes.index(self.render_mode) + 1) % len(modes)
         self.render_mode = modes[next_idx]
         controller.grid.require_full_redraw = True
 
     def start_loop(self, controller: "AppController") -> None:
-        """Main loop with step by step animation"""
+        """
+        Initiates the main interactive terminal loop.
+
+        Sets up the terminal in raw mode, spawns a daemon thread for reading
+        asynchronous keyboard inputs, and loops over controller ticks.
+        Restores the terminal to its original state upon exit.
+
+        Args:
+            controller (AppController): The application state controller.
+        """
         if not sys.stdin.isatty() or not sys.stdout.isatty():
             print(
                 "[TERMINAL ERROR] Application requires an "
@@ -320,6 +376,7 @@ class TerminalBackend(GraphicBackend):
             restore_terminal()
 
     def update_geometry(self, width: int, height: int) -> None:
+        """Updates internal geometry logic. No-op for terminal."""
         pass
 
 
@@ -330,6 +387,13 @@ _devnull_stream = io.StringIO()
 
 
 def setup_terminal() -> None:
+    """
+    Sets the terminal into raw mode and initializes alternative screen buffer.
+
+    Disables local echo, hides the cursor, clears the screen, and buffers
+    all output directly via sys.stdout while rerouting standard streams to
+    avoid pollution from other print statements.
+    """
     global _original_terminal_settings
     fd = sys.stdin.fileno()
 
@@ -352,6 +416,12 @@ def setup_terminal() -> None:
 
 
 def restore_terminal() -> None:
+    """
+    Restores the terminal to its original canonical state.
+
+    Disables the alternative screen buffer, shows the cursor, and re-attaches
+    the standard output and error streams.
+    """
     if _original_terminal_settings is not None:
         fd = sys.stdin.fileno()
         # termios.tcflush(fd, termios.TCIFLUSH)
@@ -365,6 +435,12 @@ def restore_terminal() -> None:
 
 
 def input_thread_worker() -> None:
+    """
+    Background worker thread function that reads raw keystrokes from stdin.
+
+    Handles standard characters as well as multi-byte ANSI escape sequences
+    (such as arrow keys) and pushes them into a thread-safe queue.
+    """
     fd = sys.stdin.fileno()
     while True:
         try:
@@ -385,6 +461,12 @@ def input_thread_worker() -> None:
 
 
 def supports_truecolor() -> bool:
+    """
+    Checks environment variables to determine if the terminal supports 24-bit TrueColor.
+
+    Returns:
+        bool: True if TrueColor is supported, False otherwise.
+    """
     if os.environ.get("COLORTERM") in ("truecolor", "24bit"):
         return True
     if "TERM_PROGRAM" in os.environ:
@@ -393,7 +475,21 @@ def supports_truecolor() -> bool:
 
 
 def rgb_to_ansi(r: int, g: int, b: int, is_bg: bool = False) -> str:
-    """Returns TrueColor ANSI or safe fallback 16-colors"""
+    """
+    Converts RGB values to an appropriate ANSI color escape sequence.
+
+    Automatically falls back to a safe 16-color ANSI code if the terminal
+    does not support TrueColor rendering.
+
+    Args:
+        r (int): Red channel (0-255).
+        g (int): Green channel (0-255).
+        b (int): Blue channel (0-255).
+        is_bg (bool, optional): If True, returns a background color code. Defaults to False.
+
+    Returns:
+        str: The generated ANSI color escape sequence.
+    """
     if supports_truecolor():
         mode = 48 if is_bg else 38
         return f"\033[{mode};2;{r};{g};{b}m"
@@ -414,6 +510,12 @@ def rgb_to_ansi(r: int, g: int, b: int, is_bg: bool = False) -> str:
 
 
 def supports_utf8() -> bool:
+    """
+    Checks if the standard output stream supports UTF-8 encoding.
+
+    Returns:
+        bool: True if UTF-8 is supported, False otherwise.
+    """
     try:
         return _real_output.encoding.lower() in ("utf-8", "utf8", "cp65001")
     except AttributeError:
@@ -428,6 +530,23 @@ def _get_connected_char(
         tiles: BoxTileSet,
         has_utf8: bool,
 ) -> str:
+    """
+    Determines the appropriate box-drawing character based on neighbor cell states.
+
+    Checks adjacent cells (up, down, left, right) and maps the connection pattern
+    to a specific box-drawing character.
+
+    Args:
+        x (int): The X coordinate of the cell.
+        y (int): The Y coordinate of the cell.
+        cells (np.ndarray): The grid array containing cell states.
+        target_states (tuple[CellState, ...]): The cell states to connect with.
+        tiles (BoxTileSet): The tile set defining the characters.
+        has_utf8 (bool): Flag indicating if UTF-8 is supported.
+
+    Returns:
+        str: The resolved character.
+    """
     height, width = cells.shape
     up = (y > 0) and (cells[y - 1, x] in target_states)
     down = (y < height - 1) and (cells[y + 1, x] in target_states)
@@ -448,6 +567,9 @@ def _resolve_box_mode(
         cells: np.ndarray[Any, Any],
         render_mode: TerminalRenderMode,
 ) -> str:
+    """
+    Resolves cell content when using a box-drawing rendering mode.
+    """
     is_x_even = x % 2 == 0
     rgb = palette.get_rgb(state)
     reset = "\033[0m"
@@ -508,6 +630,9 @@ def _resolve_box_mode(
 def _resolve_blocks_mode(
         x: int, state: CellState, palette: MazePalette
 ) -> str:
+    """
+    Resolves cell content when using the solid block rendering mode.
+    """
     is_x_even = x % 2 == 0
     rgb = palette.get_rgb(state)
     reset = "\033[0m"
@@ -538,6 +663,9 @@ def _resolve_blocks_mode(
 def _resolve_ascii_mode(
         x: int, y: int, state: CellState, palette: MazePalette
 ) -> str:
+    """
+    Resolves cell content when using a plain ASCII rendering mode.
+    """
     is_x_even = x % 2 == 0
     is_y_even = y % 2 == 0
     rgb = palette.get_rgb(state)
@@ -587,6 +715,23 @@ def resolve_cell_content(
         cells: np.ndarray[Any, Any],
         render_mode: TerminalRenderMode,
 ) -> str:
+    """
+    Determines the string content and ANSI styling for a single cell.
+
+    Routes the calculation to the specific resolution function matching
+    the current render mode.
+
+    Args:
+        x (int): The X coordinate.
+        y (int): The Y coordinate.
+        state (CellState): The cell's state enum.
+        palette (MazePalette): The color palette used for rendering.
+        cells (np.ndarray): The 2D array of all cells.
+        render_mode (TerminalRenderMode): The active visual rendering mode.
+
+    Returns:
+        str: The stylized string representation of the cell.
+    """
     if render_mode in BOX_MODE_PAIRS:
         return _resolve_box_mode(x, y, state, palette, cells, render_mode)
     if render_mode == TerminalRenderMode.ASCII:
@@ -595,6 +740,13 @@ def resolve_cell_content(
 
 
 def draw_menu(y_offset: int, ctrl: AppController) -> None:
+    """
+    Renders the interactive menu and HUD below the main maze view.
+
+    Args:
+        y_offset (int): The starting vertical line index for the menu.
+        ctrl (AppController): The main application controller providing state logic.
+    """
     is_narrow = (ctrl.width < 12)
     line_controls = ctrl.get_hud_controls_text(is_narrow=is_narrow)
 
@@ -648,7 +800,15 @@ def draw_menu(y_offset: int, ctrl: AppController) -> None:
 
 def get_terminal_dimensions(fallback: tuple[int, int] = (80, 24)) \
         -> tuple[int, int]:
-    """Gets actual console size"""
+    """
+    Retrieves the actual dimensions (columns, lines) of the terminal.
+
+    Args:
+        fallback (tuple[int, int], optional): Fallback size if OS call fails.
+
+    Returns:
+        tuple[int, int]: A tuple representing (columns, lines).
+    """
     try:
         size = os.get_terminal_size()
         return size.columns, size.lines

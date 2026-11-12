@@ -1,4 +1,10 @@
-"""keyboard codes config for MiniLibX dedicated for Linux platform (X11)"""
+"""Keyboard code definitions and mapping for MiniLibX on Linux (X11).
+
+This module defines the raw X11 keycodes for numbers, letters, arrows,
+and special keys, as well as X11 event masks. It also provides the `KEY_MAP`
+dictionary which translates these raw hardware codes into internal application
+action strings used by the Engine controller.
+"""
 
 KEY_0 = 48
 KEY_1 = 49
