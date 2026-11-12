@@ -18,24 +18,25 @@
 ## Instructions
 
 ### Building the Wheel Package (`.whl`)
-From the project root directory, build the standalone distribution package using `uv` or standard `build`:
+From the project root directory, build the standalone distribution package:
 
 ```bash
-uv build
-# or via Makefile:
 make build
+# or directly with uv:
+uv build --wheel --out-dir .
 ```
 
-This produces a `.whl` archive (e.g., `dist/mazegen-0.1.0-py3-none-any.whl`).
+This produces `mazegen-0.1.0-py3-none-any.whl` in the root directory.
 
 ### Installation
-Install the built wheel package into any Python 3.10+ environment:
+Install the built wheel package into any Python 3.14+ environment:
 
 ```bash
-pip install dist/mazegen-0.1.0-py3-none-any.whl
+pip install mazegen-0.1.0-py3-none-any.whl
 # or using uv:
-uv pip install dist/mazegen-0.1.0-py3-none-any.whl
+uv pip install mazegen-0.1.0-py3-none-any.whl
 ```
+
 
 ---
 
@@ -126,8 +127,8 @@ print("Locked '42' cells:", maze.locked_cells)
 ## Resources
 
 ### Classic References
-* [Jamis Buck — Maze Generation Algorithms (The Buckblog)](https://jamisbuck.org) — Detailed visual explanations of Kruskal's, Prim's, Recursive Backtracker, and Wilson's algorithms.
-* [Wikipedia - Maze generation algorithm](https://en.wikipedia.org/wiki/Maze_generation_algorithm) — descriptions of different maze generators.
+* [Jamis Buck — Maze Generation Algorithms (The Buckblog)](https://weblog.jamisbuck.org/2011/2/7/maze-generation-algorithm-recap) — Detailed visual explanations of Kruskal's, Prim's, Recursive Backtracker, and Wilson's algorithms.
+* [Wikipedia - Maze generation algorithm](https://en.wikipedia.org/wiki/Maze_generation_algorithm) — Descriptions of different maze generators.
 
 ### AI Usage Disclosure
 AI tools were used during the development of `mazegen` for the following specific tasks:
