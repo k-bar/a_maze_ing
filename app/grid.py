@@ -38,7 +38,8 @@ class RenderGrid:
             m_entry: tuple[int, int],
             m_exit: tuple[int, int]
     ) -> None:
-        """Initializes the render grid with specified dimensions and key points.
+        """Initializes the render grid with specified dimensions and key
+        points.
 
         Args:
             width: Logical width of the maze (in paths).

@@ -37,7 +37,8 @@ class ArrowMode(Enum):
 
 
 class AppController:
-    """Main controller managing maze generation, solving, and application state.
+    """Main controller managing maze generation, solving, and application
+    state.
 
     Attributes:
         config (Config): The application configuration.
@@ -556,7 +557,8 @@ class AppController:
             self.grid.register_change(x, y, CellState.FLOOR)
 
     def maze_resize(self) -> None:
-        """Notifies the backend to update geometry after logical size change."""
+        """Notifies the backend to update geometry after logical size
+        change."""
         print(
             f"[ENGINE] Resize action executed. New logical size: "
             f"{self.width}x{self.height}", file=sys.stderr)

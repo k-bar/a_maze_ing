@@ -159,8 +159,10 @@ class MlxBackend(GraphicBackend):
         Draws a rectangular block (wall or cell) based on grid coordinates.
 
         Args:
-            gx: Grid X coordinate. Even values indicate walls, odd indicate cells.
-            gy: Grid Y coordinate. Even values indicate walls, odd indicate cells.
+            gx: Grid X coordinate. Even values indicate walls, odd indicate
+            cells.
+            gy: Grid Y coordinate. Even values indicate walls, odd indicate
+            cells.
             color: RGB tuple for the block color.
         """
         if self.image is None:
@@ -197,7 +199,8 @@ class MlxBackend(GraphicBackend):
     def _draw_path_block(self, gx: int, gy: int,
                          color: tuple[int, int, int]) -> None:
         """
-        Draws a partial-width path connecting cells (used for solutions/generation).
+        Draws a partial-width path connecting cells
+        (used for solutions/generation).
 
         Args:
             gx: Grid X coordinate.
@@ -266,7 +269,8 @@ class MlxBackend(GraphicBackend):
 
     def render_frame(self, grid: RenderGrid) -> None:
         """
-        Updates the MLX image buffer with the current grid state and renders the HUD.
+        Updates the MLX image buffer with the current grid state and renders
+        the HUD.
 
         Args:
             grid: RenderGrid containing the current logical state of the maze.
@@ -614,9 +618,11 @@ def calculate_mlx_geometry(block_min_size: int = 1, maze_w: int = 10,
                            win_w: int = 1280, win_h: int = 720,
                            hud_h: int = 60) -> tuple[int, int, int, int]:
     """
-    Calculates the optimum dimensions and offsets to center a maze inside a window.
+    Calculates the optimum dimensions and offsets to center a maze inside
+    a window.
 
-    Determines the largest possible integer sizes for cells and walls so the maze
+    Determines the largest possible integer sizes for cells and walls so the
+    maze
     uses as much available window space as possible without overflowing.
 
     Args:

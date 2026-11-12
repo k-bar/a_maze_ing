@@ -47,7 +47,8 @@ class BoxTileSet:
     Attributes:
         chars (dict[tuple[bool, bool, bool, bool], str]): Mapping of neighbor
             states (up, down, left, right) to the corresponding box character.
-        horiz_fill (str): The character used to fill horizontal spaces between nodes.
+        horiz_fill (str): The character used to fill horizontal spaces between
+        nodes.
     """
     chars: dict[tuple[bool, bool, bool, bool], str]
     horiz_fill: str
@@ -462,7 +463,8 @@ def input_thread_worker() -> None:
 
 def supports_truecolor() -> bool:
     """
-    Checks environment variables to determine if the terminal supports 24-bit TrueColor.
+    Checks environment variables to determine if the terminal supports 24-bit
+    TrueColor.
 
     Returns:
         bool: True if TrueColor is supported, False otherwise.
@@ -485,7 +487,8 @@ def rgb_to_ansi(r: int, g: int, b: int, is_bg: bool = False) -> str:
         r (int): Red channel (0-255).
         g (int): Green channel (0-255).
         b (int): Blue channel (0-255).
-        is_bg (bool, optional): If True, returns a background color code. Defaults to False.
+        is_bg (bool, optional): If True, returns a background color code.
+        Defaults to False.
 
     Returns:
         str: The generated ANSI color escape sequence.
@@ -531,9 +534,11 @@ def _get_connected_char(
         has_utf8: bool,
 ) -> str:
     """
-    Determines the appropriate box-drawing character based on neighbor cell states.
+    Determines the appropriate box-drawing character based on neighbor cell
+    states.
 
-    Checks adjacent cells (up, down, left, right) and maps the connection pattern
+    Checks adjacent cells (up, down, left, right) and maps the connection
+    pattern
     to a specific box-drawing character.
 
     Args:
@@ -745,7 +750,8 @@ def draw_menu(y_offset: int, ctrl: AppController) -> None:
 
     Args:
         y_offset (int): The starting vertical line index for the menu.
-        ctrl (AppController): The main application controller providing state logic.
+        ctrl (AppController): The main application controller providing state
+        logic.
     """
     is_narrow = (ctrl.width < 12)
     line_controls = ctrl.get_hud_controls_text(is_narrow=is_narrow)

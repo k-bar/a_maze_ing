@@ -16,7 +16,16 @@ class MockBackend(GraphicBackend):
 
 @pytest.fixture
 def idle_controller() -> AppController:
-    cfg = Config(WIDTH=10, HEIGHT=10, DISPLAY_MODE="MOCK")
+    cfg = Config(
+        WIDTH=10,
+        HEIGHT=10,
+        ALGORITHM="KRUSKAL",
+        DISPLAY_MODE="MOCK",
+        ENTRY=(0, 0),
+        EXIT=(9, 9),
+        PERFECT=True,
+        OUTPUT_FILE="maze.txt"
+    )
     ctrl = AppController(cfg, MockBackend())
     ctrl.max_width = 100
     ctrl.max_height = 100

@@ -15,7 +15,16 @@ class MockBackend(GraphicBackend):
 
 
 def test_resize_forces_instant_generating_state() -> None:
-    cfg = Config(WIDTH=10, HEIGHT=10, DISPLAY_MODE="MOCK")
+    cfg = Config(
+        WIDTH=10,
+        HEIGHT=10,
+        ALGORITHM="KRUSKAL",
+        DISPLAY_MODE="MOCK",
+        ENTRY=(0, 0),
+        EXIT=(9, 9),
+        PERFECT=True,
+        OUTPUT_FILE="maze.txt"
+    )
     ctrl = AppController(cfg, MockBackend())
 
     ctrl.state = EngineState.IDLE

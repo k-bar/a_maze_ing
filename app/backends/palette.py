@@ -101,6 +101,8 @@ class MazePalette:
 # Predefined standard palettes for the maze renderer.
 # Index 0: Classic high-contrast dark theme.
 # Index 1: Light theme with distinct structural boundaries.
+
+
 PRESETS = [
     MazePalette((128, 81, 37), (30, 30, 30), (0, 255, 0), (255, 0, 0),
                 (0, 255, 255), (222, 217, 213)),
