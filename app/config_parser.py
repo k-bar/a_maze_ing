@@ -16,21 +16,23 @@ except ImportError:
 
 
 class Config(BaseModel):
-    """
-    Pydantic model representing the configuration for the maze generator.
+    """Pydantic model representing the configuration for the maze generator.
 
     Attributes:
-        WIDTH (int): The width of the maze. Mandatory.
-        HEIGHT (int): The height of the maze. Mandatory.
-        ENTRY (tuple): Starting coordinates (x, y). Default is (0, 0).
-        EXIT (tuple): Target coordinates (x, y). Default is (0, 0).
-        OUTPUT_FILE (str | None): File path to save the output.
+        WIDTH (int): Maze width.
+        HEIGHT (int): Maze height.
+        ENTRY (tuple): Starting coordinates (x, y).
+        EXIT (tuple): Target coordinates (x, y).
+        OUTPUT_FILE (str): File path to save the output.
         PERFECT (bool): If True, generates a perfect maze without loops.
-        SEED (int): Random seed used for generation reproducible results.
-        ALGORITHM (str): The maze generation algorithm to use.
+        SEED (int | None): Random seed for reproducible results.
+        SOLVER (str): Maze solving algorithm (e.g., BFS, DFS).
+        ALGORITHM (str): Maze generation algorithm (e.g., KRUSKAL).
         ANIMATION (bool): If True, enables solving/generation animation.
         COLOR (str): Primary color for rendering.
-        DISPLAY_MODE (str): Output mode (e.g., MLX or Terminal).
+        DISPLAY_MODE (str): Output mode (e.g., MLX, TERMINAL).
+        WINDOW_WIDTH (int | None): MLX window width.
+        WINDOW_HEIGHT (int | None): MLX window height.
     """
     WIDTH: int = Field(ge=4, le=455)
     HEIGHT: int = Field(ge=4, le=863)
@@ -56,6 +58,14 @@ class Config(BaseModel):
     @field_validator("SEED", mode="before")
     @classmethod
     def empty_str_to_none(cls, value: str) -> str | None:
+        """Converts an empty string to None.
+
+        Args:
+            value: The input string.
+
+        Returns:
+            The original string or None if it was empty.
+        """
         if value == "":
             return None
         return value
@@ -63,15 +73,28 @@ class Config(BaseModel):
     @field_validator("DISPLAY_MODE", "ALGORITHM", "SOLVER", mode="before")
     @classmethod
     def force_uppercase_mode(cls, value: Any) -> Any:
+        """Forces the input value to uppercase if it is a string.
+
+        Args:
+            value: The input value.
+
+        Returns:
+            The uppercase string or the original value if it's not a string.
+        """
         if isinstance(value, str):
             return value.strip().upper()
         return value
 
     @model_validator(mode='after')
     def validate_config(self) -> 'Config':
-        """
-        Ensures that the ENTRY and EXIT coordinates are within the
-        boundaries defined by WIDTH and HEIGHT.
+        """Validates maze boundaries, entry/exit points, and display limits.
+
+        Returns:
+            The validated Config instance.
+
+        Raises:
+            ValueError: If coordinates are out of bounds, overlapping, or
+                display limits are exceeded.
         """
 
         if (self.WIDTH <= 3 or self.HEIGHT <= 3) and not self.PERFECT:
@@ -110,10 +133,10 @@ class Config(BaseModel):
             max_w = (cols - 1) // 4 - 1
             max_h = (lines - 1 - 7) // 2
 
-            if max_w < 3 or max_h < 3:
+            if max_w < 4 or max_h < 4:
                 raise ValueError(
                     f"Terminal window ({cols}x{lines}) is too small! "
-                    f"Minimum required size is 17x15 characters."
+                    f"Minimum required size is 21x17 characters."
                 )
 
             if self.WIDTH > max_w or self.HEIGHT > max_h:
@@ -153,6 +176,17 @@ class Config(BaseModel):
     @field_validator("OUTPUT_FILE")
     @classmethod
     def validate_output_file(cls, value: str) -> str:
+        """Validates the output file path and permissions.
+
+        Args:
+            value: The target file path.
+
+        Returns:
+            The cleaned file path string.
+
+        Raises:
+            ValueError: If the path is invalid, is a directory, or lacks write permissions.
+        """
         clean_path = value.strip()
         if not clean_path:
             raise ValueError("OUTPUT_FILE cannot be empty or whitespace only.")
@@ -184,15 +218,16 @@ class Config(BaseModel):
 
 
 def read_config(name: str) -> Config:
-    """
-    Opens and reads a configuration file.
+    """Reads and parses a configuration file.
 
     Args:
         name: The path to the configuration file.
 
     Returns:
-        Config: A validated Config instance, or exits the program
-                       if a file reading error occurs.
+        A validated Config instance.
+
+    Raises:
+        ValueError: If the file cannot be opened or read.
     """
     try:
         with open(name, "r", encoding='utf-8') as f:
@@ -203,20 +238,16 @@ def read_config(name: str) -> Config:
 
 
 def read_and_parse(file: typing.IO[str]) -> Config:
-    """
-    Parses the configuration content and converts it into a Config object.
-
-    Expects lines in the format 'KEY = VALUE'. It ignores empty lines and
-    comments starting with '#'. It specifically intercepts 'ENTRY' and 'EXIT'
-    keys to cast their string values (e.g., "0,0") into tuples before passing
-    them to the Pydantic model for validation.
+    """Parses configuration file content into a Config object.
 
     Args:
-        file: An iterable text I/O stream containing the raw config data.
+        file: An iterable text I/O stream with 'KEY=VALUE' lines.
 
     Returns:
-        Config: A fully instantiated Configuration object, or exits
-                       the program upon validation failure or empty data.
+        A validated Config instance.
+
+    Raises:
+        ValueError: If validation fails or data is invalid/empty.
     """
     config_data: dict[str, Any] = {}
 
@@ -267,6 +298,11 @@ def read_and_parse(file: typing.IO[str]) -> Config:
 
 
 def _get_terminal_bounds() -> tuple[int, int]:
+    """Retrieves the current terminal window dimensions.
+
+    Returns:
+        A tuple containing (columns, lines).
+    """
     import os
     import sys
     for fd in (sys.stderr, sys.stdin, sys.stdout):
@@ -285,6 +321,11 @@ def _get_terminal_bounds() -> tuple[int, int]:
 
 
 def _get_screen_resolution_fallback() -> tuple[int, int]:
+    """Retrieves screen resolution using xrandr, with a fallback.
+
+    Returns:
+        A tuple containing (width, height) of the screen.
+    """
     try:
         output = subprocess.check_output("xrandr 2>/dev/null |"
                                          " grep 'current'",

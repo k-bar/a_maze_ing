@@ -2,7 +2,15 @@ from mazegen.maze_model import Maze, Wall
 
 
 def path_to_directions(maze: Maze) -> str:
-    """Convert List od Tuples to NEWS ;)"""
+    """Converts a sequence of path coordinates into cardinal directions.
+
+    Args:
+        maze: The maze instance containing the solved path.
+
+    Returns:
+        A string of directional characters ('N', 'E', 'S', 'W') representing
+        the movement sequence, or an empty string if the path is too short.
+    """
     if len(maze.path) < 2:
         return ""
     directions = {(0, -1): "N", (1, 0): "E", (0, 1): "S", (-1, 0): "W"}
