@@ -74,6 +74,12 @@ class Config(BaseModel):
         boundaries defined by WIDTH and HEIGHT.
         """
 
+        if (self.WIDTH <= 3 or self.HEIGHT <= 3) and not self.PERFECT:
+            raise ValueError(
+                f"Maze size {self.WIDTH}x{self.HEIGHT} is too small for "
+                f"imperfect mode (minimum 4x4 required)."
+            )
+
         def entry_exit(point: tuple[int, int], height: int,
                        width: int) -> bool:
             x, y = point

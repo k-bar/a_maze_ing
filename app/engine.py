@@ -531,7 +531,7 @@ class AppController:
 
     def validate_and_apply_dimensions(self, target_width: int,
                                       target_height: int) -> None:
-        min_size = 3
+        min_size = 4
         max_w = self.max_width
         max_h = self.max_height
 
