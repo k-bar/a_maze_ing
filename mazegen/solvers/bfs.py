@@ -6,9 +6,33 @@ from .base_solver import MazeSolver
 
 
 class BFSSolver(MazeSolver):
+    """A maze solver implementing the Breadth-First Search (BFS) algorithm.
+
+    This solver explores the maze systematically level by level, ensuring that
+    the shortest path from the entry to the exit is found in an unweighted
+    grid. It leverages 1D coordinate indexing and integer bitmasks to
+    efficiently track locked cells and navigate boundaries.
+    """
 
     def _solve_loop(self) -> Generator[tuple[int, int, Direction], None, None]:
-        """Find shortest path from ENTRY to EXIT using Breadth-First Search."""
+        """Execute the BFS pathfinding loop.
+
+        Traverses the maze starting from the entry point, maintaining a queue
+        of cells to visit. It yields the state of each valid step taken during
+        the search, which can be used for step-by-step visualization or
+        debugging. Once the exit is reached, it triggers the internal path
+        reconstruction.
+
+        Yields:
+            tuple[int, int, Direction]: A tuple containing the newly visited
+            cell's x-coordinate, y-coordinate, and the direction moved to
+            reach it.
+
+        Returns:
+            None: The generator completes either when the exit cell is reached
+            and the path is reconstructed, or when all reachable cells are
+            exhausted.
+        """
 
         width = self.maze.width
         locked_mask = self.maze.locked_cells_mask

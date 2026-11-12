@@ -7,12 +7,20 @@ from ..utils import Direction
 
 
 class KruskalGenerator(BaseGenerator):
+    """
+    Generator that uses a randomized Kruskal's algorithm to create a maze.
+
+    It utilizes a disjoint-set (Union-Find) data structure to find the
+    Minimum Spanning Tree (MST) of the grid, ensuring a perfect maze
+    without cycles (loops) is generated.
+    """
 
     def __init__(self, maze: Maze) -> None:
         """
-        Disjoint-set (Union-Find) data structure.
-        Used in graph theory to find the Minimum Spanning Tree (MST)
-        and prevent the formation of cycles (loops).
+        Initializes the Kruskal generator.
+
+        Args:
+            maze (Maze): The maze instance to be generated.
         """
         super().__init__(maze)
 
@@ -24,7 +32,13 @@ class KruskalGenerator(BaseGenerator):
     def find(self, node: int) -> int:
         """
         Iteratively finds the root node ("boss") for a given cell.
-        Flattens the tree along the way (path compression).
+        Flattens the tree along the way (path compression) for optimization.
+
+        Args:
+            node (int): The index of the cell to find the root for.
+
+        Returns:
+            int: The index of the root node.
         """
         root = node
         while self.parent[root] != root:
@@ -43,8 +57,8 @@ class KruskalGenerator(BaseGenerator):
         the connection based on the depth (rank) of the trees.
 
         Args:
-            node1: The first cell.
-            node2: The second cell.
+            node1 (int): The index of the first cell.
+            node2 (int): The index of the second cell.
 
         Returns:
             bool: True if the cells belonged to different sets and the merge
@@ -68,6 +82,16 @@ class KruskalGenerator(BaseGenerator):
         return True
 
     def _setup_shared_state(self) -> list[tuple[int, int]]:
+        """
+        Initializes the disjoint-set arrays and generates a shuffled list
+        of all valid edges (potential wall removals) in the maze.
+
+        Takes into account locked cells (cells that cannot be modified).
+
+        Returns:
+            list[tuple[int, int]]: A randomly shuffled list of valid edges,
+                                   represented as tuples of cell indices.
+        """
 
         width = self.maze.width
         height = self.maze.height
@@ -101,7 +125,13 @@ class KruskalGenerator(BaseGenerator):
     def _algorithm_loop(self) \
             -> Generator[tuple[int, int, Direction], None, None]:
         """
-        Generates the maze using a randomized Kruskal's algorithm.
+        Generates the maze step-by-step using a randomized Kruskal's algorithm.
+
+        Yields:
+            tuple[int, int, Direction]: A tuple containing the indices of the
+                                        two connected cells and the direction
+                                        of the connection. Useful for
+                                        visualization.
         """
 
         edges = self._setup_shared_state()
@@ -112,6 +142,12 @@ class KruskalGenerator(BaseGenerator):
                 yield self.maze.get_coords_and_dir(cell1, cell2)
 
     def generate_all(self) -> None:
+        """
+        Generates the entire maze at once without yielding intermediate steps.
+
+        This is a faster alternative to `_algorithm_loop` when visualization
+        or step-by-step processing is not required.
+        """
         edges = self._setup_shared_state()
 
         for cell1, cell2 in edges:

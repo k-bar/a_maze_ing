@@ -1,3 +1,13 @@
+"""
+Entry point for the a-maze-ing application.
+
+This script acts as the main execution file for the maze generator. It
+configures
+top-level error logging, parses the configuration file passed via command-line
+arguments, initializes the required display backend, and starts the application
+engine loop. It also ensures the terminal's auto-repeat feature is restored
+on exit.
+"""
 import logging
 import subprocess
 import sys
@@ -14,7 +24,15 @@ logging.basicConfig(
 
 
 def main() -> None:
-    """Executes the main routine of the maze generator."""
+    """Executes the main routine of the maze generator.
+
+    Reads the configuration file path from the command-line arguments,
+    initializes the application components, and starts the main application
+    loop.
+
+    Raises:
+        ValueError: If the parsed configuration file is empty or invalid.
+    """
 
     print("Hello from a-maze-ing!")
 

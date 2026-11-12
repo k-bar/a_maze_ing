@@ -6,8 +6,30 @@ from .base_solver import MazeSolver
 
 
 class AStarSolver(MazeSolver):
+    """
+    A maze solver that implements the A* (A-Star) search algorithm.
+
+    This solver uses the Manhattan distance as its heuristic function to
+    efficiently find the shortest path from the maze's entry to its exit.
+    It leverages bitwise operations for fast collision detection against maze
+    walls and locked cells.
+    """
 
     def _solve_loop(self) -> Generator[tuple[int, int, Direction], None, None]:
+        """
+        Executes the main loop of the A* algorithm to solve the maze.
+
+        The method explores the maze using a priority queue to evaluate the
+        most promising paths first, based on the cost to reach the current
+        cell (g-score) plus the estimated heuristic cost to the exit (h-score).
+        It yields each explored step to allow for real-time tracking or
+        visualization of the exploration process.
+
+        Yields:
+            tuple[int, int, Direction]: A tuple containing the x-coordinate,
+            y-coordinate, and the direction taken to reach the newly explored
+            cell.
+        """
 
         width = self.maze.width
         locked_mask = self.maze.locked_cells_mask
