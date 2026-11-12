@@ -271,6 +271,7 @@ class MlxBackend(GraphicBackend):
                                 f"{ctrl.is_entering_seed}_"
                                 f"{ctrl.seed_input_buffer}_"
                                 f"{ctrl.algorithm_name}_"
+                                f"{ctrl.config.PERFECT}"
                                 f"{ctrl.solver_name}_"
                                 f"{ctrl.arrow_mode.name}_"
                                 f"{ctrl.width}_{ctrl.height}_"
@@ -308,32 +309,47 @@ class MlxBackend(GraphicBackend):
             color_seed = (255, 85, 85, 255)  # Red
             color_edit = (255, 204, 0, 255)  # Gold
 
-            for i, block in enumerate(hud_blocks):
-                if i >= len(x_positions):
-                    break
+            rendered_items = []
+            total_text_width = 0
 
+            for block in hud_blocks:
                 color = (
                     color_seed if block["is_seed"] else color_edit) \
                     if block["is_highlighted"] else color_default
 
                 full_text = f"{block['label']}: {block['value']}"
-                draw.text((x_positions[i], 10), full_text, fill=color,
+                text_w = int(draw.textlength(full_text, font=font))
+
+                rendered_items.append((full_text, color, text_w))
+                total_text_width += text_w
+
+            margin_x = 20
+            available_width = self.fixed_win_width - (2 * margin_x)
+            num_blocks = len(rendered_items)
+
+            if num_blocks > 1:
+                gap = max(8, (available_width - total_text_width) / (
+                        num_blocks - 1))
+            else:
+                gap = 0
+
+            current_x = float(margin_x)
+            for full_text, color, text_w in rendered_items:
+                draw.text((int(current_x), 10), full_text, fill=color,
                           font=font)
+                current_x += text_w + gap
 
             controls_text = ctrl.get_hud_controls_text(is_narrow=False)
-            c_color = color_seed \
-                if ctrl.is_entering_seed else color_default
+            c_color = color_seed if ctrl.is_entering_seed else color_default
             draw.text((20, 32), controls_text, fill=c_color, font=font)
 
             np_img = np.array(pil_img)
-
             bgra_img = np_img.copy()
             bgra_img[:, :, 0] = np_img[:, :, 2]  # B <- R
             bgra_img[:, :, 2] = np_img[:, :, 0]  # R <- B
 
             hud_top = self.fixed_win_height - self.hud_height
             assert self.hud_image is not None
-            self.hud_image.pixels[hud_top:, :] = [0, 0, 0, 255]
             self.hud_image.pixels[:, :] = bgra_img
             self.mlx.mlx_put_image_to_window(self.mlx_ptr, self.win_ptr,
                                              self.hud_image.img_ptr, 0,
