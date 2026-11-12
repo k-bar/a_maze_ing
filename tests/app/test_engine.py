@@ -10,8 +10,8 @@ from app.grid import CellState
 @pytest.fixture
 def default_config() -> Config:
     return Config(
-        WIDTH=3,
-        HEIGHT=3,
+        WIDTH=4,
+        HEIGHT=4,
         ENTRY=(0, 0),
         EXIT=(2, 2),
         PERFECT=True,
@@ -25,8 +25,8 @@ def test_app_controller_should_initialize_correctly(
         default_config: Config) -> None:
     mock_backend = MagicMock()
     controller = AppController(default_config, backend=mock_backend)
-    assert controller.width == 3
-    assert controller.height == 3
+    assert controller.width == 4
+    assert controller.height == 4
     assert controller.algorithm_name == "KRUSKAL"
 
 
@@ -40,7 +40,7 @@ def test_controller_start_should_register_with_backend(
 
     # tests if method were called on mock with proper arguments
     controller.start()
-    mock_backend.init_window.assert_called_once_with(3, 3, "A-Maze-ing")
+    mock_backend.init_window.assert_called_once_with(4, 4, "A-Maze-ing")
     mock_backend.start_loop.assert_called_once_with(controller=controller)
 
 
