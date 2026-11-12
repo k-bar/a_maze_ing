@@ -45,7 +45,8 @@ Maps normalized mode names to initialization functions.
 
 def get_backend(display_mode: str) -> GraphicBackend:
     """
-    Returns the appropriate backend instance based on the provided display mode.
+    Returns the appropriate backend instance based on the provided display
+    mode.
 
     The function normalizes the input string (strips whitespace and converts
     to uppercase) and matches it against the backend registry. If no match
@@ -53,7 +54,8 @@ def get_backend(display_mode: str) -> GraphicBackend:
     to the default terminal backend.
 
     Args:
-        display_mode (str): The name of the display mode (e.g., 'terminal', 'MLX').
+        display_mode (str): The name of the display mode (e.g., 'terminal',
+        'MLX').
 
     Returns:
         GraphicBackend: An initialized object of the selected graphic backend.

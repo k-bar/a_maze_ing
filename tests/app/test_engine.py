@@ -16,7 +16,8 @@ def default_config() -> Config:
         EXIT=(2, 2),
         PERFECT=True,
         ALGORITHM="KRUSKAL",
-        SEED=123
+        SEED=123,
+        OUTPUT_FILE="maze.txt",
     )
 
 

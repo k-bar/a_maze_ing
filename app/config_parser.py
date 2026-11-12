@@ -185,7 +185,8 @@ class Config(BaseModel):
             The cleaned file path string.
 
         Raises:
-            ValueError: If the path is invalid, is a directory, or lacks write permissions.
+            ValueError: If the path is invalid, is a directory, or lacks write
+            permissions.
         """
         clean_path = value.strip()
         if not clean_path:
