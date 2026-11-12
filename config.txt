@@ -2,10 +2,10 @@
 ### Configuration for maze generation ###
 #########################################
 
-WIDTH=15
-HEIGHT=12
-ENTRY=3,2
-EXIT=6,3
+WIDTH=445
+HEIGHT=445
+ENTRY=50,50
+EXIT=100,100
 OUTPUT_FILE=maze.txt
 PERFECT=True
 SEED=7

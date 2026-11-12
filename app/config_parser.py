@@ -34,8 +34,8 @@ class Config(BaseModel):
         WINDOW_WIDTH (int | None): MLX window width.
         WINDOW_HEIGHT (int | None): MLX window height.
     """
-    WIDTH: int = Field(ge=4, le=455)
-    HEIGHT: int = Field(ge=4, le=863)
+    WIDTH: int = Field(ge=4, le=863)
+    HEIGHT: int = Field(ge=4, le=455)
     ENTRY: tuple[int, int] = Field()
     EXIT: tuple[int, int] = Field()
     OUTPUT_FILE: str = Field(min_length=1, max_length=80)
