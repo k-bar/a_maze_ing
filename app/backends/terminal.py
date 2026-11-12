@@ -6,6 +6,8 @@ import threading
 import time
 import tty
 import termios
+from dataclasses import dataclass
+from enum import Enum, auto
 from queue import Empty, Queue
 from typing import Any, Optional
 
@@ -19,6 +21,93 @@ from app.engine import AppController
 input_queue: Queue[str] = Queue()
 
 
+class TerminalRenderMode(Enum):
+    BOX_THIN = auto()
+    BOX_HEAVY = auto()
+    BOX_DOUBLE = auto()
+    ASCII = auto()
+    BLOCKS = auto()
+
+
+@dataclass(frozen=True)
+class BoxTileSet:
+    chars: dict[tuple[bool, bool, bool, bool], str]
+    horiz_fill: str
+
+
+THIN_TILES = BoxTileSet(
+    horiz_fill="─",
+    chars={
+        (False, False, False, False): " ",
+        (True, True, False, False): "│",
+        (False, False, True, True): "─",
+        (False, True, False, True): "┌",
+        (False, True, True, False): "┐",
+        (True, False, False, True): "└",
+        (True, False, True, False): "┘",
+        (True, True, False, True): "├",
+        (True, True, True, False): "┤",
+        (False, True, True, True): "┬",
+        (True, False, True, True): "┴",
+        (True, True, True, True): "┼",
+        (True, False, False, False): "│",
+        (False, True, False, False): "│",
+        (False, False, True, False): "─",
+        (False, False, False, True): "─",
+    },
+)
+
+HEAVY_TILES = BoxTileSet(
+    horiz_fill="━",
+    chars={
+        (False, False, False, False): " ",
+        (True, True, False, False): "┃",
+        (False, False, True, True): "━",
+        (False, True, False, True): "┏",
+        (False, True, True, False): "┓",
+        (True, False, False, True): "┗",
+        (True, False, True, False): "┛",
+        (True, True, False, True): "┣",
+        (True, True, True, False): "┫",
+        (False, True, True, True): "┳",
+        (True, False, True, True): "┻",
+        (True, True, True, True): "╋",
+        (True, False, False, False): "┃",
+        (False, True, False, False): "┃",
+        (False, False, True, False): "━",
+        (False, False, False, True): "━",
+    },
+)
+
+DOUBLE_TILES = BoxTileSet(
+    horiz_fill="═",
+    chars={
+        (False, False, False, False): "•",
+        (True, True, False, False): "║",
+        (False, False, True, True): "═",
+        (False, True, False, True): "╔",
+        (False, True, True, False): "╗",
+        (True, False, False, True): "╚",
+        (True, False, True, False): "╝",
+        (True, True, False, True): "╠",
+        (True, True, True, False): "╣",
+        (False, True, True, True): "╦",
+        (True, False, True, True): "╩",
+        (True, True, True, True): "╬",
+        (True, False, False, False): "║",
+        (False, True, False, False): "║",
+        (False, False, True, False): "═",
+        (False, False, False, True): "═",
+    },
+)
+
+BOX_MODE_PAIRS: dict[TerminalRenderMode, tuple[BoxTileSet, BoxTileSet]] = {
+    TerminalRenderMode.BOX_THIN: (THIN_TILES, DOUBLE_TILES),
+    TerminalRenderMode.BOX_HEAVY: (HEAVY_TILES, DOUBLE_TILES),
+    TerminalRenderMode.BOX_DOUBLE: (DOUBLE_TILES, HEAVY_TILES),
+}
+
+
 class TerminalBackend(GraphicBackend):
     def __init__(self) -> None:
         super().__init__()
@@ -27,6 +116,7 @@ class TerminalBackend(GraphicBackend):
         self.controller: AppController | None = None
         self.palette: MazePalette = PRESETS[0]
         self.preset_mode = 0
+        self.render_mode: TerminalRenderMode = TerminalRenderMode.BOX_HEAVY
 
     def init_window(self, width: int, height: int, title: str) -> None:
         pass
@@ -47,13 +137,29 @@ class TerminalBackend(GraphicBackend):
             assert self.controller is not None
             draw_menu(menu_y_position, self.controller)
 
-        chunks: list[str] = []
+        updates: dict[tuple[int, int], CellState] = {}
         while grid.changed:
             x, y, state = grid.changed.popleft()
-            content = resolve_cell_content(x, y, state, self.palette)
+            updates[(x, y)] = state
 
-            screen_x = (x // 2 * 4) + (1 if x % 2 != 0 else 0)
-            chunks.append(f"\033[{y + 1};{screen_x + 1}H{content}")
+        if self.render_mode in BOX_MODE_PAIRS and updates:
+            grid_h, grid_w = grid.cells.shape
+            extra_neighbors: dict[tuple[int, int], CellState] = {}
+            for (x, y) in updates:
+                for dx, dy in ((0, -1), (0, 1), (-1, 0), (1, 0)):
+                    nx, ny = x + dx, y + dy
+                    if (0 <= nx < grid_w and 0 <= ny < grid_h
+                            and (nx, ny) not in updates):
+                        extra_neighbors[(nx, ny)] = grid.cells[ny, nx]
+            updates.update(extra_neighbors)
+
+        chunks: list[str] = []
+        for (tx, ty), cell_st in updates.items():
+            content = resolve_cell_content(
+                tx, ty, cell_st, self.palette, grid.cells, self.render_mode
+            )
+            screen_x = (tx // 2 * 4) + (1 if tx % 2 != 0 else 0)
+            chunks.append(f"\033[{ty + 1};{screen_x + 1}H{content}")
 
         if chunks:
             _real_output.write("".join(chunks))
@@ -66,8 +172,13 @@ class TerminalBackend(GraphicBackend):
             self.palette = PRESETS[self.preset_mode]
         else:
             self.palette = MazePalette.generate_random_harmonized()
-        for (y, x), state in np.ndenumerate(controller.grid.cells):
-            controller.grid.register_change(x, y, state)
+        controller.grid.require_full_redraw = True
+
+    def cycle_render_mode(self, controller: AppController) -> None:
+        modes = list(TerminalRenderMode)
+        next_idx = (modes.index(self.render_mode) + 1) % len(modes)
+        self.render_mode = modes[next_idx]
+        controller.grid.require_full_redraw = True
 
     def start_loop(self, controller: "AppController") -> None:
         """Main loop with step by step animation"""
@@ -169,14 +280,14 @@ class TerminalBackend(GraphicBackend):
                             controller.handle_action("speed_up")
                         elif key_lowered == "-":
                             controller.handle_action("speed_down")
-
                         elif key_lowered == "c":
                             self.change_colors(controller)
+                        elif key_lowered == "t":
+                            self.cycle_render_mode(controller)
                         elif pressed_key in ["\x1b[4~", "\x1b[F", "\x1b[OF"]:
                             controller.handle_action("skip")
                         elif pressed_key == '\r' or pressed_key == '\n':
                             controller.handle_action("enter_action")
-                            # TODO render?
                         elif pressed_key == '\t':
                             controller.handle_action("toggle_arrow_mode")
                         elif pressed_key in ['\x1b[A', '\x1b[B', '\x1b[C',
@@ -273,57 +384,6 @@ def input_thread_worker() -> None:
             break
 
 
-# palette1: dict[str, str] = {
-#     "STYLE_RESET": "\033[0m",
-#     "STYLE_WALL": "\033[32m",  # green walls
-#     "STYLE_PATH": "\033[30m",  # black path
-#     "STYLE_ENTRY": "\033[34m",  # blue start
-#     "STYLE_EXIT": "\033[33m",  # yellow exit
-#     "STYLE_LOCK": "\033[31m"  # red lock
-# }
-#
-# palette2: dict[str, str] = {
-#     "STYLE_RESET": "\033[0m",
-#     "STYLE_WALL": "\033[30m",  # black walls
-#     "STYLE_PATH": "\033[32m",  # green path
-#     "STYLE_ENTRY": "\033[33m",  # yellow start
-#     "STYLE_EXIT": "\033[34m",  # blue exit
-#     "STYLE_LOCK": "\033[36m"  # lock
-# }
-#
-#
-# def _resolve_corner(pal: dict[str, str]) -> str:
-#     return f"{pal['STYLE_WALL']}+{pal['STYLE_RESET']}"
-#
-#
-# def _resolve_vertical_wall(state: CellState, pal: dict[str, str]) -> str:
-#     if state == CellState.WALL:
-#         return f"{pal['STYLE_WALL']}|{pal['STYLE_RESET']}"
-#     if state == CellState.PATH:
-#         return f"{pal['STYLE_PATH']}0{pal['STYLE_RESET']}"
-#     return " "
-#
-#
-# def _resolve_horizontal_wall(state: CellState, pal: dict[str, str]) -> str:
-#     if state == CellState.WALL:
-#         return f"{pal['STYLE_WALL']}---{pal['STYLE_RESET']}"
-#     if state == CellState.PATH:
-#         return f"{pal['STYLE_PATH']} 0 {pal['STYLE_RESET']}"
-#     return "   "
-#
-#
-# def _resolve_room(state: CellState, pal: dict[str, str]) -> str:
-#     if state == CellState.PATH:
-#         return f"{pal['STYLE_PATH']} 0 {pal['STYLE_RESET']}"
-#     if state == CellState.ENTRY:
-#         return f"{pal['STYLE_ENTRY']} S {pal['STYLE_RESET']}"
-#     if state == CellState.EXIT:
-#         return f"{pal['STYLE_EXIT']} E {pal['STYLE_RESET']}"
-#     if state == CellState.LOCK:
-#         return f"{pal['STYLE_LOCK']}[$]{pal['STYLE_RESET']}"
-#     return "   "
-
-
 def supports_truecolor() -> bool:
     if os.environ.get("COLORTERM") in ("truecolor", "24bit"):
         return True
@@ -355,107 +415,193 @@ def rgb_to_ansi(r: int, g: int, b: int, is_bg: bool = False) -> str:
 
 def supports_utf8() -> bool:
     try:
-        return sys.stdout.encoding.lower() in ("utf-8", "utf8", "cp65001")
+        return _real_output.encoding.lower() in ("utf-8", "utf8", "cp65001")
     except AttributeError:
         return False
 
 
-# def resolve_cell_content(x: int, y: int, state: CellState,
-#                          palette: MazePalette) -> str:
-#     is_x_even = (x % 2 == 0)
-#     is_y_even = (y % 2 == 0)
-#
-#     rgb = palette.get_rgb(state)
-#     reset = "\033[0m"
-#
-#     bg_ansi = rgb_to_ansi(rgb[0], rgb[1], rgb[2], is_bg=True)
-#     text_color = "\033[30m" if (rgb[0] + rgb[1] + rgb[
-#         2]) // 3 > 128 else "\033[37m"
-#     cell_style = f"{bg_ansi}{text_color}"
-#
-#     if is_x_even and is_y_even:
-#         # wall corners
-#         wall_rgb = palette.get_rgb(CellState.WALL)
-#         return f"{rgb_to_ansi(*wall_rgb, is_bg=True)}+{reset}"
-#
-#     if is_x_even and not is_y_even:
-#         # vertical walls / paths
-#         if state == CellState.WALL:
-#             return f"{cell_style}|{reset}"
-#         return f"{cell_style} {reset}"
-#
-#     if not is_x_even and is_y_even:
-#         # horizontal walls / paths
-#         if state == CellState.WALL:
-#             return f"{cell_style}---{reset}"
-#         return f"{cell_style}   {reset}"
-#
-#     # room
-#     char = "   "
-#     if state == CellState.ENTRY:
-#         char = " S "
-#     if state == CellState.EXIT:
-#         char = " E "
-#     if state == CellState.LOCK:
-#         char = "[$]"
-#     if state == CellState.PATH:
-#         char = " • "
-#
-#     return f"{cell_style}{char}{reset}"
+def _get_connected_char(
+        x: int,
+        y: int,
+        cells: np.ndarray[Any, Any],
+        target_states: tuple[CellState, ...],
+        tiles: BoxTileSet,
+        has_utf8: bool,
+) -> str:
+    height, width = cells.shape
+    up = (y > 0) and (cells[y - 1, x] in target_states)
+    down = (y < height - 1) and (cells[y + 1, x] in target_states)
+    left = (x > 0) and (cells[y, x - 1] in target_states)
+    right = (x < width - 1) and (cells[y, x + 1] in target_states)
+
+    neighbors = (up, down, left, right)
+    if not has_utf8:
+        return "+" if any(neighbors) else " "
+    return tiles.chars.get(neighbors, "┼")
 
 
-def resolve_cell_content(x: int, y: int, state: CellState,
-                         palette: MazePalette) -> str:
-    is_x_even = (x % 2 == 0)
-    is_y_even = (y % 2 == 0)
-
+def _resolve_box_mode(
+        x: int,
+        y: int,
+        state: CellState,
+        palette: MazePalette,
+        cells: np.ndarray[Any, Any],
+        render_mode: TerminalRenderMode,
+) -> str:
+    is_x_even = x % 2 == 0
     rgb = palette.get_rgb(state)
     reset = "\033[0m"
-
-    bg_ansi = rgb_to_ansi(*rgb, is_bg=True)
-
-    text_color = "\033[30m" if (rgb[0] + rgb[1] + rgb[
-        2]) // 3 > 128 else "\033[37m"
-    cell_style = f"{bg_ansi}{text_color}"
-
+    cell_style = "\033[97m" if sum(rgb) < 120 else rgb_to_ansi(*rgb,
+                                                               is_bg=False)
     has_utf8 = supports_utf8()
 
-    # wall corners and walls
+    wall_tiles, path_tiles = BOX_MODE_PAIRS[render_mode]
+
+    if state == CellState.WALL:
+        w_char = _get_connected_char(
+            x, y, cells, (CellState.WALL,), wall_tiles, has_utf8
+        )
+        if is_x_even:
+            return f"{cell_style}{w_char}{reset}"
+        fill = wall_tiles.horiz_fill if has_utf8 else "-"
+        char_mid = fill if w_char == wall_tiles.horiz_fill else w_char
+        return f"{cell_style}{fill}{char_mid}{fill}{reset}"
+
+    height, width = cells.shape
+    path_states = (CellState.PATH, CellState.ENTRY, CellState.EXIT)
+    left_path = (x > 0) and (cells[y, x - 1] in path_states)
+    right_path = (x < width - 1) and (cells[y, x + 1] in path_states)
+    p_fill = path_tiles.horiz_fill if has_utf8 else "-"
+
+    if state in (CellState.ENTRY, CellState.EXIT):
+        letter = "S" if state == CellState.ENTRY else "E"
+        bg_ansi = rgb_to_ansi(*rgb, is_bg=True)
+        fg_ansi = "\033[30m" if sum(rgb) // 3 > 128 else "\033[97m"
+        badge_style = f"{bg_ansi}{fg_ansi}\033[1m"
+
+        left_ch = f"{cell_style}{p_fill}{reset}" if left_path else " "
+        right_ch = f"{cell_style}{p_fill}{reset}" if right_path else " "
+        return f"{left_ch}{badge_style}{letter}{reset}{right_ch}"
+
+    if state == CellState.LOCK:
+        bg_ansi = rgb_to_ansi(*rgb, is_bg=True)
+        fg_ansi = "\033[30m" if sum(rgb) // 3 > 128 else "\033[97m"
+        fill_char = "░" if has_utf8 else "#"
+        return f"{bg_ansi}{fg_ansi}{fill_char * 3}{reset}"
+
+    if state == CellState.PATH:
+        if not has_utf8:
+            return f"{cell_style}o{reset}" \
+                if is_x_even else f"{cell_style} o {reset}"
+        p_char = _get_connected_char(
+            x, y, cells, path_states, path_tiles, has_utf8
+        )
+        if is_x_even:
+            return f"{cell_style}{p_char}{reset}"
+        left_ch = p_fill if left_path else " "
+        right_ch = p_fill if right_path else " "
+        return f"{cell_style}{left_ch}{p_char}{right_ch}{reset}"
+
+    return " " if is_x_even else "   "
+
+
+def _resolve_blocks_mode(
+        x: int, state: CellState, palette: MazePalette
+) -> str:
+    is_x_even = x % 2 == 0
+    rgb = palette.get_rgb(state)
+    reset = "\033[0m"
+    bg_ansi = rgb_to_ansi(*rgb, is_bg=True)
+    text_color = "\033[30m" if sum(rgb) // 3 > 128 else "\033[37m"
+    cell_style = f"{bg_ansi}{text_color}"
+
     if state == CellState.WALL:
         wall_rgb = palette.get_rgb(CellState.WALL)
         wall_bg = rgb_to_ansi(*wall_rgb, is_bg=True)
-        # width: vertical: 1, horizontal: 3
         return f"{wall_bg} {reset}" if is_x_even else f"{wall_bg}   {reset}"
 
-    # passages and rooms
     if is_x_even:
-        # vertical passage
         return f"{cell_style} {reset}"
 
-    if not is_y_even:
-        # room
-        if state == CellState.ENTRY:
-            return f"{cell_style} S {reset}"
-        if state == CellState.EXIT:
-            return f"{cell_style} E {reset}"
-        if state == CellState.LOCK:
-            return f"{cell_style}[$]{reset}"
-        if state == CellState.PATH:
-            # Fallback dot path
-            dot = " • " if has_utf8 else " o "
-            return f"{cell_style}{dot}{reset}"
-        return f"{cell_style}   {reset}"
-
-    # passage 3 width
+    if state == CellState.ENTRY:
+        return f"{cell_style} S {reset}"
+    if state == CellState.EXIT:
+        return f"{cell_style} E {reset}"
+    if state == CellState.LOCK:
+        return f"{cell_style}[$]{reset}"
     if state == CellState.PATH:
-        dot = " • " if has_utf8 else " o "
+        dot = " • " if supports_utf8() else " o "
         return f"{cell_style}{dot}{reset}"
     return f"{cell_style}   {reset}"
+
+
+def _resolve_ascii_mode(
+        x: int, y: int, state: CellState, palette: MazePalette
+) -> str:
+    is_x_even = x % 2 == 0
+    is_y_even = y % 2 == 0
+    rgb = palette.get_rgb(state)
+    reset = "\033[0m"
+    fg_style = "\033[97m" if sum(rgb) < 120 else rgb_to_ansi(*rgb, is_bg=False)
+    has_utf8 = supports_utf8()
+
+    if is_x_even and is_y_even:
+        wall_rgb = palette.get_rgb(CellState.WALL)
+        wall_fg = (
+            "\033[97m"
+            if sum(wall_rgb) < 120
+            else rgb_to_ansi(*wall_rgb, is_bg=False)
+        )
+        return f"{wall_fg}+{reset}"
+
+    if state == CellState.PATH:
+        dot_single = "•" if has_utf8 else "o"
+        if is_x_even:
+            return f"{fg_style}{dot_single}{reset}"
+        return f"{fg_style} {dot_single} {reset}"
+
+    if is_x_even and not is_y_even:
+        return f"{fg_style}|{reset}" if state == CellState.WALL else " "
+    if not is_x_even and is_y_even:
+        return f"{fg_style}---{reset}" if state == CellState.WALL else "   "
+
+    if state in (CellState.ENTRY, CellState.EXIT):
+        letter = "S" if state == CellState.ENTRY else "E"
+        bg_ansi = rgb_to_ansi(*rgb, is_bg=True)
+        fg_ansi = "\033[30m" if sum(rgb) // 3 > 128 else "\033[97m"
+        return f" {bg_ansi}{fg_ansi}\033[1m{letter}{reset} "
+
+    if state == CellState.LOCK:
+        bg_ansi = rgb_to_ansi(*rgb, is_bg=True)
+        fg_ansi = "\033[30m" if sum(rgb) // 3 > 128 else "\033[97m"
+        return f"{bg_ansi}{fg_ansi}[$]{reset}"
+
+    return "   "
+
+
+def resolve_cell_content(
+        x: int,
+        y: int,
+        state: CellState,
+        palette: MazePalette,
+        cells: np.ndarray[Any, Any],
+        render_mode: TerminalRenderMode,
+) -> str:
+    if render_mode in BOX_MODE_PAIRS:
+        return _resolve_box_mode(x, y, state, palette, cells, render_mode)
+    if render_mode == TerminalRenderMode.ASCII:
+        return _resolve_ascii_mode(x, y, state, palette)
+    return _resolve_blocks_mode(x, state, palette)
 
 
 def draw_menu(y_offset: int, ctrl: AppController) -> None:
     is_narrow = (ctrl.width < 12)
     line_controls = ctrl.get_hud_controls_text(is_narrow=is_narrow)
+
+    if not is_narrow and not ctrl.is_entering_seed:
+        line_controls = line_controls.replace(
+            "[C]olors", "[C]olors | [T]iles"
+        )
 
     hud_blocks = ctrl.get_unified_hud_blocks()
     formatted_parts = []
