@@ -2,8 +2,8 @@
 ### Configuration for maze generation ###
 #########################################
 
-WIDTH=30
-HEIGHT=30
+WIDTH=15
+HEIGHT=12
 ENTRY=3,2
 EXIT=6,3
 OUTPUT_FILE=maze.txt
@@ -17,7 +17,7 @@ ALGORITHM=PRIM
 SOLVER=ASTAR
 
 # Renderer modes: MLX, Terminal
-DISPLAY_MODE=MLX
+DISPLAY_MODE=Terminal
 
 # WINDOW_WIDTH=800
 # WINDOW_HEIGHT= 600
