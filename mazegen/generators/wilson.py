@@ -1,3 +1,11 @@
+"""
+Wilson's algorithm maze generator.
+
+This module provides an implementation of Wilson's algorithm for maze
+generation.
+Wilson's algorithm uses loop-erased random walks to guarantee a mathematically
+unbiased maze (a uniform spanning tree).
+"""
 import random
 from dataclasses import dataclass
 from typing import Generator
@@ -8,6 +16,16 @@ from ..utils import Direction
 
 @dataclass(slots=True)
 class WilsonContext:
+    """
+    A data class holding the shared state context for the Wilson generator.
+
+    Attributes:
+        untouched_cells: Bitmask representing cells not yet part of the maze.
+        max_cells: The total number of cells in the maze.
+        locked_mask: Bitmask of cells that are locked and cannot be carved.
+        directions_map: A tuple mapping direction bit indices to flat grid
+        offsets.
+    """
     untouched_cells: int
     max_cells: int
     locked_mask: int
@@ -15,8 +33,22 @@ class WilsonContext:
 
 
 class WilsonGenerator(BaseGenerator):
+    """
+    Maze generator utilizing Wilson's algorithm.
+
+    This generator builds the maze by performing random walks from an untouched
+    cell until it hits a cell already in the maze. If the path loops on itself,
+    the loop is erased. Once a valid path is found, it is carved into the maze.
+    """
 
     def _setup_shared_state(self) -> WilsonContext:
+        """
+        Initializes and retrieves the shared state required for the algorithm.
+
+        Returns:
+            WilsonContext: The data context containing initialization
+            parameters and bitmasks for the maze grid.
+        """
         untouched_cells, _, max_cells = self._initialize_generator()
         width = self.maze.width
         directions_map = tuple(
@@ -31,6 +63,17 @@ class WilsonGenerator(BaseGenerator):
 
     def _algorithm_loop(self) \
             -> Generator[tuple[int, int, Direction], None, None]:
+        """
+        Step-by-step generation loop of Wilson's algorithm for visualization.
+
+        This generator yields each wall manipulation step. It simulates the
+        random walk and visually backtracks (restores walls) when a loop is
+        detected, making it suitable for animating the loop-erasure process.
+
+        Yields:
+            tuple[int, int, Direction]: A tuple containing the coordinates
+            and the direction of the wall being modified.
+        """
 
         ctx = self._setup_shared_state()
         untouched_cells = ctx.untouched_cells
@@ -81,6 +124,14 @@ class WilsonGenerator(BaseGenerator):
                     yield self.maze.get_coords_and_dir(current_cell, next_cell)
 
     def generate_all(self) -> None:
+        """
+        Instant generation of the maze using Wilson's algorithm.
+
+        Unlike `_algorithm_loop`, this method performs the loop-erased random
+        walk purely in memory by tracking exit directions for each cell.
+        It only carves the walls once a valid path to the maze is finalized,
+        making it significantly faster.
+        """
 
         ctx = self._setup_shared_state()
         untouched_cells = ctx.untouched_cells

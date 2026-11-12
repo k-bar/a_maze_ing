@@ -24,6 +24,7 @@ class Maze:
         perfect: Boolean indicating if the maze should be perfect (no loops).
         m_entry: A tuple representing the (x, y) coordinates of the start.
         m_exit: A tuple representing the (x, y) coordinates of the exit.
+        seed: An optional integer used to seed the random number generator.
     """
 
     def __init__(self,
@@ -70,9 +71,20 @@ class Maze:
         }
 
     def get_walls(self) -> tuple[int, int, int, int]:
+        """Retrieves the integer bitmasks for all walls in the maze.
+
+        Returns:
+            A tuple containing the masks for (north, east, south, west) walls.
+        """
         return self.walls_n, self.walls_e, self.walls_s, self.walls_w
 
     def flip_both_walls(self, cell: int, next_cell: int) -> None:
+        """Toggles the shared wall between two adjacent cells to open a path.
+
+        Args:
+            cell: The 1D index of the starting cell.
+            next_cell: The 1D index of the adjacent target cell.
+        """
         _, _, direction = self.get_coords_and_dir(cell, next_cell)
         match direction:
             case Direction.NORTH:
@@ -90,6 +102,18 @@ class Maze:
 
     @staticmethod
     def pick_random_cell(mask: int, max_cells: int) -> int:
+        """Selects a random cell index that is present in the given bitmask.
+
+        Args:
+            mask: An integer bitmask where set bits represent valid cells.
+            max_cells: The upper limit for the random cell index selection.
+
+        Returns:
+            The 1D index of the randomly selected cell.
+
+        Raises:
+            ValueError: If the provided mask is empty (0).
+        """
         if mask == 0:
             raise ValueError("mask cannot be empty")
         while True:
@@ -98,10 +122,30 @@ class Maze:
                 return candidate
 
     def get_coords(self, index: int) -> tuple[int, int]:
+        """Converts a 1D cell index into 2D grid coordinates.
+
+        Args:
+            index: The 1D index of the cell.
+
+        Returns:
+            A tuple containing the (x, y) coordinates of the cell.
+        """
         return index % self.width, index // self.width
 
     def get_coords_and_dir(self, cell: int, next_cell: int) \
             -> tuple[int, int, Direction]:
+        """Calculates the coordinates of a cell and the direction to
+        an adjacent cell.
+
+        Args:
+            cell: The 1D index of the starting cell.
+            next_cell: The 1D index of the adjacent target cell.
+
+        Returns:
+            A tuple containing the starting cell's (x, y) coordinates and the
+            Direction enum representing the movement from the start to the
+            target.
+        """
         x, y = self.get_coords(cell)
         x_n, y_n = self.get_coords(next_cell)
         dx = x_n - x
@@ -111,6 +155,19 @@ class Maze:
 
     def is_move_possible(self, cell: int, picked_dir: Direction,
                          forbidden: int) -> bool:
+        """Determines if a move from a cell in a specific direction is valid.
+
+        A move is invalid if it crosses the maze boundary or enters
+        a forbidden cell.
+
+        Args:
+            cell: The 1D index of the current cell.
+            picked_dir: The Direction in which to move.
+            forbidden: A bitmask representing cells that cannot be entered.
+
+        Returns:
+            True if the move is valid, False otherwise.
+        """
         if self.border_masks[picked_dir.bit_index] & (1 << cell):
             return False
 

@@ -5,10 +5,30 @@ from ..utils import Direction
 
 
 class DFSSolver(MazeSolver):
+    """
+    A maze solver that implements the Depth-First Search (DFS) algorithm.
+
+    This solver explores paths by going as deep as possible along each branch
+    before backtracking. It utilizes a stack to manage the exploration frontier
+    and bitmasking for efficient boundary and wall collision detection.
+    """
 
     def _solve_loop(self) \
             -> Generator[tuple[int, int, Direction], None, None]:
-        """Find path from ENTRY to EXIT using Depth-First Search (DFS)."""
+        """
+        Execute the Depth-First Search (DFS) algorithm to find a path from
+        ENTRY to EXIT.
+
+        This generator yields the exploration steps one by one, which is
+        particularly useful for animating or visualizing the search process.
+        Once the exit is found,
+        it triggers the path reconstruction.
+
+        Yields:
+            tuple[int, int, Direction]: A tuple containing the current cell's
+            x-coordinate, y-coordinate, and the direction taken to enter this
+            cell.
+        """
 
         width = self.maze.width
         locked_mask = self.maze.locked_cells_mask

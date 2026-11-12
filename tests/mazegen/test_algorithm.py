@@ -13,6 +13,7 @@ def default_config() -> Config:
         ENTRY=(0, 0),
         EXIT=(2, 2),
         PERFECT=True,
+        OUTPUT_FILE="maze.txt",
         ALGORITHM="KRUSKAL",
         SOLVER="BFS",
         SEED=123
