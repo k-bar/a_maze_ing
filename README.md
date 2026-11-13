@@ -9,11 +9,17 @@ of the 42 curriculum by kdzwigal, kbartosz*
 1. **`mazegen`**: A standalone, zero-dependency Python library (distributed as a `.whl` package) capable of generating and solving 2D grid mazes both instantaneously and step-by-step.
 2. **`app` (`a_maze_ing.py`)**: An interactive application supporting dual rendering backends (a **MiniLibX / Vulkan** graphical window and a **TrueColor Unicode / ASCII Terminal** renderer), live parameter editing, custom seeds, interactive path exploration, and hexadecimal file export.
 
+### 42 Curriculum Constraints & Design Context
+This project was developed to strictly fulfill the **42 School A-Maze-ing** specification, which dictates specific architectural and technical constraints:
+* **Graphics Library (`MiniLibX`):** Graphical rendering is built on top of 42's educational **MiniLibX (MLX)** library rather than high-level game engines, requiring direct off-screen pixel buffer manipulation (`NumPy` RGBA arrays) and custom event-loop integration.
+* **Hexadecimal Wall Encoding & Embedded `"42"` Pattern:** Maze exports follow a strict row-major hexadecimal bitmask format (`N`, `E`, `S`, `W`), and grids of size `8x7` or larger automatically embed and lock a central `"42"` glyph.
+* **Standalone Packaging (`mazegen`):** Core generation and solving logic is decoupled from the UI into an installable `.whl` package with zero external dependencies.
+
 ## Visual Showcase
 
 | MiniLibX Graphical Backend (`DISPLAY_MODE=MLX`) | Terminal TrueColor & Unicode Backend (`DISPLAY_MODE=TERMINAL`) |
 | :---: | :---: |
-| ![MLX Demo](assets/demo_mlx.gif) | ![Terminal Demo](assets/demo_terminal.gif) |
+| ![MLX Demo](assets/mlx.gif) | ![Terminal Demo](assets/terminal.gif) |
 | *Hardware-accelerated pixel buffer with dynamic HSV palettes* | *5 switchable tile sets (`BOX_HEAVY`, `DOUBLE`, `THIN`, `ASCII`, `BLOCKS`)* |
 
 
@@ -298,13 +304,26 @@ Beyond standard static generation, **A-Maze-ing** acts as a real-time interactiv
 * **`kbartosz`**: Core architecture, Application engine (`AppController`), packaging(`pyproject.toml`), Prim/Backtracker/Wilson generators, pathfinding solvers (`ASTAR`), MiniLibX (`MLX`) backend integration, raw TTY input & alternate screen on Terminal Backend, TrueColor/Unicode, HUD/UX design and styles.
 
 ### Planning & Evolution
-1. **Phase 1 — Core Data Model & Algorithms:** Designed the 1D bitmask `Maze` model and implemented the four spanning-tree generators along with the embedded `"42"` glyph protection.
-2. **Phase 2 — Decoupled Rendering & State Machine:** Built `AppController` around a unified `RenderGrid` delta queue so both MLX and Terminal backends could render animations independently of the generation logic.
-3. **Phase 3 — Imperfect Mode Refinement & Performance Tuning:** Added property-based tests to eliminate open `3x3` rooms and corner dead ends in `ImperfectGenerator`, and optimized large-grid rendering using NumPy slices and incremental bit-shifting (`bit <<= 1`).
+1. **Phase 1 — Functional Prototype & Core Algorithms:** Built an initial working prototype using a 2D list-of-lists grid representation, implementing Kruskal's generator, `ImperfectGenerator`, `BFS`/`DFS` solvers, Pydantic configuration parsing, hexadecimal file export, and a basic terminal renderer.
+2. **Phase 2 — Modular Architecture & Packaging Setup:** Restructured the codebase into a clean `mazegen` package (ready for `.whl` distribution) and an `app` layer. Designed pluggable interfaces (`BaseGenerator`, `MazeSolver`, `GraphicBackend`) alongside a unified `RenderGrid` delta queue to decouple core logic from visualization.
+3. **Phase 3 — Dual Backends & Step-by-Step Animation:** Integrated `AppController` with MiniLibX (`MLX`) and upgraded the terminal backend with an alternate screen buffer and non-blocking keyboard input. Transitioned from block rendering to thin walls, added path visualization, and implemented frame-by-frame stepping animations for both generation and solving.
+4. **Phase 4 — Bitmask Refactoring & Runtime Interactivity:** Replaced the 2D list structure with flat 1D integer bitmasks (`N`, `E`, `S`, `W`) for faster wall operations. Added full live runtime controls: switching algorithms, solvers, and `PERFECT` mode on the fly, live `ENTRY`/`EXIT` relocation, dynamic grid resizing, custom/random seed editing, and playback controls (pause, single-step, speed adjustment).
+5. **Phase 5 — Algorithmic Optimization & Edge-Case Hardening:** Optimized large-grid performance by introducing dedicated instant execution paths (`generate_all`), replacing heavy bitmask scans with $O(1)$ swap-and-pop frontier structures, tuning resize/keyboard responsiveness, and eliminating remaining corner dead ends and open `3x3` rooms via property-based `pytest` suites.
+
 
 ### What Worked Well & What Could Be Improved
-* **What Worked Well:** Separating `mazegen` into a pure-Python package with a generator-based `.step()` API made testing, benchmarking, and supporting two completely different UI backends seamless.
-* **What Could Be Improved:** Adding support for exporting rendered mazes directly to PNG/SVG images (using `Pillow`, which is already included in the app dependency group) or adding diagonal/hexagonal grid topologies in future versions.
+
+* **What Worked Well:**
+  * Decoupling `mazegen` into a pure-Python package with a generator-based `.step()` API and a `RenderGrid` delta queue made testing, benchmarking, and driving two completely different UI backends (`MLX` and `Terminal`) seamless.
+  * Property-based testing with `pytest` caught subtle edge cases in braided mazes (`3x3` open rooms and corner dead ends) early in development.
+
+* **What Could Be Improved & Future Roadmap:**
+  * **`bytearray` Grid Representation:** Replacing the 4 arbitrary-precision Python integer bitmasks (`walls_n`, `walls_e`, `walls_s`, `walls_w`) with a flat `bytearray` (1 byte per cell) would provide $O(1)$ indexed memory access without large-integer bitwise shift overhead on massive grids, and map 1:1 to the hexadecimal output format.
+  * **Richer Step-by-Step Visualization:** Extending the stepping iterator protocol beyond wall carving (`(x, y, Direction)`) to emit active cursor cells, backtracking steps, and decision frontiers would make algorithms like Wilson's random walk or Recursive Backtracker even clearer visually.
+  * **Manual Solver Path Rendering:** Refining path rendering in `MANUAL` exploration mode to highlight active trails and backtracked branches more distinctly.
+  * **Expanded Runtime Controls & Algorithms:** Adding fast step-multipliers for grid resizing (e.g., `Shift + Arrows` to resize by 5 or 10 cells at once), an interactive menu for algorithm-specific options (such as deterministic start/end cell selection instead of random), and additional generators (Eller's, Hunt-and-Kill) or solvers (Dijkstra, Wall Follower).
+  * **Cross-Platform Portability:** Building MiniLibX for macOS or adding alternative graphical backends (such as Pygame, SDL2, or a Web/Canvas frontend) via the existing `GraphicBackend` interface.
+
 
 ### Tools Used
 * **`uv` & `uv_build`:** Dependency management, virtual environments, and `.whl` packaging.
@@ -323,7 +342,11 @@ Beyond standard static generation, **A-Maze-ing** acts as a real-time interactiv
 * [Refactoring.Guru — Design Patterns](https://refactoring.guru/design-patterns) — Catalog and practical examples of Strategy, Decorator, State, Observer, and Factory patterns.
 * [SourceMaking — Design Patterns](https://sourcemaking.com/design_patterns) — Architectural principles, object composition, and behavioral design pattern references.
 * [uv documentation](https://docs.astral.sh/uv/) - reference for uv documencation
-* [Python Packaging User Guide — Packaging Python Projects](https://python.org) — Reference for `pyproject.toml`, wheel distribution, and licensing standards.
+* [Python Packaging User Guide — Packaging Python Projects](https://packaging.python.org/en/latest/) — Reference for `pyproject.toml`, wheel distribution, and licensing standards.
+
+### Third-Party & 42 Provided Assets
+* `pkgs/mlx-2.2-py3-none-any.whl` and `maze_analyzer.py` are provided as part of the 42 curriculum resources and remain the property of their respective authors. All original source code in this repository is licensed under the MIT License (`LICENSE.md`).
+
 
 
 ### AI Usage Disclosure
